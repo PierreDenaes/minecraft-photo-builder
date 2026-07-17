@@ -12,6 +12,9 @@ function validateStructure(blocks, { maxSize, maxBlocks, validBlocks }) {
   let min = { x: Infinity, y: Infinity, z: Infinity };
   let max = { x: -Infinity, y: -Infinity, z: -Infinity };
   for (const b of blocks) {
+    if (typeof b !== 'object' || b === null) {
+      return { ok: false, errors: ['élément de structure invalide : objet {x, y, z, block} requis'] };
+    }
     for (const axis of ['x', 'y', 'z']) {
       if (!Number.isInteger(b[axis]) || b[axis] < 0) badCoord = true;
       min[axis] = Math.min(min[axis], b[axis]);

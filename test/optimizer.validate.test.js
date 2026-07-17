@@ -45,3 +45,11 @@ test('rejette trop de blocs', () => {
   );
   assert.strictEqual(r.ok, false);
 });
+
+test('rejette des éléments non-objets sans planter', () => {
+  const r1 = validateStructure([null], limits);
+  assert.strictEqual(r1.ok, false);
+  assert.match(r1.errors.join(' '), /élément/);
+  const r2 = validateStructure([42], limits);
+  assert.strictEqual(r2.ok, false);
+});

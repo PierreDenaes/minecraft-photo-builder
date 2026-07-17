@@ -23,7 +23,11 @@ function runStructureCode(code, timeoutMs) {
     throw new Error('generateStructure() doit retourner un tableau de blocs');
   }
   // Convertir les objets VM en objets du contexte hôte pour que deepStrictEqual fonctionne
-  return JSON.parse(JSON.stringify(result));
+  try {
+    return JSON.parse(JSON.stringify(result));
+  } catch {
+    throw new Error('generateStructure() a retourné une structure non sérialisable');
+  }
 }
 
 async function generateStructure(description, { client, timeoutMs = 5000 } = {}) {

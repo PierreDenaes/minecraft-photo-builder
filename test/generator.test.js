@@ -35,3 +35,14 @@ test('generateStructure appelle le LLM puis exécute le code', async () => {
   const blocks = await generateStructure({ type_batiment: 'test' }, { client, timeoutMs: 5000 });
   assert.strictEqual(blocks.length, 1);
 });
+
+test('rejette une structure circulaire avec une erreur claire', () => {
+  const code = `function generateStructure() {
+    const a = [];
+    const b = { x: 0, y: 0, z: 0, block: 'stone', ref: null };
+    b.ref = b;
+    a.push(b);
+    return a;
+  }`;
+  assert.throws(() => runStructureCode(code, 5000), /sérialisable/);
+});
