@@ -1,0 +1,14 @@
+{
+  "type_batiment": "maison à colombages",
+  "style": "médiéval européen",
+  "dimensions_estimees": { "largeur": 12, "profondeur": 9, "hauteur": 10 },
+  "etages": 2,
+  "toit": { "forme": "deux pans", "materiau_suggere": "dark_oak_stairs" },
+  "elements": ["cheminée à droite", "fenêtres à croisillons", "porte centrale"],
+  "palette_blocs": {
+    "murs": "white_concrete",
+    "colombages": "dark_oak_log",
+    "toit": "dark_oak_stairs",
+    "fondation": "cobblestone"
+  }
+}
