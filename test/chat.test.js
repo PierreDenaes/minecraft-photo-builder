@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const { createChatHandler } = require('../src/chat');
 
-function setup() {
+function setup(builderOverrides = {}) {
   const messages = [];
   const bot = {
     username: 'BuilderBot',
@@ -10,13 +10,14 @@ function setup() {
     players: { Steve: { entity: { position: { x: 0.5, y: -60, z: 0.5 }, yaw: 0 } } }
   };
   const calls = [];
-  const builder = {
-    computeOrigin: () => ({ x: 0, y: -60, z: -9 }),
+  const defaultBuilder = {
+    computeOrigin: (...args) => { calls.push(['computeOrigin', args]); return { x: 0, y: -60, z: -9 }; },
     startBuild: (...args) => { calls.push(['startBuild', args]); return { total: 42 }; },
     undo: () => { calls.push(['undo']); return true; },
     status: () => ({ active: true, done: 10, total: 42 }),
     estimateSeconds: () => 2
   };
+  const builder = { ...defaultBuilder, ...builderOverrides };
   const pending = new Map();
   const config = { web: { port: 3000, public_host: 'localhost' }, limits: { max_size: 64, max_blocks: 100000 } };
   const handle = createChatHandler({ bot, builder, config, pending });
@@ -44,9 +45,26 @@ test('!go avec proposition lance la construction', () => {
     description: { type_batiment: 'cabane' }
   });
   handle('Steve', '!go');
-  assert.strictEqual(calls[0][0], 'startBuild');
+  const co = calls.find((c) => c[0] === 'computeOrigin');
+  assert.deepStrictEqual(co[1][0], { x: 0.5, y: -60, z: 0.5 }); // position
+  assert.strictEqual(co[1][1], 0);                              // yaw
+  assert.deepStrictEqual(co[1][2], { x: 1, y: 1, z: 1 });       // size
+  assert.strictEqual(calls.find((c) => c[0] === 'startBuild')[0], 'startBuild');
   assert.strictEqual(pending.has('Steve'), false);
   assert.match(messages.join(' '), /construction/i);
+});
+
+test('!go consomme la proposition même si startBuild lève', () => {
+  const { pending, handle } = setup({
+    startBuild: () => { throw new Error('boom'); }
+  });
+  pending.set('Steve', {
+    blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }],
+    size: { x: 1, y: 1, z: 1 },
+    description: { type_batiment: 'cabane' }
+  });
+  assert.throws(() => handle('Steve', '!go'), /boom/);
+  assert.strictEqual(pending.has('Steve'), false);
 });
 
 test('!cancel vide la proposition', () => {
@@ -73,4 +91,28 @@ test('ignore ses propres messages', () => {
   const { messages, handle } = setup();
   handle('BuilderBot', '!photo');
   assert.strictEqual(messages.length, 0);
+});
+
+test('!cancel sans proposition répond "rien à annuler"', () => {
+  const { messages, handle } = setup();
+  handle('Steve', '!cancel');
+  assert.match(messages[0], /rien à annuler/i);
+});
+
+test('!undo sans construction répond "aucune"', () => {
+  const { messages, handle } = setup({ undo: () => false });
+  handle('Steve', '!undo');
+  assert.match(messages[0], /aucune construction à annuler/i);
+});
+
+test('!status sans construction répond "aucune"', () => {
+  const { messages, handle } = setup({ status: () => ({ active: false, done: 0, total: 0 }) });
+  handle('Steve', '!status');
+  assert.match(messages[0], /aucune construction en cours/i);
+});
+
+test('!status terminé affiche le suffixe', () => {
+  const { messages, handle } = setup({ status: () => ({ active: false, done: 42, total: 42 }) });
+  handle('Steve', '!status');
+  assert.match(messages[0], /42\/42.*\(terminé\)/);
 });

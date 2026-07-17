@@ -13,9 +13,9 @@ function createChatHandler({ bot, builder, config, pending }) {
       if (!p) { bot.chat(`${username} : aucune proposition en attente. Envoie une photo avec !photo`); return; }
       const player = bot.players[username];
       if (!player || !player.entity) { bot.chat(`${username} : je ne te vois pas en jeu.`); return; }
+      pending.delete(username);
       const origin = builder.computeOrigin(player.entity.position, player.entity.yaw, p.size);
       const { total } = builder.startBuild(p.blocks, origin, p.size);
-      pending.delete(username);
       bot.chat(`Construction de ${p.description.type_batiment} lancée (~${builder.estimateSeconds(total)} s, ${total} commandes). !status pour suivre, !undo pour annuler.`);
       return;
     }
