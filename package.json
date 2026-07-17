@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "test": "node --test test/",
+    "test": "node --test test/**/*.test.js",
     "server": "docker compose up -d && docker compose logs -f",
     "server:reset": "docker compose down && rm -rf mc-data && docker compose up -d"
   },
