@@ -81,3 +81,12 @@ test('enqueue pendant un drain actif cumule la progression sans la remettre à z
   assert.strictEqual(b.status().done, initialTotal + 2);
   assert.strictEqual(b.status().active, false);
 });
+
+test('cmdsPerTick configurable accélère le drain', async () => {
+  const bot = fakeBot();
+  const b = new Builder(bot, { maxBlocks: 100000, cmdsPerTick: 8 });
+  b.enqueue(Array.from({ length: 16 }, (_, i) => `/setblock ${i} 0 0 stone`));
+  await new Promise((r) => setTimeout(r, 160)); // 16 cmds à 8/50ms = 2 ticks
+  assert.strictEqual(bot.sent.length, 16);
+  assert.strictEqual(b.status().active, false);
+});

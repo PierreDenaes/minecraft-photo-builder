@@ -2,12 +2,12 @@ const { Vec3 } = require('vec3');
 const { optimizeToCommands } = require('./optimizer');
 
 const TICK_MS = 50;
-const CMDS_PER_TICK = 2;
 
 class Builder {
-  constructor(bot, { maxBlocks }) {
+  constructor(bot, { maxBlocks, cmdsPerTick = 2 }) {
     this.bot = bot;
     this.maxBlocks = maxBlocks;
+    this.cmdsPerTick = cmdsPerTick;
     this.queue = [];
     this.timer = null;
     this.snapshot = null;
@@ -105,7 +105,7 @@ class Builder {
     }
     this.progress = { active: true, done: 0, total: this.queue.length };
     this.timer = setInterval(() => {
-      for (let i = 0; i < CMDS_PER_TICK && this.queue.length > 0; i++) {
+      for (let i = 0; i < this.cmdsPerTick && this.queue.length > 0; i++) {
         this.bot.chat(this.queue.shift());
         this.progress.done++;
       }
@@ -122,7 +122,7 @@ class Builder {
   }
 
   estimateSeconds(totalCommands) {
-    return Math.ceil((totalCommands / CMDS_PER_TICK) * TICK_MS / 1000);
+    return Math.ceil((totalCommands / this.cmdsPerTick) * TICK_MS / 1000);
   }
 }
 

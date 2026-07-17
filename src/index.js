@@ -33,7 +33,7 @@ function createBot(cfg) {
   });
 
   const pending = new Map();
-  const builder = new Builder(bot, { maxBlocks: cfg.limits.max_blocks });
+  const builder = new Builder(bot, { maxBlocks: cfg.limits.max_blocks, cmdsPerTick: cfg.limits.throttle_cmds_per_tick });
   const handleChat = createChatHandler({ bot, builder, config: cfg, pending });
 
   bot.on('spawn', () => console.log('[bot] connecté et apparu en jeu'));

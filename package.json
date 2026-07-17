@@ -10,9 +10,11 @@
     "server:reset": "docker compose down && rm -rf mc-data && docker compose up -d"
   },
   "dependencies": {
-    "mineflayer": "^4.20.0",
     "@anthropic-ai/sdk": "latest",
     "express": "^4.19.0",
-    "multer": "^1.4.5-lts.1"
+    "mineflayer": "^4.20.0",
+    "multer": "^1.4.5-lts.1",
+    "onnxruntime-node": "^1.27.0",
+    "sharp": "^0.35.3"
   }
 }
