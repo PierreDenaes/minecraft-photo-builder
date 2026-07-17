@@ -14,7 +14,7 @@ Reproduire fidèlement une photo COMPLÈTE (bâtiment + décor) en voxels Minecr
 - Bâtiments 3D : hybride — le décor vient du diorama, le bâtiment est généré détaillé par le pipeline LLM existant puis incrusté à sa place (bbox fournie par la vision).
 - Déclenchement : nouvelle commande `!diorama` ; `!photo` (mode code) inchangé.
 - Emprise : 128×96, hauteur ≤ 96 → nouveaux `limits.diorama` (max_blocks 500 000).
-- Formats modèles 3D : OBJ (+MTL), STL, GLB/GLTF (parsing via `three`) ; limite 20 Mo.
+- Formats modèles 3D : OBJ, STL, GLB (parseur GLB minimal maison : chunks JSON+BIN, positions/indices/baseColorFactor — pas de dépendance `three`, qui requiert des APIs navigateur) ; limite 20 Mo. Upload mono-fichier : le MTL d'un OBJ n'est jamais fourni → blocs par défaut + avertissement (les couleurs viennent du GLB).
 - Profondeur : Depth Anything V2 small en ONNX via `onnxruntime-node` (CPU Mac, ~3 s), modèle ~50 Mo téléchargé hors git par `npm run setup:depth`.
 - Couleur→bloc : `data/block_colors.json` généré par script depuis les textures du jar client 1.20.4 local (`~/Library/Application Support/minecraft/versions/1.20.4/1.20.4.jar`).
 - Throttle monté à 8 commandes / 50 ms (l'exclusion anti-spam `/fill`/`/setblock` de spigot.yml le permet).
@@ -49,7 +49,7 @@ modèle 3D (.obj/.stl/.glb) → mesh.js (parsing) → meshvoxelizer.js
 | `scripts/extract-block-colors.js` | jar client → moyenne RGB par texture de bloc pleine → `data/block_colors.json` | jar 1.20.4 local |
 | `src/voxelizer.js` | `voxelizeScene(pixels, depthMap, { sizeX, sizeZ, maxY, blockColors }) → blocks` — classification ciel (profondeur lointaine + haut d'image), extrusion sol | blockcolors |
 | `src/composite.js` | `composite(sceneBlocks, buildingBlocks, bbox3d) → blocks` — évide la bbox 3D, insère le bâtiment posé au sol du diorama | — |
-| `src/mesh.js` | `parseModel(buffer, ext) → { triangles: [{v1,v2,v3, color}] }` (OBJ+MTL, STL binaire/ascii, GLB via three) | three |
+| `src/mesh.js` | `parseModel(buffer, ext) → { triangles: [{ a, b, c, color }] }` (OBJ, STL binaire/ascii, GLB minimal) | — |
 | `src/meshvoxelizer.js` | `voxelizeMesh(triangles, { maxX, maxY, maxZ, defaultBlock, blockColors }) → blocks` — normalisation échelle/orientation (STL z-up → y-up), test triangle-AABB, shell | blockcolors |
 | `src/vision.js` (étendu) | schéma + `"zone_batiment": { "x": %, "y": %, "largeur": %, "hauteur": % }` (optionnel : absent si pas de bâtiment net) | — |
 | `src/chat.js` (étendu) | `!diorama` → lien `http://host:port/upload/<pseudo>?mode=diorama` | — |
@@ -59,7 +59,7 @@ modèle 3D (.obj/.stl/.glb) → mesh.js (parsing) → meshvoxelizer.js
 
 ## Gestion d'erreurs
 
-- Modèle ONNX absent → message chat : « mode diorama non installé, lance npm run setup:depth » (HTTP 503 côté web).
+- Modèle ONNX absent → l'erreur de `depth.js` (« modèle de profondeur absent — lance : npm run setup:depth ») remonte au chat et en HTTP 500, comme les autres erreurs pipeline.
 - Pas de `zone_batiment` détectée → diorama pur sans incrustation (comportement normal, pas une erreur).
 - Modèle 3D illisible/corrompu → message clair avec le format détecté.
 - MTL manquant pour un OBJ → blocs `defaultBlock` (stone) + avertissement.
