@@ -1,0 +1,19 @@
+services:
+  minecraft:
+    image: itzg/minecraft-server
+    environment:
+      EULA: "TRUE"
+      TYPE: PAPER
+      VERSION: "1.20.4"
+      MODE: creative
+      LEVEL_TYPE: FLAT
+      ONLINE_MODE: "FALSE"
+      OPS: BuilderBot
+      DIFFICULTY: peaceful
+      SPAWN_PROTECTION: "0"
+      ALLOW_FLIGHT: "TRUE"
+      MEMORY: 2G
+    ports:
+      - "25565:25565"
+    volumes:
+      - ./mc-data:/data
