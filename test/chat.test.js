@@ -55,7 +55,7 @@ test('!go avec proposition lance la construction', () => {
 });
 
 test('!go consomme la proposition même si startBuild lève', () => {
-  const { pending, handle } = setup({
+  const { messages, pending, handle } = setup({
     startBuild: () => { throw new Error('boom'); }
   });
   pending.set('Steve', {
@@ -63,8 +63,10 @@ test('!go consomme la proposition même si startBuild lève', () => {
     size: { x: 1, y: 1, z: 1 },
     description: { type_batiment: 'cabane' }
   });
-  assert.throws(() => handle('Steve', '!go'), /boom/);
+  assert.doesNotThrow(() => handle('Steve', '!go'));
   assert.strictEqual(pending.has('Steve'), false);
+  assert.match(messages.join(' '), /erreur/i);
+  assert.match(messages.join(' '), /boom/);
 });
 
 test('!cancel vide la proposition', () => {
