@@ -55,3 +55,29 @@ test('undo restaure le snapshot', async () => {
   assert.ok(bot.sent.some((c) => c.includes('grass_block')));
   assert.strictEqual(b.undo(), false);
 });
+
+test('enqueue pendant un drain actif cumule la progression sans la remettre à zéro', async () => {
+  const bot = fakeBot();
+  const b = new Builder(bot, { maxBlocks: 100000 });
+  b.startBuild(
+    [
+      { x: 0, y: 0, z: 0, block: 'stone' },
+      { x: 0, y: 1, z: 0, block: 'stone' },
+      { x: 0, y: 2, z: 0, block: 'stone' },
+      { x: 0, y: 3, z: 0, block: 'stone' }
+    ],
+    { x: 0, y: -60, z: 0 },
+    { x: 1, y: 4, z: 1 }
+  );
+  const initialTotal = b.status().total;
+  await new Promise((r) => setTimeout(r, 120)); // laisser partir quelques commandes
+  const doneBefore = b.status().done;
+  assert.ok(doneBefore > 0);
+  b.enqueue(['/setblock 0 0 0 stone', '/setblock 0 1 0 stone']);
+  const s = b.status();
+  assert.strictEqual(s.total, initialTotal + 2);
+  assert.ok(s.done >= doneBefore); // pas de remise à zéro
+  await new Promise((r) => setTimeout(r, 50 * s.total));
+  assert.strictEqual(b.status().done, initialTotal + 2);
+  assert.strictEqual(b.status().active, false);
+});

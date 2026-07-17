@@ -98,8 +98,11 @@ class Builder {
 
   enqueue(cmds) {
     this.queue.push(...cmds);
+    if (this.timer) {
+      this.progress.total += cmds.length;
+      return;
+    }
     this.progress = { active: true, done: 0, total: this.queue.length };
-    if (this.timer) return;
     this.timer = setInterval(() => {
       for (let i = 0; i < CMDS_PER_TICK && this.queue.length > 0; i++) {
         this.bot.chat(this.queue.shift());
