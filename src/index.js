@@ -44,14 +44,16 @@ function createBot(cfg) {
   async function onPhoto(username, buffer, mimeType) {
     bot.chat(`Photo reçue de ${username}, analyse en cours...`);
     const description = await analyzeImage(buffer.toString('base64'), mimeType, {
-      maxSize: cfg.limits.max_size
+      maxSize: cfg.limits.max_size,
+      validBlocks
     });
     if (description.erreur) {
       bot.chat(`${username} : analyse impossible — ${description.erreur}`);
       return `erreur : ${description.erreur}`;
     }
     const blocks = await generateStructure(description, {
-      timeoutMs: cfg.limits.sandbox_timeout_ms
+      timeoutMs: cfg.limits.sandbox_timeout_ms,
+      validBlocks
     });
     const check = validateStructure(blocks, {
       maxSize: cfg.limits.max_size,

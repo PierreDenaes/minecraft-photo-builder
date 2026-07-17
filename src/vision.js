@@ -2,7 +2,10 @@ const { createClient, withRetry, stripCodeFences } = require('./llm');
 
 const MODEL = 'claude-sonnet-4-6';
 
-function systemPrompt(maxSize) {
+function systemPrompt(maxSize, validBlocks) {
+  const blocksRule = validBlocks
+    ? `\n- Choisis les valeurs de palette_blocs et materiau_suggere UNIQUEMENT dans cette liste : ${validBlocks.join(', ')}`
+    : '';
   return `Tu analyses une photo de bâtiment pour un constructeur Minecraft (version 1.20).
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, sans balises markdown.
 
@@ -21,16 +24,16 @@ Règles :
 - Tous les blocs doivent être des noms Minecraft 1.20 valides (snake_case, sans préfixe minecraft:)
 - Dimensions maximales : ${maxSize} sur chaque axe
 - Mappe les couleurs/matériaux réels vers les blocs les plus proches
-- Si l'image ne contient aucun bâtiment identifiable, réponds : {"erreur": "raison courte"}`;
+- Si l'image ne contient aucun bâtiment identifiable, réponds : {"erreur": "raison courte"}${blocksRule}`;
 }
 
-async function analyzeImage(imageBase64, mimeType, { client, maxSize = 64 } = {}) {
+async function analyzeImage(imageBase64, mimeType, { client, maxSize = 64, validBlocks } = {}) {
   const c = client || createClient();
   const response = await withRetry(() =>
     c.messages.create({
       model: MODEL,
       max_tokens: 1500,
-      system: systemPrompt(maxSize),
+      system: systemPrompt(maxSize, validBlocks),
       messages: [{
         role: 'user',
         content: [

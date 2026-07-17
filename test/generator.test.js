@@ -58,3 +58,12 @@ test('translate les coordonnées négatives vers une origine 0 (débord de toit)
   assert.deepStrictEqual(blocks[0], { x: 0, y: 0, z: 0, block: 'stone' });
   assert.deepStrictEqual(blocks[1], { x: 3, y: 3, z: 5, block: 'stone' });
 });
+
+test('injecte la liste des blocs autorisés dans le prompt', async () => {
+  const code = 'function generateStructure() { return [{ x: 0, y: 0, z: 0, block: "stone" }]; }';
+  let captured;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
+  await generateStructure({ type_batiment: 'test' }, { client, timeoutMs: 5000, validBlocks: ['stone', 'brick_slab'] });
+  assert.match(captured.messages[0].content, /Blocs autorisés/);
+  assert.match(captured.messages[0].content, /brick_slab/);
+});

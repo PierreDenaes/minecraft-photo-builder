@@ -52,8 +52,11 @@ function normalizeOrigin(blocks) {
   return blocks;
 }
 
-async function generateStructure(description, { client, timeoutMs = 5000 } = {}) {
+async function generateStructure(description, { client, timeoutMs = 5000, validBlocks } = {}) {
   const c = client || createClient();
+  const blocksSection = validBlocks
+    ? `\n\nBlocs autorisés — n'utilise QUE ces noms, aucun autre :\n${validBlocks.join(', ')}`
+    : '';
   const response = await withRetry(() =>
     c.messages.create({
       model: MODEL,
@@ -61,7 +64,7 @@ async function generateStructure(description, { client, timeoutMs = 5000 } = {})
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',
-        content: `Description du bâtiment :\n${JSON.stringify(description, null, 2)}\n\nÉcris generateStructure().`
+        content: `Description du bâtiment :\n${JSON.stringify(description, null, 2)}${blocksSection}\n\nÉcris generateStructure().`
       }]
     })
   );

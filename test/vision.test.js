@@ -38,3 +38,11 @@ test('lance une Error si réponse non-JSON', async () => {
     /JSON/
   );
 });
+
+test('injecte la liste des blocs autorisés dans le prompt système', async () => {
+  const fx = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/description_maison.json'), 'utf8'));
+  let captured;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: JSON.stringify(fx) }] }; } } };
+  await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64, validBlocks: ['stone', 'brick_slab'] });
+  assert.match(captured.system, /brick_slab/);
+});
