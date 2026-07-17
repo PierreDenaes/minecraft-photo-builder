@@ -46,3 +46,15 @@ test('rejette une structure circulaire avec une erreur claire', () => {
   }`;
   assert.throws(() => runStructureCode(code, 5000), /sérialisable/);
 });
+
+test('translate les coordonnées négatives vers une origine 0 (débord de toit)', () => {
+  const code = `function generateStructure() {
+    return [
+      { x: -2, y: 0, z: -1, block: 'stone' },
+      { x: 1, y: 3, z: 4, block: 'stone' }
+    ];
+  }`;
+  const blocks = runStructureCode(code, 5000);
+  assert.deepStrictEqual(blocks[0], { x: 0, y: 0, z: 0, block: 'stone' });
+  assert.deepStrictEqual(blocks[1], { x: 3, y: 3, z: 5, block: 'stone' });
+});

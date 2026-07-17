@@ -23,11 +23,33 @@ function runStructureCode(code, timeoutMs) {
     throw new Error('generateStructure() doit retourner un tableau de blocs');
   }
   // Convertir les objets VM en objets du contexte hôte pour que deepStrictEqual fonctionne
+  let blocks;
   try {
-    return JSON.parse(JSON.stringify(result));
+    blocks = JSON.parse(JSON.stringify(result));
   } catch {
     throw new Error('generateStructure() a retourné une structure non sérialisable');
   }
+  return normalizeOrigin(blocks);
+}
+
+// Les LLM produisent souvent des débords (toit) en coordonnées négatives :
+// on translate la structure pour que son coin minimum soit à l'origine.
+function normalizeOrigin(blocks) {
+  const min = { x: Infinity, y: Infinity, z: Infinity };
+  for (const b of blocks) {
+    if (!b || typeof b !== 'object') return blocks;
+    for (const axis of ['x', 'y', 'z']) {
+      if (Number.isInteger(b[axis])) min[axis] = Math.min(min[axis], b[axis]);
+    }
+  }
+  for (const axis of ['x', 'y', 'z']) {
+    if (Number.isFinite(min[axis]) && min[axis] < 0) {
+      for (const b of blocks) {
+        if (Number.isInteger(b[axis])) b[axis] -= min[axis];
+      }
+    }
+  }
+  return blocks;
 }
 
 async function generateStructure(description, { client, timeoutMs = 5000 } = {}) {
