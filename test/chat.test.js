@@ -20,8 +20,8 @@ function setup(builderOverrides = {}) {
   const builder = { ...defaultBuilder, ...builderOverrides };
   const pending = new Map();
   const config = { web: { port: 3000, public_host: 'localhost' }, limits: { max_size: 64, max_blocks: 100000 } };
-  const handle = createChatHandler({ bot, builder, config, pending });
-  return { messages, calls, pending, handle };
+  const handle = createChatHandler({ bot, builder, config, pending, tpDelayMs: 30 });
+  return { messages, calls, pending, handle, bot };
 }
 
 test('!photo donne le lien d\'upload', () => {
@@ -117,4 +117,36 @@ test('!status terminé affiche le suffixe', () => {
   const { messages, handle } = setup({ status: () => ({ active: false, done: 42, total: 42 }) });
   handle('Steve', '!status');
   assert.match(messages[0], /42\/42.*\(terminé\)/);
+});
+
+test('!go joueur hors de vue : le bot se téléporte puis lance', async () => {
+  const { messages, calls, pending, handle, bot } = setup();
+  delete bot.players.Steve;
+  pending.set('Steve', {
+    blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }],
+    size: { x: 1, y: 1, z: 1 },
+    description: { type_batiment: 'cabane' }
+  });
+  handle('Steve', '!go');
+  assert.strictEqual(messages[0], '/tp BuilderBot Steve');
+  bot.players.Steve = { entity: { position: { x: 9.5, y: -60, z: 9.5 }, yaw: 0 } };
+  await new Promise((r) => setTimeout(r, 90));
+  assert.ok(calls.find((c) => c[0] === 'startBuild'));
+  assert.strictEqual(pending.has('Steve'), false);
+  assert.match(messages.join(' '), /lancée/);
+});
+
+test('!go joueur introuvable même après téléportation : message et proposition conservée', async () => {
+  const { messages, calls, pending, handle, bot } = setup();
+  delete bot.players.Steve;
+  pending.set('Steve', {
+    blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }],
+    size: { x: 1, y: 1, z: 1 },
+    description: { type_batiment: 'cabane' }
+  });
+  handle('Steve', '!go');
+  await new Promise((r) => setTimeout(r, 90));
+  assert.strictEqual(calls.find((c) => c[0] === 'startBuild'), undefined);
+  assert.match(messages.join(' '), /je ne te vois pas/);
+  assert.strictEqual(pending.has('Steve'), true);
 });

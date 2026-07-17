@@ -1,4 +1,4 @@
-function createChatHandler({ bot, builder, config, pending }) {
+function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) {
   return function handle(username, message) {
     if (username === bot.username) return;
     try {
@@ -12,12 +12,26 @@ function createChatHandler({ bot, builder, config, pending }) {
       if (cmd === '!go') {
         const p = pending.get(username);
         if (!p) { bot.chat(`${username} : aucune proposition en attente. Envoie une photo avec !photo`); return; }
+        const launch = (player) => {
+          pending.delete(username);
+          const origin = builder.computeOrigin(player.entity.position, player.entity.yaw, p.size);
+          const { total } = builder.startBuild(p.blocks, origin, p.size);
+          bot.chat(`Construction de ${p.description.type_batiment} lancée (~${builder.estimateSeconds(total)} s, ${total} commandes). !status pour suivre, !undo pour annuler.`);
+        };
         const player = bot.players[username];
-        if (!player || !player.entity) { bot.chat(`${username} : je ne te vois pas en jeu.`); return; }
-        pending.delete(username);
-        const origin = builder.computeOrigin(player.entity.position, player.entity.yaw, p.size);
-        const { total } = builder.startBuild(p.blocks, origin, p.size);
-        bot.chat(`Construction de ${p.description.type_batiment} lancée (~${builder.estimateSeconds(total)} s, ${total} commandes). !status pour suivre, !undo pour annuler.`);
+        if (player && player.entity) { launch(player); return; }
+        // Joueur hors de portée de suivi : se téléporter vers lui puis réessayer
+        bot.chat(`/tp ${bot.username} ${username}`);
+        setTimeout(() => {
+          try {
+            const retry = bot.players[username];
+            if (retry && retry.entity) launch(retry);
+            else bot.chat(`${username} : je ne te vois pas en jeu.`);
+          } catch (err) {
+            console.error('[chat] erreur commande :', err);
+            bot.chat(`${username} : oups, une erreur est survenue (${err.message})`);
+          }
+        }, tpDelayMs);
         return;
       }
 
