@@ -1,0 +1,11 @@
+{
+  "file": "/data/spigot.yml",
+  "ops": [
+    {
+      "$set": {
+        "path": "$.commands.spam-exclusions",
+        "value": ["/skill", "/fill", "/setblock"]
+      }
+    }
+  ]
+}

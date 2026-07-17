@@ -13,7 +13,9 @@ services:
       SPAWN_PROTECTION: "0"
       ALLOW_FLIGHT: "TRUE"
       MEMORY: 2G
+      PATCH_DEFINITIONS: /patches
     ports:
       - "25565:25565"
     volumes:
       - ./mc-data:/data
+      - ./mc-config:/patches:ro
