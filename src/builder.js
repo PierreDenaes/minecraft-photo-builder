@@ -1,3 +1,4 @@
+const { Vec3 } = require('vec3');
 const { optimizeToCommands } = require('./optimizer');
 
 const TICK_MS = 50;
@@ -53,7 +54,7 @@ class Builder {
     for (let x = origin.x - 1; x <= origin.x + size.x; x++) {
       for (let y = origin.y - 1; y < origin.y + size.y; y++) {
         for (let z = origin.z - 1; z <= origin.z + size.z; z++) {
-          const block = this.bot.blockAt({ x, y, z });
+          const block = this.bot.blockAt(new Vec3(x, y, z));
           saved.push({ x: x - origin.x + 1, y: y - origin.y + 1, z: z - origin.z + 1, block: block ? block.name : 'air' });
         }
       }
