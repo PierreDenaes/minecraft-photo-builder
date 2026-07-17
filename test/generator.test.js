@@ -67,3 +67,11 @@ test('injecte la liste des blocs autorisés dans le prompt', async () => {
   assert.match(captured.messages[0].content, /Blocs autorisés/);
   assert.match(captured.messages[0].content, /brick_slab/);
 });
+
+test('signale clairement une réponse tronquée (max_tokens)', async () => {
+  const client = { messages: { create: async () => ({ stop_reason: 'max_tokens', content: [{ type: 'text', text: 'function generateStructure() { return [' }] }) } };
+  await assert.rejects(
+    () => generateStructure({ type_batiment: 'test' }, { client, timeoutMs: 5000 }),
+    /tronquée/
+  );
+});

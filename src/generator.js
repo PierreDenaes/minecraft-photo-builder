@@ -60,7 +60,7 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
   const response = await withRetry(() =>
     c.messages.create({
       model: MODEL,
-      max_tokens: 4000,
+      max_tokens: 16000,
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',
@@ -68,6 +68,9 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
       }]
     })
   );
+  if (response.stop_reason === 'max_tokens') {
+    throw new Error('génération tronquée (max_tokens atteint) — réessaie avec une photo plus simple');
+  }
   const code = stripCodeFences(response.content.find((b) => b.type === 'text').text);
   console.log('[generator] code généré :\n', code);
   return runStructureCode(code, timeoutMs);
