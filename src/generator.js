@@ -13,7 +13,15 @@ Contraintes strictes :
 - Utilise uniquement les blocs de palette_blocs, plus "air" pour les ouvertures (portes, fenêtres) et "glass_pane" pour les vitres
 - Code pur : pas de require, pas d'accès réseau/fichiers, pas de récursion infinie
 - Construis paramétriquement : murs pleins, ouvertures, toit selon la forme décrite
-- Les intérieurs sont creux (air)`;
+- Les intérieurs sont creux (air)
+
+Qualité et détail (important) :
+- Vise le MAXIMUM de détail architectural : varie les matériaux (3 à 5 blocs différents par façade)
+- Utilise les stairs/slabs/walls de la liste autorisée pour les corniches, encadrements, débords de toit, créneaux
+- Fenêtres avec encadrement (log ou stone autour du glass_pane), porte avec porche ou arche
+- Évite les grands murs plats uniformes : ajoute pilastres, retraits, variations de profondeur de 1 bloc
+- Les tours sont cylindriques (teste x*x + z*z contre un rayon), les toits coniques ou en pente réguliers
+- Ajoute les éléments notables décrits (cheminées, tourelles, créneaux, drapeaux en wool, lave si décrit)`;
 
 function runStructureCode(code, timeoutMs) {
   const context = vm.createContext(Object.create(null));

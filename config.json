@@ -1,6 +1,6 @@
 {
   "minecraft": { "host": "localhost", "port": 25565, "username": "BuilderBot", "version": "1.20.4" },
   "web": { "port": 3000, "public_host": "localhost" },
-  "limits": { "max_size": 64, "max_blocks": 100000, "sandbox_timeout_ms": 5000 },
+  "limits": { "max_size": 96, "max_blocks": 100000, "sandbox_timeout_ms": 5000 },
   "generation_mode": "code"
 }
