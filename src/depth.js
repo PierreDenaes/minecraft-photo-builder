@@ -14,7 +14,12 @@ function getSession() {
   if (!fs.existsSync(MODEL_PATH)) {
     return Promise.reject(new Error('modèle de profondeur absent — lance : npm run setup:depth'));
   }
-  if (!sessionPromise) sessionPromise = ort.InferenceSession.create(MODEL_PATH);
+  if (!sessionPromise) {
+    sessionPromise = ort.InferenceSession.create(MODEL_PATH).catch((err) => {
+      sessionPromise = null;
+      throw err;
+    });
+  }
   return sessionPromise;
 }
 

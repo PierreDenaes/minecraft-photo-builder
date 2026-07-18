@@ -17,4 +17,7 @@ async function main() {
   fs.writeFileSync(DEST, buf);
   console.log(`ok : ${DEST} (${(buf.length / 1e6).toFixed(1)} Mo)`);
 }
-main();
+main().catch((err) => {
+  console.error('échec du téléchargement :', err.message);
+  process.exit(1);
+});
