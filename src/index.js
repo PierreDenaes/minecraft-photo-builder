@@ -15,8 +15,9 @@ const { composite } = require('./composite');
 const { parseModel } = require('./mesh');
 const { voxelizeMesh } = require('./meshvoxelizer');
 const { loadBlockColors, filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS } = require('./blockcolors');
-const { clusterColors, assignThemes, buildThemePicker } = require('./palette');
+const { clusterColors, assignThemes, buildThemePicker, themeOfBlock } = require('./palette');
 const { THEME_BLOCKS } = require('./blockcolors');
+const { createUnderground } = require('./subsurface');
 const { createClient } = require('./llm');
 
 const validBlocks = JSON.parse(
@@ -100,8 +101,12 @@ function createBot(cfg) {
     const paletteScene = await deliberatePalette(
       pixelSamples, colorsNature, description.erreur ? 'paysage extérieur' : `paysage autour de : ${description.type_batiment}`
     );
+    const seed = Math.floor(Math.random() * 2 ** 31);
+    console.log(`[diorama] graine sous-sol : ${seed}`);
+    const underground = createUnderground({ seed, maxY: dio.max_y });
     let blocks = voxelizeScene(image, depthMap, {
-      sizeX: dio.size_x, sizeZ: dio.size_z, maxY: dio.max_y, colors: paletteScene
+      sizeX: dio.size_x, sizeZ: dio.size_z, maxY: dio.max_y, colors: paletteScene,
+      underground, surfaceThemeOf: themeOfBlock
     });
     const zone = description.erreur ? null : description.zone_batiment;
     if (zone) {
@@ -143,9 +148,13 @@ function createBot(cfg) {
       for (let i = 0; i < colored.length; i += step) samples.push(colored[i].color);
       colors = await deliberatePalette(samples, colorsBati, `modèle 3D scanné (${ext})`);
     }
+    const seed = Math.floor(Math.random() * 2 ** 31);
+    console.log(`[diorama] graine sous-sol : ${seed}`);
+    const underground = createUnderground({ seed, maxY: dio.max_y });
     const blocks = voxelizeMesh(triangles, {
       maxX: dio.size_x, maxY: dio.max_y, maxZ: dio.size_z,
-      defaultBlock: 'stone', colors, zUp: ext === 'stl'
+      defaultBlock: 'stone', colors, zUp: ext === 'stl',
+      solid: true, underground, surfaceThemeOf: themeOfBlock
     });
     return proposeStructure(username, blocks, { type_batiment: `modèle 3D (${ext})` }, { maxSize: Math.max(dio.size_x, dio.max_y, dio.size_z), maxBlocks: dio.max_blocks });
   }
