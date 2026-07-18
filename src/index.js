@@ -22,6 +22,9 @@ const { createClient } = require('./llm');
 const { cleanTriangles } = require('./meshclean');
 const { analyzeStructure } = require('./structure-analysis');
 const { terrainFromHeightmap } = require('./terrain');
+const { renderVoxels } = require('./render');
+const { enforceSupport } = require('./support');
+const { plantVegetation } = require('./vegetation');
 
 const validBlocks = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../data/valid_blocks.json'), 'utf8')
@@ -174,10 +177,21 @@ function createBot(cfg) {
     let blocks = reference;
     if (inspire) {
       const summary = analyzeStructure(reference);
-      const building = await generateStructure(
-        { type_batiment: `reconstruction fidèle du modèle 3D (${ext})` },
-        { timeoutMs: cfg.limits.sandbox_timeout_ms, validBlocks: materiaux, structuralSummary: summary }
-      );
+      const rendered = await renderVoxels(reference, blockColors);
+      const sceneDesc = await analyzeImage(rendered.toString('base64'), 'image/png', {
+        maxSize: dio.size_x, validBlocks
+      });
+      const env = (!sceneDesc.erreur && sceneDesc.environnement) || {};
+      if (env.ambiance) bot.chat(`Ambiance : ${env.ambiance}`);
+      const buildingDesc = sceneDesc.erreur
+        ? { type_batiment: `reconstruction du modèle 3D (${ext})` }
+        : sceneDesc;
+      const generated = await generateStructure(buildingDesc, {
+        timeoutMs: cfg.limits.sandbox_timeout_ms, validBlocks: materiaux, structuralSummary: summary
+      });
+      const support = enforceSupport(generated);
+      if (support.removed > 0) console.log(`[modele] gravité : ${support.removed} blocs flottants supprimés`);
+      const building = support.blocks;
       const bSize = { x: 0, y: 0, z: 0 };
       for (const b of building) {
         bSize.x = Math.max(bSize.x, b.x + 1);
@@ -201,8 +215,15 @@ function createBot(cfg) {
         }
       }
       const placed = building.map((b) => ({ x: b.x + offX, y: b.y + topY + 1, z: b.z + offZ, block: b.block }));
-      blocks = terrain.concat(placed);
-      bot.chat(`Reconstruction inspirée : bâtiment ${bSize.x}x${bSize.z}x${bSize.y} posé sur un relief de ${hillHeight} blocs.`);
+      const densite = env.arbres === 'dense' ? 0.03 : env.arbres === 'epars' ? 0.012 : 0;
+      const essences = (env.types_arbres || []).filter((t) => t === 'chene' || t === 'sapin');
+      const trees = plantVegetation(terrain, {
+        seed, densite,
+        exclude: { x1: offX, x2: offX + bSize.x - 1, z1: offZ, z2: offZ + bSize.z - 1 },
+        types: essences.length ? essences : ['chene']
+      });
+      blocks = terrain.concat(trees, placed);
+      bot.chat(`Reconstruction inspirée : bâtiment ${bSize.x}x${bSize.z}x${bSize.y} posé sur un relief de ${hillHeight} blocs, ${trees.length > 0 ? Math.round(trees.length / 14) + ' arbres plantés' : 'sans arbres'}.`);
     }
     return proposeStructure(username, blocks, { type_batiment: `modèle 3D (${ext})` }, { maxSize: Math.max(dio.size_x, dio.max_y, dio.size_z), maxBlocks: dio.max_blocks });
   }
