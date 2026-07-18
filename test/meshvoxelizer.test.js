@@ -53,20 +53,35 @@ test('accepte une fonction de choix de bloc', () => {
   assert.ok(blocks.every((b) => b.block === 'bricks'));
 });
 
-test('solid : colonnes pleines du sol à la surface, sous-sol appliqué', () => {
+function platformTriangles() {
+  // plateforme horizontale en haut de la boîte + marqueur au sol pour étirer la bbox
+  return [
+    ...quad([0, 4, 0], [4, 4, 0], [4, 4, 4], [0, 4, 4]),
+    { a: [0, 0, 0], b: [0.2, 0, 0], c: [0, 0, 0.2], color: null }
+  ];
+}
+
+test('solid géologique : strates uniquement sous le socle de chaque colonne', () => {
   const underground = { fill: (x, y, z, depth) => (depth <= 2 ? 'dirt' : 'stone') };
-  const blocks = voxelizeMesh(cubeTriangles(), {
-    maxX: 8, maxY: 8, maxZ: 8, defaultBlock: 'stone_bricks', solid: true, underground,
-    surfaceThemeOf: () => 'roche'
+  const blocks = voxelizeMesh(platformTriangles(), {
+    maxX: 8, maxY: 8, maxZ: 8, defaultBlock: 'grass_block', solid: true, underground,
+    surfaceThemeOf: () => 'vegetation'
   });
-  const has = (x, y, z) => blocks.find((b) => b.x === x && b.y === y && b.z === z);
-  assert.ok(has(3, 3, 3), 'intérieur rempli');            // creux avant, plein maintenant
-  assert.strictEqual(has(3, 5, 3).block, 'dirt');         // 2 sous la coquille haute (y=7)
-  assert.strictEqual(has(3, 3, 3).block, 'stone');        // plus profond
-  assert.strictEqual(has(0, 3, 3).block, 'stone_bricks'); // la coquille garde son bloc
+  const at = (x, y, z) => blocks.find((b) => b.x === x && b.y === y && b.z === z);
+  assert.strictEqual(at(3, 7, 3).block, 'grass_block'); // plateforme = surface
+  assert.strictEqual(at(3, 6, 3).block, 'dirt');        // depth 1
+  assert.strictEqual(at(3, 5, 3).block, 'dirt');        // depth 2
+  assert.strictEqual(at(3, 3, 3).block, 'stone');       // profond
+  assert.ok(at(3, 0, 3));                               // socle jusqu'à y=0
 });
 
-test('solid sans underground : rempli avec defaultBlock', () => {
-  const blocks = voxelizeMesh(cubeTriangles(), { maxX: 6, maxY: 6, maxZ: 6, defaultBlock: 'stone', solid: true });
-  assert.ok(blocks.some((b) => b.x === 3 && b.y === 3 && b.z === 3));
+test('solid géologique : petits vides internes comblés, grands volumes laissés ouverts', () => {
+  // cube dans une boîte 12 → coquilles y=0 et y=11, vide interne 10 > 6 → reste ouvert
+  const open = voxelizeMesh(cubeTriangles(), { maxX: 12, maxY: 12, maxZ: 12, defaultBlock: 'stone_bricks', solid: true });
+  assert.ok(!open.some((b) => b.x === 5 && b.y === 5 && b.z === 5), 'grand vide comblé à tort');
+  // cube dans une boîte 8 → vide interne 6 ≤ 6 → comblé avec le bloc de structure
+  const closed = voxelizeMesh(cubeTriangles(), { maxX: 8, maxY: 8, maxZ: 8, defaultBlock: 'stone_bricks', solid: true });
+  const inner = closed.find((b) => b.x === 3 && b.y === 3 && b.z === 3);
+  assert.ok(inner, 'petit vide non comblé');
+  assert.strictEqual(inner.block, 'stone_bricks');      // continuité de structure, pas de strates
 });

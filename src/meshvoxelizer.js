@@ -42,33 +42,38 @@ function voxelizeMesh(triangles, { maxX, maxY, maxZ, defaultBlock, colors, zUp =
   }
 
   if (solid) {
-    const columns = new Map(); // "x,z" → { top: y max de coquille, shellYs: Set }
+    // Logique géologique : strates uniquement sous le SOCLE de chaque colonne ;
+    // les vides internes ne sont comblés que s'ils sont étroits (épaisseur de
+    // structure) — les grands volumes d'air (cours, arches, ciels de scans IA)
+    // restent ouverts au lieu de produire un monolithe.
+    const MAX_GAP = 6;
+    const columns = new Map(); // "x,z" → [y de coquille...]
     for (const [k] of marked) {
       const [x, y, z] = k.split(',').map(Number);
       const ck = `${x},${z}`;
-      if (!columns.has(ck)) columns.set(ck, { top: y, shellYs: new Set([y]) });
-      else {
-        const c = columns.get(ck);
-        c.top = Math.max(c.top, y);
-        c.shellYs.add(y);
-      }
+      if (!columns.has(ck)) columns.set(ck, []);
+      columns.get(ck).push(y);
     }
-    for (const [ck, { top, shellYs }] of columns) {
+    for (const [ck, ys] of columns) {
       const [x, z] = ck.split(',').map(Number);
-      for (let y = 0; y < top; y++) {
-        if (shellYs.has(y) || marked.has(`${x},${y},${z}`)) continue;
-        // profondeur = distance au voxel de coquille supérieur le plus proche
-        let depth = 1;
-        for (let yy = y + 1; yy <= top; yy++) {
-          if (shellYs.has(yy)) break;
-          depth++;
-        }
+      ys.sort((a, b) => a - b);
+      const bottom = ys[0];
+      const theme = surfaceThemeOf ? surfaceThemeOf(marked.get(`${x},${bottom},${z}`)) : null;
+      for (let y = 0; y < bottom; y++) {
         if (underground) {
-          const theme = surfaceThemeOf ? surfaceThemeOf(marked.get(`${x},${top},${z}`)) : null;
-          const filled = underground.fill(x, y, z, depth, theme);
+          const filled = underground.fill(x, y, z, bottom - y, theme);
           if (filled !== null) marked.set(`${x},${y},${z}`, filled);
         } else {
           marked.set(`${x},${y},${z}`, defaultBlock);
+        }
+      }
+      for (let i = 0; i + 1 < ys.length; i++) {
+        const gap = ys[i + 1] - ys[i] - 1;
+        if (gap > 0 && gap <= MAX_GAP) {
+          const fillBlock = marked.get(`${x},${ys[i]},${z}`);
+          for (let y = ys[i] + 1; y < ys[i + 1]; y++) {
+            if (!marked.has(`${x},${y},${z}`)) marked.set(`${x},${y},${z}`, fillBlock);
+          }
         }
       }
     }
