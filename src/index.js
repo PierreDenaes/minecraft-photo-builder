@@ -15,6 +15,8 @@ const { composite } = require('./composite');
 const { parseModel } = require('./mesh');
 const { voxelizeMesh } = require('./meshvoxelizer');
 const { loadBlockColors, filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS } = require('./blockcolors');
+const { clusterColors, assignBlocks, buildPaletteMap } = require('./palette');
+const { createClient } = require('./llm');
 
 const validBlocks = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../data/valid_blocks.json'), 'utf8')
@@ -53,6 +55,15 @@ function createBot(cfg) {
   const colorsBati = filterColors(blockColors, new Set([...NATURAL_BLOCKS, ...CONSTRUCTION_BLOCKS]));
   const materiaux = validBlocks.filter((b) => CONSTRUCTION_BLOCKS.has(b) || b === 'air');
   const dio = cfg.limits.diorama;
+  let apiClient = null;
+  try { apiClient = createClient(); } catch { /* pas de clé : repli plus-proche-voisin */ }
+
+  async function deliberatePalette(samples, allowedColors, contexte) {
+    const centroids = clusterColors(samples, 8);
+    const chosen = await assignBlocks(centroids, allowedColors, { client: apiClient, contexte });
+    bot.chat(`Palette choisie : ${[...new Set(chosen)].join(', ')}`);
+    return buildPaletteMap(centroids, chosen);
+  }
 
   function proposeStructure(username, blocks, description, { maxSize, maxBlocks }) {
     const check = validateStructure(blocks, {
@@ -78,8 +89,14 @@ function createBot(cfg) {
     ]);
     const { data, info } = await sharp(buffer).removeAlpha().raw().toBuffer({ resolveWithObject: true });
     const image = { data, width: info.width, height: info.height };
+    const pixelSamples = [];
+    const stride = Math.max(3, Math.floor((data.length / 3 / 4000)) * 3);
+    for (let i = 0; i + 2 < data.length; i += stride) pixelSamples.push([data[i], data[i + 1], data[i + 2]]);
+    const paletteScene = await deliberatePalette(
+      pixelSamples, colorsNature, description.erreur ? 'paysage extérieur' : `paysage autour de : ${description.type_batiment}`
+    );
     let blocks = voxelizeScene(image, depthMap, {
-      sizeX: dio.size_x, sizeZ: dio.size_z, maxY: dio.max_y, colors: colorsNature
+      sizeX: dio.size_x, sizeZ: dio.size_z, maxY: dio.max_y, colors: paletteScene
     });
     const zone = description.erreur ? null : description.zone_batiment;
     if (zone) {
@@ -113,9 +130,17 @@ function createBot(cfg) {
     bot.chat(`Modèle 3D (${ext}) reçu de ${username}, voxelisation...`);
     const { triangles, warning } = await parseModel(buffer, ext);
     if (warning) bot.chat(`${username} : ${warning}`);
+    const colored = triangles.filter((t) => t.color);
+    let colors = colorsBati;
+    if (colored.length > 0) {
+      const step = Math.max(1, Math.floor(colored.length / 4000));
+      const samples = [];
+      for (let i = 0; i < colored.length; i += step) samples.push(colored[i].color);
+      colors = await deliberatePalette(samples, colorsBati, `modèle 3D scanné (${ext})`);
+    }
     const blocks = voxelizeMesh(triangles, {
       maxX: dio.size_x, maxY: dio.max_y, maxZ: dio.size_z,
-      defaultBlock: 'stone', colors: colorsBati, zUp: ext === 'stl'
+      defaultBlock: 'stone', colors, zUp: ext === 'stl'
     });
     return proposeStructure(username, blocks, { type_batiment: `modèle 3D (${ext})` }, { maxSize: Math.max(dio.size_x, dio.max_y, dio.size_z), maxBlocks: dio.max_blocks });
   }
