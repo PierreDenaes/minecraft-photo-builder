@@ -60,3 +60,65 @@ test('POST avec type non-image répond 400', async () => {
   assert.strictEqual(res.status, 400);
   server.close();
 });
+
+test('mode=diorama route vers onDiorama', async () => {
+  let called = null;
+  const app = createWebServer({
+    onPhoto: async () => { called = 'photo'; },
+    onDiorama: async () => { called = 'diorama'; return 'ok'; },
+    onModel: async () => { called = 'model'; }
+  });
+  const server = await listen(app);
+  const fd = new FormData();
+  fd.append('username', 'Steve');
+  fd.append('mode', 'diorama');
+  fd.append('photo', new Blob([Buffer.from([0xff, 0xd8, 0xff])], { type: 'image/jpeg' }), 'x.jpg');
+  const res = await post(server.address().port, fd);
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(called, 'diorama');
+  server.close();
+});
+
+test('fichier .obj route vers onModel avec l\'extension', async () => {
+  let got = null;
+  const app = createWebServer({
+    onPhoto: async () => {},
+    onDiorama: async () => {},
+    onModel: async (u, buf, ext) => { got = { u, size: buf.length, ext }; return 'modèle reçu'; }
+  });
+  const server = await listen(app);
+  const fd = new FormData();
+  fd.append('username', 'Steve');
+  fd.append('photo', new Blob(['v 0 0 0'], { type: 'application/octet-stream' }), 'cube.obj');
+  const res = await post(server.address().port, fd);
+  assert.strictEqual(res.status, 200);
+  assert.deepStrictEqual(got, { u: 'Steve', size: 7, ext: 'obj' });
+  server.close();
+});
+
+test('image de plus de 5 Mo → 400, modèle de 6 Mo accepté', async () => {
+  const app = createWebServer({ onPhoto: async () => {}, onDiorama: async () => {}, onModel: async () => 'ok' });
+  const server = await listen(app);
+  const big = Buffer.alloc(6 * 1024 * 1024, 1);
+  const fd1 = new FormData();
+  fd1.append('username', 'Steve');
+  fd1.append('photo', new Blob([big], { type: 'image/jpeg' }), 'gros.jpg');
+  const r1 = await post(server.address().port, fd1);
+  assert.strictEqual(r1.status, 400);
+  const fd2 = new FormData();
+  fd2.append('username', 'Steve');
+  fd2.append('photo', new Blob([big], { type: 'application/octet-stream' }), 'gros.stl');
+  const r2 = await post(server.address().port, fd2);
+  assert.strictEqual(r2.status, 200);
+  server.close();
+});
+
+test('le formulaire diorama contient le champ mode', async () => {
+  const app = createWebServer({ onPhoto: async () => {}, onDiorama: async () => {}, onModel: async () => {} });
+  const server = await listen(app);
+  const res = await fetch(`http://localhost:${server.address().port}/upload/Steve?mode=diorama`);
+  const html = await res.text();
+  assert.match(html, /name="mode" value="diorama"/);
+  assert.match(html, /\.obj/);
+  server.close();
+});
