@@ -18,7 +18,8 @@ Schéma attendu :
   "toit": { "forme": "...", "materiau_suggere": "bloc_minecraft" },
   "elements": ["..."],
   "palette_blocs": { "murs": "bloc", "toit": "bloc", "fondation": "bloc" },
-  "zone_batiment": { "x": N, "y": N, "largeur": N, "hauteur": N }
+  "zone_batiment": { "x": N, "y": N, "largeur": N, "hauteur": N },
+  "environnement": { "vegetation": "...", "arbres": "aucun|epars|dense", "types_arbres": ["chene","sapin"], "sol": "...", "ambiance": "..." }
 }
 
 Règles :
@@ -26,6 +27,7 @@ Règles :
 - Dimensions maximales : ${maxSize} sur chaque axe
 - Mappe les couleurs/matériaux réels vers les blocs les plus proches
 - zone_batiment : rectangle englobant du bâtiment principal en POURCENTAGES (0-100) de l'image, x/y = coin haut-gauche ; omets ce champ s'il n'y a pas de bâtiment net
+- environnement : décris TOUJOURS la végétation (densité d'arbres : aucun/epars/dense, essences parmi chene/sapin), la nature du sol et l'ambiance générale de la scène
 - Si l'image ne contient aucun bâtiment identifiable, réponds : {"erreur": "raison courte"}${blocksRule}`;
 }
 

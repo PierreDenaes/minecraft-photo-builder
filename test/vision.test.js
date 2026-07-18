@@ -54,3 +54,12 @@ test('le prompt système demande zone_batiment en pourcentages', async () => {
   assert.match(captured.system, /zone_batiment/);
   assert.match(captured.system, /pourcentage/i);
 });
+
+test('le prompt système demande la description de l\'environnement', async () => {
+  let captured;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: JSON.stringify(fixture) }] }; } } };
+  await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
+  assert.match(captured.system, /environnement/);
+  assert.match(captured.system, /ambiance/);
+  assert.match(captured.system, /types_arbres/);
+});
