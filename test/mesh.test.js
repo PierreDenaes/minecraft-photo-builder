@@ -1,0 +1,94 @@
+const { test } = require('node:test');
+const assert = require('node:assert');
+const { parseModel } = require('../src/mesh');
+
+const CUBE_OBJ = `
+v 0 0 0
+v 1 0 0
+v 1 1 0
+v 0 1 0
+usemtl rouge
+f 1 2 3 4
+`;
+
+test('OBJ : quad triangulé en éventail, couleur null, warning MTL', () => {
+  const { triangles, warning } = parseModel(Buffer.from(CUBE_OBJ), 'obj');
+  assert.strictEqual(triangles.length, 2);
+  assert.deepStrictEqual(triangles[0].a, [0, 0, 0]);
+  assert.deepStrictEqual(triangles[1].c, [0, 1, 0]);
+  assert.strictEqual(triangles[0].color, null);
+  assert.match(warning, /MTL/);
+});
+
+test('STL binaire : un triangle', () => {
+  const buf = Buffer.alloc(84 + 50);
+  buf.writeUInt32LE(1, 80); // 1 triangle
+  const base = 84 + 12;     // saute la normale
+  const verts = [[0, 0, 0], [1, 0, 0], [0, 1, 0]];
+  verts.forEach((v, vi) => v.forEach((c, ci) => buf.writeFloatLE(c, base + vi * 12 + ci * 4)));
+  const { triangles } = parseModel(buf, 'stl');
+  assert.strictEqual(triangles.length, 1);
+  assert.deepStrictEqual(triangles[0].b, [1, 0, 0]);
+  assert.strictEqual(triangles[0].color, null);
+});
+
+test('STL ascii : un triangle', () => {
+  const ascii = `solid t
+facet normal 0 0 1
+outer loop
+vertex 0 0 0
+vertex 2 0 0
+vertex 0 2 0
+endloop
+endfacet
+endsolid t`;
+  const { triangles } = parseModel(Buffer.from(ascii), 'stl');
+  assert.strictEqual(triangles.length, 1);
+  assert.deepStrictEqual(triangles[0].c, [0, 2, 0]);
+});
+
+function makeGLB() {
+  // 1 triangle indexé, matériau rouge
+  const positions = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]);
+  const indices = new Uint16Array([0, 1, 2]);
+  const bin = Buffer.concat([Buffer.from(positions.buffer), Buffer.from(indices.buffer)]);
+  const binPad = Buffer.concat([bin, Buffer.alloc((4 - (bin.length % 4)) % 4)]);
+  const json = {
+    asset: { version: '2.0' },
+    meshes: [{ primitives: [{ attributes: { POSITION: 0 }, indices: 1, material: 0 }] }],
+    materials: [{ pbrMetallicRoughness: { baseColorFactor: [1, 0, 0, 1] } }],
+    accessors: [
+      { bufferView: 0, componentType: 5126, count: 3, type: 'VEC3' },
+      { bufferView: 1, componentType: 5123, count: 3, type: 'SCALAR' }
+    ],
+    bufferViews: [
+      { buffer: 0, byteOffset: 0, byteLength: 36 },
+      { buffer: 0, byteOffset: 36, byteLength: 6 }
+    ],
+    buffers: [{ byteLength: binPad.length }]
+  };
+  let jsonBuf = Buffer.from(JSON.stringify(json));
+  jsonBuf = Buffer.concat([jsonBuf, Buffer.alloc((4 - (jsonBuf.length % 4)) % 4, 0x20)]);
+  const header = Buffer.alloc(12);
+  header.writeUInt32LE(0x46546c67, 0); // magic "glTF"
+  header.writeUInt32LE(2, 4);
+  header.writeUInt32LE(12 + 8 + jsonBuf.length + 8 + binPad.length, 8);
+  const jsonHeader = Buffer.alloc(8);
+  jsonHeader.writeUInt32LE(jsonBuf.length, 0);
+  jsonHeader.writeUInt32LE(0x4e4f534a, 4); // "JSON"
+  const binHeader = Buffer.alloc(8);
+  binHeader.writeUInt32LE(binPad.length, 0);
+  binHeader.writeUInt32LE(0x004e4942, 4); // "BIN"
+  return Buffer.concat([header, jsonHeader, jsonBuf, binHeader, binPad]);
+}
+
+test('GLB : triangle indexé avec couleur du matériau', () => {
+  const { triangles } = parseModel(makeGLB(), 'glb');
+  assert.strictEqual(triangles.length, 1);
+  assert.deepStrictEqual(triangles[0].a, [0, 0, 0]);
+  assert.deepStrictEqual(triangles[0].color, [255, 0, 0]);
+});
+
+test('fichier illisible → erreur claire', () => {
+  assert.throws(() => parseModel(Buffer.from('n\'importe quoi'), 'glb'), /GLB invalide/);
+});
