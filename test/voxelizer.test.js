@@ -49,3 +49,22 @@ test('accepte une fonction de choix de bloc à la place de la table', () => {
   assert.ok(blocks.length > 0);
   assert.ok(blocks.every((b) => b.block === 'tuff'));
 });
+
+test('comblement stratifié via underground', () => {
+  const underground = {
+    fill: (x, y, z, depth, theme) => (depth <= 2 ? 'dirt' : depth === 5 ? null : 'stone')
+  };
+  // moitié haute de l'image loin (z=3), moitié basse proche (z=6) → la colonne z=3
+  // n'a de coquille qu'en hauteur (vy 6..11), comblement en dessous
+  const depth = { width: 2, height: 2, data: new Float32Array([0.5, 0.5, 0.1, 0.1]) };
+  const blocks = voxelizeScene(grayImage(2, 2), depth, {
+    sizeX: 1, sizeZ: 8, maxY: 12, colors, underground, surfaceThemeOf: () => 'roche'
+  });
+  const z = 7 - Math.round(0.5 * 7); // = 3 ; coquille de cette colonne : vy 6..11 → minY = 6
+  const at = (y) => blocks.find((b) => b.z === z && b.y === y);
+  assert.strictEqual(at(5).block, 'dirt');   // depth 1
+  assert.strictEqual(at(4).block, 'dirt');   // depth 2
+  assert.strictEqual(at(3).block, 'stone');  // depth 3
+  assert.strictEqual(at(1), undefined);      // depth 5 → cavité omise
+  assert.strictEqual(at(6).block, 'stone');  // la coquille garde son bloc (gris → stone)
+});
