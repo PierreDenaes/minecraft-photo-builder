@@ -9,6 +9,11 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
         return;
       }
 
+      if (cmd === '!diorama') {
+        bot.chat(`${username} : copie conforme (photo ou modèle 3D) → http://${config.web.public_host}:${config.web.port}/upload/${username}?mode=diorama`);
+        return;
+      }
+
       if (cmd === '!go') {
         const p = pending.get(username);
         if (!p) { bot.chat(`${username} : aucune proposition en attente. Envoie une photo avec !photo`); return; }

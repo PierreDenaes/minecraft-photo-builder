@@ -136,6 +136,12 @@ test('!go joueur hors de vue : le bot se téléporte puis lance', async () => {
   assert.match(messages.join(' '), /lancée/);
 });
 
+test('!diorama donne le lien d\'upload avec mode=diorama', () => {
+  const { messages, handle } = setup();
+  handle('Steve', '!diorama');
+  assert.match(messages[0], /http:\/\/localhost:3000\/upload\/Steve\?mode=diorama/);
+});
+
 test('!go joueur introuvable même après téléportation : message et proposition conservée', async () => {
   const { messages, calls, pending, handle, bot } = setup();
   delete bot.players.Steve;
