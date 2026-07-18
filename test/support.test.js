@@ -52,3 +52,13 @@ test('rotateY : pivot 90° autour de la verticale', () => {
   assert.deepStrictEqual(turned.find((b) => b.block === 'stone'), { x: 0, y: 2, z: 4, block: 'stone' });
   assert.deepStrictEqual(turned.find((b) => b.block === 'dirt'), { x: 1, y: 0, z: 0, block: 'dirt' });
 });
+
+const { rotateX } = require('../src/support');
+
+test('rotateX : redressement 90° autour de l\'axe horizontal', () => {
+  // un bloc « haut » (y max) part vers l'avant : (y,z) → (z, maxY − y)
+  const blocks = [{ x: 1, y: 0, z: 0, block: 'stone' }, { x: 1, y: 4, z: 2, block: 'dirt' }];
+  const turned = rotateX(blocks);
+  assert.deepStrictEqual(turned.find((b) => b.block === 'stone'), { x: 1, y: 0, z: 4, block: 'stone' });
+  assert.deepStrictEqual(turned.find((b) => b.block === 'dirt'), { x: 1, y: 2, z: 0, block: 'dirt' });
+});

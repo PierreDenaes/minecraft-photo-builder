@@ -157,20 +157,11 @@ function createBot(cfg) {
     if (mode === 'statue') {
       const cleaned = { triangles };
       const colorsStatue = filterColors(blockColors, THEME_BLOCKS.couleurs_vives);
-      // Un personnage debout est plus haut que large : son axe le plus long est la verticale
-      const span = [0, 1, 2].map((a) => {
-        let lo = Infinity;
-        let hi = -Infinity;
-        for (const t of cleaned.triangles) {
-          for (const p of [t.a, t.b, t.c]) { lo = Math.min(lo, p[a]); hi = Math.max(hi, p[a]); }
-        }
-        return hi - lo;
-      });
-      const up = span[1] >= span[0] && span[1] >= span[2] ? 'y' : span[2] >= span[0] ? 'z' : 'x';
-      if (up !== 'y') console.log(`[statue] modèle ${up}-up détecté — redressé`);
+      // Le fichier fait foi : glTF est y-up par spécification — aucune rotation automatique
+      // (!redresser et !tourner corrigent manuellement les rares exports non conformes)
       const shell = voxelizeMesh(cleaned.triangles, {
         maxX: 48, maxY: 72, maxZ: 48, defaultBlock: 'white_concrete',
-        colors: colorsStatue, up
+        colors: colorsStatue
       });
       // Pas de gravité pour les statues : les membres détachés de la coquille sont de l'art, pas des bugs
       const statue = shell.map((b) => ({ ...b, y: b.y + 2 }));

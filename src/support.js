@@ -41,4 +41,11 @@ function rotateY(blocks) {
   return blocks.map((b) => ({ ...b, x: b.z, z: maxX - b.x }));
 }
 
-module.exports = { enforceSupport, rotateY };
+// Redressement 90° autour de l'axe horizontal x : (y,z) → (z, maxY − y)
+function rotateX(blocks) {
+  let maxY = 0;
+  for (const b of blocks) if (b.y > maxY) maxY = b.y;
+  return blocks.map((b) => ({ ...b, y: b.z, z: maxY - b.y }));
+}
+
+module.exports = { enforceSupport, rotateY, rotateX };

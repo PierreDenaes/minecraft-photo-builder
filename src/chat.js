@@ -1,4 +1,4 @@
-const { rotateY } = require('./support');
+const { rotateY, rotateX } = require('./support');
 
 function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) {
   const lastBuilt = new Map(); // pseudo (minuscules) → dernière proposition construite
@@ -64,6 +64,22 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
         prop.size = { x: prop.size.z, y: prop.size.y, z: prop.size.x };
         pending.set(pkey2, prop);
         bot.chat(`Proposition pivotée de 90° (${prop.size.x}x${prop.size.z}x${prop.size.y}). !tourner encore ou !go.`);
+        return;
+      }
+
+      if (cmd === '!redresser') {
+        const pk = username.toLowerCase();
+        let prop = pending.get(pk);
+        if (!prop && lastBuilt.has(pk)) {
+          if (builder.undo()) bot.chat('Construction précédente effacée pour redressement...');
+          prop = lastBuilt.get(pk);
+          lastBuilt.delete(pk);
+        }
+        if (!prop) { bot.chat(`${username} : aucune proposition à redresser.`); return; }
+        prop.blocks = rotateX(prop.blocks);
+        prop.size = { x: prop.size.x, y: prop.size.z, z: prop.size.y };
+        pending.set(pk, prop);
+        bot.chat(`Proposition redressée (${prop.size.x}x${prop.size.z}x${prop.size.y}). !redresser/!tourner encore, ou !go.`);
         return;
       }
 

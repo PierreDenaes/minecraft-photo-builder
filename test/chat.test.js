@@ -223,3 +223,16 @@ test('!tourner après !go : undo + nouvelle proposition pivotée', () => {
   assert.deepStrictEqual(p.size, { x: 2, y: 1, z: 4 });
   assert.match(messages.join(' '), /pivotée/);
 });
+
+test('!redresser bascule la proposition (y/z échangés)', () => {
+  const { messages, pending, handle } = setup();
+  pending.set('steve', {
+    blocks: [{ x: 0, y: 3, z: 1, block: 'stone' }],
+    size: { x: 2, y: 4, z: 2 },
+    description: { type_batiment: 'statue' }
+  });
+  handle('Steve', '!redresser');
+  const p = pending.get('steve');
+  assert.deepStrictEqual(p.size, { x: 2, y: 2, z: 4 });
+  assert.match(messages.join(' '), /redressée/);
+});
