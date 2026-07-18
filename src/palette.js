@@ -109,4 +109,16 @@ function buildThemePicker(centroids, themes, allowedColors) {
   };
 }
 
-module.exports = { clusterColors, assignBlocks, buildPaletteMap, assignThemes, buildThemePicker, themeOfBlock };
+// Matériaux réalistes par défaut : bétons/laines/terracottas vives réservés aux styles
+// explicitement cartoon/modernes — un château de pierre n'a pas de toit en béton noir
+const VIVID_MATERIAL = /concrete|wool|terracotta/;
+const VIVID_EXCEPTIONS = new Set(['terracotta', 'brown_terracotta', 'white_wool']);
+const VIVID_STYLE = /cartoon|jeu.?vid|moderne|color|arcade|fantaisie|pixel/i;
+
+function realisticMaterials(materials, description = {}) {
+  const style = `${description.style || ''} ${description.type_batiment || ''}`;
+  if (VIVID_STYLE.test(style)) return materials;
+  return materials.filter((b) => VIVID_EXCEPTIONS.has(b) || !VIVID_MATERIAL.test(b));
+}
+
+module.exports = { clusterColors, assignBlocks, buildPaletteMap, assignThemes, buildThemePicker, themeOfBlock, realisticMaterials };

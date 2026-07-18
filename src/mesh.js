@@ -112,13 +112,36 @@ async function parseGLB(buffer) {
   const triangles = [];
   for (const mesh of json.meshes || []) {
     for (const prim of mesh.primitives || []) {
-      if (prim.mode !== undefined && prim.mode !== 4) continue;
+      const mode = prim.mode === undefined ? 4 : prim.mode;
+      if (![4, 5, 6].includes(mode)) continue;
       const pos = readAccessor(prim.attributes.POSITION);
-      const idx = prim.indices !== undefined ? readAccessor(prim.indices)
+      const rawIdx = prim.indices !== undefined ? readAccessor(prim.indices)
         : Uint32Array.from({ length: pos.length / 3 }, (_, i) => i);
+      // STRIP (5) et FAN (6) triangulés en listes de triangles
+      let idx;
+      if (mode === 5) {
+        const out = [];
+        for (let i = 0; i + 2 < rawIdx.length; i++) out.push(rawIdx[i], rawIdx[i + 1], rawIdx[i + 2]);
+        idx = out;
+      } else if (mode === 6) {
+        const out = [];
+        for (let i = 1; i + 1 < rawIdx.length; i++) out.push(rawIdx[0], rawIdx[i], rawIdx[i + 1]);
+        idx = out;
+      } else {
+        idx = rawIdx;
+      }
       let color = null;
       let tex = null;
       let uv = null;
+      let vcol = null;
+      let vcolComps = 3;
+      let vcolScale = 1;
+      if (prim.attributes.COLOR_0 !== undefined) {
+        const acc = json.accessors[prim.attributes.COLOR_0];
+        vcolComps = acc.type === 'VEC4' ? 4 : 3;
+        vcol = readAccessor(prim.attributes.COLOR_0);
+        vcolScale = acc.componentType === 5126 ? 255 : acc.componentType === 5123 ? 255 / 65535 : 1;
+      }
       if (prim.material !== undefined) {
         const mat = json.materials?.[prim.material]?.pbrMetallicRoughness;
         if (mat?.baseColorTexture !== undefined && prim.attributes.TEXCOORD_0 !== undefined) {
@@ -131,12 +154,21 @@ async function parseGLB(buffer) {
         }
       }
       const p = (i) => [pos[idx[i] * 3], pos[idx[i] * 3 + 1], pos[idx[i] * 3 + 2]];
+      const vertColor = (i) => {
+        const o = idx[i] * vcolComps;
+        return [vcol[o] * vcolScale, vcol[o + 1] * vcolScale, vcol[o + 2] * vcolScale];
+      };
       for (let i = 0; i + 2 < idx.length; i += 3) {
         let triColor = color;
         if (tex && uv) {
           const u = (uv[idx[i] * 2] + uv[idx[i + 1] * 2] + uv[idx[i + 2] * 2]) / 3;
           const v = (uv[idx[i] * 2 + 1] + uv[idx[i + 1] * 2 + 1] + uv[idx[i + 2] * 2 + 1]) / 3;
           triColor = sampleTexture(tex, u, v);
+        } else if (vcol) {
+          const c1 = vertColor(i);
+          const c2 = vertColor(i + 1);
+          const c3 = vertColor(i + 2);
+          triColor = [0, 1, 2].map((k) => Math.round((c1[k] + c2[k] + c3[k]) / 3));
         }
         triangles.push({ a: p(i), b: p(i + 1), c: p(i + 2), color: triColor });
       }

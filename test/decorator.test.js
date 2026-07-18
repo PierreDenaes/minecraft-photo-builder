@@ -68,3 +68,22 @@ test('plafond de densité : le mobilier excédentaire est aminci déterministiqu
   assert.ok(a.length > 0);
   assert.deepStrictEqual(a, b); // amincissement déterministe
 });
+
+test('physique du décor : sous toit et attaché uniquement', async () => {
+  // pièce : dalle y0, plafond y4 (couvre x0-9,z0-7), mur x0 ; rampart x0-9,z10 SANS toit
+  const room = [...slabAt(0), ...slabAt(4)];
+  for (let y = 1; y < 4; y++) for (let z = 0; z < 8; z++) room.push({ x: 0, y, z, block: 'stone_bricks' });
+  for (let x = 0; x < 10; x++) room.push({ x, y: 2, z: 10, block: 'stone_bricks' });
+  const code = `function generateStructure() {
+    return [
+      { x: 3, y: 1, z: 3, block: 'bookshelf' },   // posé sur dalle, sous plafond → gardé
+      { x: 1, y: 2, z: 3, block: 'torch' },       // flottant (rien dessous, pas contre mur x0? x1 adjacent x0 mur) → adjacent structure → gardé
+      { x: 5, y: 2, z: 5, block: 'torch' },       // en l'air au milieu → supprimé
+      { x: 5, y: 3, z: 10, block: 'lantern' }     // au-dessus du rampart sans toit → supprimé
+    ];
+  }`;
+  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
+  const decor = await decorateInterior(room, {}, { client, timeoutMs: 5000 });
+  const names = decor.map((b) => `${b.block}@${b.x},${b.y},${b.z}`).sort();
+  assert.deepStrictEqual(names, ['bookshelf@3,1,3', 'torch@1,2,3']);
+});

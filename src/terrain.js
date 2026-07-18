@@ -44,4 +44,14 @@ function terrainFromHeightmap(heightmap, { sizeX, sizeZ, maxHeight, underground,
   return blocks;
 }
 
-module.exports = { terrainFromHeightmap };
+// Fondations : prolonge chaque colonne de base d'un bâtiment posé jusqu'au terrain local
+function buildFoundations(baseCells, topY, heightAt, block = 'stone_bricks') {
+  const out = [];
+  for (const { x, z } of baseCells) {
+    const ground = heightAt(x, z);
+    for (let y = ground + 1; y <= topY; y++) out.push({ x, y, z, block });
+  }
+  return out;
+}
+
+module.exports = { terrainFromHeightmap, buildFoundations };

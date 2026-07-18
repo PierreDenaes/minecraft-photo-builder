@@ -29,9 +29,9 @@ function enforceSupport(blocks) {
   // du bâtiment serait « flottante » — mieux vaut tout conserver que proposer un moignon
   if (out.length < blocks.length * 0.25) {
     console.warn('[support] couche de base anormale — structure conservée telle quelle');
-    return { blocks, removed: 0 };
+    return { blocks, removed: 0, guard: true };
   }
-  return { blocks: out, removed: blocks.length - out.length };
+  return { blocks: out, removed: blocks.length - out.length, guard: false };
 }
 
 module.exports = { enforceSupport };

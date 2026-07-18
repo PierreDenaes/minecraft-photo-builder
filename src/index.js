@@ -15,13 +15,13 @@ const { composite } = require('./composite');
 const { parseModel } = require('./mesh');
 const { voxelizeMesh } = require('./meshvoxelizer');
 const { loadBlockColors, filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS } = require('./blockcolors');
-const { clusterColors, assignThemes, buildThemePicker, themeOfBlock } = require('./palette');
+const { clusterColors, assignThemes, buildThemePicker, themeOfBlock, realisticMaterials } = require('./palette');
 const { THEME_BLOCKS } = require('./blockcolors');
 const { createUnderground } = require('./subsurface');
 const { createClient } = require('./llm');
 const { cleanTriangles } = require('./meshclean');
 const { analyzeStructure } = require('./structure-analysis');
-const { terrainFromHeightmap } = require('./terrain');
+const { terrainFromHeightmap, buildFoundations } = require('./terrain');
 const { renderVoxels } = require('./render');
 const { enforceSupport } = require('./support');
 const { plantVegetation } = require('./vegetation');
@@ -139,7 +139,7 @@ function createBot(cfg) {
         dimensions_estimees: { largeur: bWidth, profondeur: Math.min(bWidth, dio.size_z), hauteur: bHeight }
       };
       const building = await generateStructure(buildingDesc, {
-        timeoutMs: cfg.limits.sandbox_timeout_ms, validBlocks: materiaux
+        timeoutMs: cfg.limits.sandbox_timeout_ms, validBlocks: realisticMaterials(materiaux, buildingDesc)
       });
       blocks = composite(blocks, building, { x1, x2, zAnchor });
     }
@@ -220,10 +220,11 @@ function createBot(cfg) {
         ? { type_batiment: `reconstruction du modèle 3D (${ext})` }
         : sceneDesc;
       const generated = await generateStructure(buildingDesc, {
-        timeoutMs: cfg.limits.sandbox_timeout_ms, validBlocks: materiaux, structuralSummary: summary
+        timeoutMs: cfg.limits.sandbox_timeout_ms, validBlocks: realisticMaterials(materiaux, buildingDesc), structuralSummary: summary
       });
       const support = enforceSupport(generated);
       if (support.removed > 0) console.log(`[modele] gravité : ${support.removed} blocs flottants supprimés`);
+      if (support.guard) bot.chat('⚠ Structure majoritairement flottante conservée — sortie IA à revoir.');
       const building = support.blocks;
       const decor = await decorateInterior(building, buildingDesc, { client: apiClient, timeoutMs: cfg.limits.sandbox_timeout_ms });
       if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
@@ -251,6 +252,15 @@ function createBot(cfg) {
         }
       }
       const placed = furnished.map((b) => ({ x: b.x + offX, y: b.y + topY + 1, z: b.z + offZ, block: b.block }));
+      const terrainTop = new Map();
+      for (const t of terrain) {
+        const k = `${t.x},${t.z}`;
+        if (!terrainTop.has(k) || t.y > terrainTop.get(k)) terrainTop.set(k, t.y);
+      }
+      const baseCells = [...new Set(furnished.filter((b) => b.y === 0).map((b) => `${b.x + offX},${b.z + offZ}`))]
+        .map((k) => { const [x, z] = k.split(',').map(Number); return { x, z }; });
+      const fondations = buildFoundations(baseCells, topY, (x, z) => terrainTop.get(`${x},${z}`) ?? 0, 'stone_bricks');
+      if (fondations.length > 0) console.log(`[modele] fondations : ${fondations.length} blocs`);
       const densite = env.arbres === 'dense' ? 0.03 : env.arbres === 'epars' ? 0.012 : 0;
       const essences = (env.types_arbres || []).filter((t) => t === 'chene' || t === 'sapin');
       const trees = plantVegetation(terrain, {
@@ -258,7 +268,7 @@ function createBot(cfg) {
         exclude: { x1: offX, x2: offX + bSize.x - 1, z1: offZ, z2: offZ + bSize.z - 1 },
         types: essences.length ? essences : ['chene']
       });
-      blocks = terrain.concat(trees, placed);
+      blocks = terrain.concat(fondations, trees, placed);
       bot.chat(`Reconstruction inspirée : bâtiment ${bSize.x}x${bSize.z}x${bSize.y} posé sur un relief de ${hillHeight} blocs, ${trees.length > 0 ? Math.round(trees.length / 14) + ' arbres plantés' : 'sans arbres'}.`);
     }
     return proposeStructure(username, blocks, { type_batiment: `modèle 3D (${ext})` }, { maxSize: Math.max(dio.size_x, dio.max_y, dio.size_z), maxBlocks: dio.max_blocks });
@@ -276,7 +286,7 @@ function createBot(cfg) {
     }
     const blocks = await generateStructure(description, {
       timeoutMs: cfg.limits.sandbox_timeout_ms,
-      validBlocks: materiaux
+      validBlocks: realisticMaterials(materiaux, description)
     });
     const decor = await decorateInterior(blocks, description, { client: apiClient, timeoutMs: cfg.limits.sandbox_timeout_ms });
     if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);

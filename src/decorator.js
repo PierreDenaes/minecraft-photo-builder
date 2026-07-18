@@ -55,15 +55,31 @@ async function decorateInterior(building, description, { client, timeoutMs = 200
       && Number.isInteger(b.x) && Number.isInteger(b.y) && Number.isInteger(b.z)
       && b.x >= 0 && b.x < d.x && b.y >= 0 && b.y < d.y && b.z >= 0 && b.z < d.z
       && !occupied.has(`${b.x},${b.y},${b.z}`));
+    // Physique du décor : sous un toit (bloc de structure plus haut dans la colonne),
+    // et attaché (adjacent à la structure ou posé sur un élément déjà conservé)
+    const underRoof = (b) => {
+      for (let yy = b.y + 1; yy < d.y; yy++) if (occupied.has(`${b.x},${yy},${b.z}`)) return true;
+      return false;
+    };
+    const keptDecor = new Set();
+    const physical = [];
+    for (const b of [...filtered].sort((p, q) => p.y - q.y)) {
+      if (!underRoof(b)) continue;
+      const touching = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]].some(([dx, dy, dz]) =>
+        occupied.has(`${b.x + dx},${b.y + dy},${b.z + dz}`) || keptDecor.has(`${b.x + dx},${b.y + dy},${b.z + dz}`));
+      if (!touching) continue;
+      keptDecor.add(`${b.x},${b.y},${b.z}`);
+      physical.push(b);
+    }
     const cap = Math.ceil(d.x * d.z * floors.length * 0.10);
-    if (filtered.length > cap) {
-      const step = filtered.length / cap;
+    if (physical.length > cap) {
+      const step = physical.length / cap;
       const thinned = [];
-      for (let i = 0; i < filtered.length; i += step) thinned.push(filtered[Math.floor(i)]);
-      console.warn(`[decorateur] densité plafonnée : ${filtered.length} → ${thinned.length}`);
+      for (let i = 0; i < physical.length; i += step) thinned.push(physical[Math.floor(i)]);
+      console.warn(`[decorateur] densité plafonnée : ${physical.length} → ${thinned.length}`);
       return thinned.slice(0, cap);
     }
-    return filtered;
+    return physical;
   } catch (err) {
     console.warn('[decorateur] indisponible :', err.message);
     return [];

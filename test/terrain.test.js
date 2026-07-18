@@ -36,3 +36,20 @@ test('interpolation bilinéaire : pente douce entre cellules inégales', () => {
   const h = (x) => Math.max(0, ...blocks.filter((b) => b.x === x && b.z === 10).map((b) => b.y));
   assert.ok(h(20) < h(40) && h(40) < h(60), `pas de pente : ${h(20)} ${h(40)} ${h(60)}`);
 });
+
+const { buildFoundations } = require('../src/terrain');
+
+test('fondations : chaque colonne de base comblée jusqu\'au terrain local', () => {
+  const baseCells = [{ x: 10, z: 10 }, { x: 11, z: 10 }];
+  const heightAt = (x, z) => (x === 10 ? 8 : 4); // vallée sous la 2e colonne
+  const f = buildFoundations(baseCells, 12, heightAt, 'stone_bricks');
+  const col10 = f.filter((b) => b.x === 10).map((b) => b.y).sort((a, b) => a - b);
+  const col11 = f.filter((b) => b.x === 11).map((b) => b.y).sort((a, b) => a - b);
+  assert.deepStrictEqual(col10, [9, 10, 11, 12]);        // 8+1 → 12
+  assert.deepStrictEqual(col11, [5, 6, 7, 8, 9, 10, 11, 12]);
+  assert.ok(f.every((b) => b.block === 'stone_bricks'));
+});
+
+test('fondations : colonne déjà au niveau → rien', () => {
+  assert.deepStrictEqual(buildFoundations([{ x: 0, z: 0 }], 5, () => 5, 'stone'), []);
+});

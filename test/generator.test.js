@@ -105,3 +105,11 @@ test('le prompt exige toits complets, planchers et escaliers', async () => {
   assert.match(captured.system, /escalier/i);
   assert.ok(!/intérieurs sont creux/.test(captured.system), 'règle creux encore présente');
 });
+
+test('le prompt interdit les toits en débord', async () => {
+  const code = 'function generateStructure() { return [{ x: 0, y: 0, z: 0, block: "stone" }]; }';
+  let captured;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
+  await generateStructure({ type_batiment: 't' }, { client, timeoutMs: 5000 });
+  assert.match(captured.system, /déborde/);
+});

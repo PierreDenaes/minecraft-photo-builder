@@ -98,3 +98,16 @@ test('buildThemePicker : nuances dans le thème du centroïde le plus proche', (
   assert.strictEqual(pick(85, 108, 50), 'grass_block'); // nuance DANS la végétation
   assert.strictEqual(pick(66, 96, 28), 'oak_leaves');
 });
+
+const { realisticMaterials } = require('../src/palette');
+
+test('matériaux réalistes : bétons et laines exclus pour un château médiéval', () => {
+  const mats = ['stone_bricks', 'black_concrete', 'red_wool', 'oak_planks', 'terracotta', 'brown_terracotta', 'lime_concrete'];
+  const out = realisticMaterials(mats, { type_batiment: 'château médiéval', style: 'Renaissance' });
+  assert.deepStrictEqual(out, ['stone_bricks', 'oak_planks', 'terracotta', 'brown_terracotta']);
+});
+
+test('matériaux réalistes : style cartoon conserve tout', () => {
+  const mats = ['stone_bricks', 'black_concrete', 'red_wool'];
+  assert.deepStrictEqual(realisticMaterials(mats, { style: 'cartoon jeu vidéo coloré' }), mats);
+});

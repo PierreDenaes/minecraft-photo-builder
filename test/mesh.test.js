@@ -156,3 +156,52 @@ test('GLB : couleur échantillonnée dans la texture (baseColorTexture + UV)', a
   assert.strictEqual(triangles.length, 1);
   assert.deepStrictEqual(triangles[0].color, [255, 0, 0]);
 });
+
+function makeStripGLB(colorPerVertex) {
+  // 4 sommets → TRIANGLE_STRIP (mode 5) = 2 triangles ; COLOR_0 float VEC3 optionnel
+  const positions = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0]);
+  const colors = new Float32Array([1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0]); // rouge
+  let bin = Buffer.from(positions.buffer);
+  const colorOffset = bin.length;
+  if (colorPerVertex) bin = Buffer.concat([bin, Buffer.from(colors.buffer)]);
+  bin = Buffer.concat([bin, Buffer.alloc((4 - (bin.length % 4)) % 4)]);
+  const attributes = { POSITION: 0 };
+  const accessors = [{ bufferView: 0, componentType: 5126, count: 4, type: 'VEC3' }];
+  const bufferViews = [{ buffer: 0, byteOffset: 0, byteLength: 48 }];
+  if (colorPerVertex) {
+    attributes.COLOR_0 = 1;
+    accessors.push({ bufferView: 1, componentType: 5126, count: 4, type: 'VEC3' });
+    bufferViews.push({ buffer: 0, byteOffset: colorOffset, byteLength: 48 });
+  }
+  const json = {
+    asset: { version: '2.0' },
+    meshes: [{ primitives: [{ attributes, mode: 5 }] }],
+    accessors, bufferViews,
+    buffers: [{ byteLength: bin.length }]
+  };
+  let jsonBuf = Buffer.from(JSON.stringify(json));
+  jsonBuf = Buffer.concat([jsonBuf, Buffer.alloc((4 - (jsonBuf.length % 4)) % 4, 0x20)]);
+  const header = Buffer.alloc(12);
+  header.writeUInt32LE(0x46546c67, 0);
+  header.writeUInt32LE(2, 4);
+  header.writeUInt32LE(12 + 8 + jsonBuf.length + 8 + bin.length, 8);
+  const jh = Buffer.alloc(8);
+  jh.writeUInt32LE(jsonBuf.length, 0);
+  jh.writeUInt32LE(0x4e4f534a, 4);
+  const bh = Buffer.alloc(8);
+  bh.writeUInt32LE(bin.length, 0);
+  bh.writeUInt32LE(0x004e4942, 4);
+  return Buffer.concat([header, jh, jsonBuf, bh, bin]);
+}
+
+test('GLB TRIANGLE_STRIP triangulé (2 triangles depuis 4 sommets)', async () => {
+  const { triangles } = await parseModel(makeStripGLB(false), 'glb');
+  assert.strictEqual(triangles.length, 2);
+  assert.deepStrictEqual(triangles[0].a, [0, 0, 0]);
+  assert.deepStrictEqual(triangles[1].c, [1, 1, 0]);
+});
+
+test('GLB COLOR_0 par sommet lu comme couleur de triangle', async () => {
+  const { triangles } = await parseModel(makeStripGLB(true), 'glb');
+  assert.deepStrictEqual(triangles[0].color, [255, 0, 0]);
+});
