@@ -25,7 +25,7 @@ async function withRetry(fn, { retries = 3, baseDelayMs = 1000 } = {}) {
 }
 
 function stripCodeFences(text) {
-  return text.replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/, '').trim();
+  return text.trim().replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/, '').trim();
 }
 
 module.exports = { createClient, withRetry, stripCodeFences };
