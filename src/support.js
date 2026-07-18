@@ -34,4 +34,11 @@ function enforceSupport(blocks) {
   return { blocks: out, removed: blocks.length - out.length, guard: false };
 }
 
-module.exports = { enforceSupport };
+// Pivot de 90° autour de la verticale : (x,z) → (z, maxX − x)
+function rotateY(blocks) {
+  let maxX = 0;
+  for (const b of blocks) if (b.x > maxX) maxX = b.x;
+  return blocks.map((b) => ({ ...b, x: b.z, z: maxX - b.x }));
+}
+
+module.exports = { enforceSupport, rotateY };

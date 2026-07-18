@@ -42,3 +42,13 @@ test('supporte 200k blocs sans explosion de pile', () => {
   for (let i = 0; i < 200000; i++) big.push({ x: i % 100, y: Math.floor(i / 10000), z: Math.floor(i / 100) % 100, block: 'stone' });
   assert.doesNotThrow(() => enforceSupport(big));
 });
+
+const { rotateY } = require('../src/support');
+
+test('rotateY : pivot 90° autour de la verticale', () => {
+  const blocks = [{ x: 0, y: 2, z: 0, block: 'stone' }, { x: 4, y: 0, z: 1, block: 'dirt' }];
+  const turned = rotateY(blocks);
+  // (x,z) → (z, maxX−x) avec maxX=4 : (0,0)→(0,4) ; (4,1)→(1,0)
+  assert.deepStrictEqual(turned.find((b) => b.block === 'stone'), { x: 0, y: 2, z: 4, block: 'stone' });
+  assert.deepStrictEqual(turned.find((b) => b.block === 'dirt'), { x: 1, y: 0, z: 0, block: 'dirt' });
+});

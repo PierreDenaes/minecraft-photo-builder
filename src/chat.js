@@ -1,3 +1,5 @@
+const { rotateY } = require('./support');
+
 function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) {
   return function handle(username, message) {
     if (username === bot.username) return;
@@ -44,6 +46,17 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
             bot.chat(`${username} : oups, une erreur est survenue (${err.message})`);
           }
         }, tpDelayMs);
+        return;
+      }
+
+      if (cmd === '!tourner') {
+        const pkey2 = username.toLowerCase();
+        const prop = pending.get(pkey2);
+        if (!prop) { bot.chat(`${username} : aucune proposition à tourner.`); return; }
+        prop.blocks = rotateY(prop.blocks);
+        prop.size = { x: prop.size.z, y: prop.size.y, z: prop.size.x };
+        pending.set(pkey2, prop);
+        bot.chat(`Proposition pivotée de 90° (${prop.size.x}x${prop.size.z}x${prop.size.y}). !tourner encore ou !go.`);
         return;
       }
 

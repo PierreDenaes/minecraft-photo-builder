@@ -186,3 +186,23 @@ test('!statue donne le lien mode=statue', () => {
   handle('Steve', '!statue');
   assert.match(messages[0], /upload\/Steve\?mode=statue/);
 });
+
+test('!tourner pivote la proposition en attente', () => {
+  const { messages, pending, handle } = setup();
+  pending.set('steve', {
+    blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }, { x: 3, y: 0, z: 1, block: 'dirt' }],
+    size: { x: 4, y: 1, z: 2 },
+    description: { type_batiment: 'statue' }
+  });
+  handle('Steve', '!tourner');
+  const p = pending.get('steve');
+  assert.deepStrictEqual(p.size, { x: 2, y: 1, z: 4 }); // dimensions x/z échangées
+  assert.ok(p.blocks.some((b) => b.block === 'dirt' && b.x === 1 && b.z === 0));
+  assert.match(messages.join(' '), /pivotée/);
+});
+
+test('!tourner sans proposition informe', () => {
+  const { messages, handle } = setup();
+  handle('Steve', '!tourner');
+  assert.match(messages[0], /aucune proposition/i);
+});
