@@ -15,13 +15,24 @@ class Builder {
     this.progress = { active: false, done: 0, total: 0 };
   }
 
+  groundLevelAt(pos) {
+    const px = Math.floor(pos.x);
+    const pz = Math.floor(pos.z);
+    const start = Math.floor(pos.y);
+    for (let y = start; y >= start - 24; y--) {
+      const b = this.bot.blockAt(new Vec3(px, y, pz));
+      if (b && b.name !== 'air') return y + 1;
+    }
+    return start;
+  }
+
   computeOrigin(playerPos, yaw, size) {
     // Direction cardinale dominante du regard (convention mineflayer : x = -sin(yaw), z = -cos(yaw))
     const dx = -Math.sin(yaw);
     const dz = -Math.cos(yaw);
     const px = Math.floor(playerPos.x);
     const pz = Math.floor(playerPos.z);
-    const y = Math.floor(playerPos.y);
+    const y = this.groundLevelAt(playerPos);
     if (Math.abs(dx) > Math.abs(dz)) {
       const sign = Math.sign(dx);
       return {

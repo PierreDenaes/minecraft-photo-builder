@@ -112,3 +112,18 @@ test('enqueue supporte un très grand nombre de commandes sans exploser la pile'
   assert.strictEqual(b.status().total, 250000);
   clearInterval(b.timer); // ne pas drainer 250k commandes dans le test
 });
+
+test('computeOrigin ancre y au sol même si le joueur vole', () => {
+  const bot = fakeBot();
+  bot.blockAt = (v) => ({ name: v.y <= -61 ? 'grass_block' : 'air' });
+  const b = new Builder(bot, { maxBlocks: 100000 });
+  const origin = b.computeOrigin({ x: 0.5, y: -49.5, z: 0.5 }, 0, { x: 4, y: 3, z: 4 });
+  assert.strictEqual(origin.y, -60); // premier solide à -61 → surface -60
+});
+
+test('groundLevelAt replie sur floor(pos.y) si aucun sol à portée', () => {
+  const bot = fakeBot();
+  bot.blockAt = () => ({ name: 'air' });
+  const b = new Builder(bot, { maxBlocks: 100000 });
+  assert.strictEqual(b.groundLevelAt({ x: 0, y: -49.5, z: 0 }), -50);
+});
