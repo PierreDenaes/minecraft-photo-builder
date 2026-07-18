@@ -28,7 +28,7 @@ test('loadBlockColors charge la table réelle', () => {
   assert.ok(Array.isArray(colors.get('stone')));
 });
 
-const { filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS, THEME_BLOCKS } = require('../src/blockcolors');
+const { filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS, THEME_BLOCKS, INTERIOR_BLOCKS } = require('../src/blockcolors');
 
 test('filterColors ne garde que l\'intersection', () => {
   const src = new Map([['stone', [1, 1, 1]], ['furnace', [2, 2, 2]], ['dirt', [3, 3, 3]]]);
@@ -67,4 +67,15 @@ test('la palette construction exclut les blocs fonctionnels', () => {
   for (const b of ['stone_bricks', 'oak_planks', 'white_concrete', 'glass_pane', 'dark_oak_log']) {
     assert.ok(CONSTRUCTION_BLOCKS.has(b), `${b} doit être un matériau`);
   }
+});
+
+test('la palette intérieure contient le mobilier et exclut le décor', () => {
+  for (const b of ['bookshelf', 'lantern', 'chest', 'crafting_table', 'oak_door', 'red_wool']) {
+    assert.ok(INTERIOR_BLOCKS.has(b), b);
+  }
+  for (const b of ['water', 'grass_block', 'oak_leaves', 'dirt']) {
+    assert.ok(!INTERIOR_BLOCKS.has(b), `${b} n'est pas du mobilier`);
+  }
+  const valid = new Set(require('../data/valid_blocks.json'));
+  for (const b of INTERIOR_BLOCKS) assert.ok(valid.has(b), `${b} hors liste blanche`);
 });

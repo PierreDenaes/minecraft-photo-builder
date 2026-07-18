@@ -95,6 +95,15 @@ const THEME_BLOCKS = {
   metal: new Set(['iron_block', 'iron_bars', 'copper_block', 'cut_copper', 'oxidized_copper'])
 };
 
+// Mobilier et aménagement : autorisé UNIQUEMENT à l'intérieur des bâtiments
+const INTERIOR_BLOCKS = new Set(['bookshelf', 'crafting_table', 'furnace', 'smoker', 'chest', 'barrel',
+  'lantern', 'torch', 'wall_torch', 'glowstone', 'sea_lantern', 'chain', 'campfire', 'ladder',
+  'flower_pot', 'hay_block', 'oak_door', 'spruce_door', 'dark_oak_door', 'birch_door', 'iron_door',
+  'oak_trapdoor', 'spruce_trapdoor', 'oak_fence', 'spruce_fence', 'dark_oak_fence', 'birch_fence',
+  'oak_stairs', 'spruce_stairs', 'dark_oak_stairs', 'birch_stairs', 'oak_slab', 'spruce_slab',
+  'dark_oak_slab', 'stone_slab', 'glass_pane', 'iron_bars',
+  'white_wool', 'red_wool', 'blue_wool', 'green_wool', 'yellow_wool', 'brown_wool', 'black_wool']);
+
 function filterColors(colors, names) {
   const out = new Map();
   for (const [block, rgb] of colors) {
@@ -103,4 +112,4 @@ function filterColors(colors, names) {
   return out;
 }
 
-module.exports = { loadBlockColors, nearestBlock, filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS, THEME_BLOCKS };
+module.exports = { loadBlockColors, nearestBlock, filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS, THEME_BLOCKS, INTERIOR_BLOCKS };
