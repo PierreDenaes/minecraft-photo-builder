@@ -29,7 +29,8 @@ Rôle d'architecte (quand un résumé structurel est fourni) :
 - Reconstruis PROPREMENT en vocabulaire Minecraft : murs droits et pleins, créneaux, arches, fenêtres alignées, toits cohérents — jamais le bruit du scan
 - Reste dans dims ; les tours sont cylindriques aux positions données
 - Budget du bâtiment : 96×64×96 MAXIMUM — si le résumé est plus grand, réduis TOUT à l'échelle (proportions conservées)
-- Code EFFICACE : boucle sur les surfaces (murs, sols, toits), jamais sur le volume plein de la boîte`;
+- Code EFFICACE : boucle sur les surfaces (murs, sols, toits), jamais sur le volume plein de la boîte
+- GRAVITÉ : chaque bloc doit être supporté (chemin de blocs jusqu'au sol y=0) — aucun élément flottant`;
 
 function runStructureCode(code, timeoutMs) {
   const context = vm.createContext(Object.create(null));
