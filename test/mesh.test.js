@@ -92,3 +92,15 @@ test('GLB : triangle indexé avec couleur du matériau', () => {
 test('fichier illisible → erreur claire', () => {
   assert.throws(() => parseModel(Buffer.from('n\'importe quoi'), 'glb'), /GLB invalide/);
 });
+
+test('STL binaire avec en-tête commençant par "solid" reste binaire', () => {
+  const buf = Buffer.alloc(84 + 50);
+  buf.write('solid facet exported by cad', 0, 'ascii'); // en-tête trompeur
+  buf.writeUInt32LE(1, 80);
+  const base = 84 + 12;
+  const verts = [[0, 0, 0], [3, 0, 0], [0, 3, 0]];
+  verts.forEach((v, vi) => v.forEach((c, ci) => buf.writeFloatLE(c, base + vi * 12 + ci * 4)));
+  const { triangles } = parseModel(buf, 'stl');
+  assert.strictEqual(triangles.length, 1);
+  assert.deepStrictEqual(triangles[0].b, [3, 0, 0]);
+});

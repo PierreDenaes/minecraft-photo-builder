@@ -24,8 +24,9 @@ function parseOBJ(text) {
 }
 
 function parseSTL(buffer) {
+  const isBinarySized = buffer.length >= 84 && buffer.length === 84 + buffer.readUInt32LE(80) * 50;
   const head = buffer.toString('ascii', 0, Math.min(buffer.length, 512));
-  if (head.trimStart().startsWith('solid') && head.includes('facet')) {
+  if (!isBinarySized && head.trimStart().startsWith('solid') && head.includes('facet')) {
     const triangles = [];
     const verts = [];
     for (const m of buffer.toString('ascii').matchAll(/vertex\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)/g)) {
