@@ -163,13 +163,16 @@ function createBot(cfg) {
       for (let i = 0; i < colored.length; i += step) samples.push(colored[i].color);
       colors = await deliberatePalette(samples, colorsBati, `modèle 3D scanné (${ext})`);
     }
+    const inspire = (cfg.reconstruction || 'inspire') === 'inspire';
+    // mode inspire : la référence analysée est la coquille seule (les strates
+    // géologiques noieraient les thèmes du bâtiment sous « roche »)
     const reference = voxelizeMesh(cleaned.triangles, {
       maxX: dio.size_x, maxY: dio.max_y, maxZ: dio.size_z,
       defaultBlock: 'stone', colors, zUp: ext === 'stl',
-      solid: true, underground, surfaceThemeOf: themeOfBlock
+      solid: !inspire, underground: inspire ? undefined : underground, surfaceThemeOf: themeOfBlock
     });
     let blocks = reference;
-    if ((cfg.reconstruction || 'inspire') === 'inspire') {
+    if (inspire) {
       const summary = analyzeStructure(reference);
       const building = await generateStructure(
         { type_batiment: `reconstruction fidèle du modèle 3D (${ext})` },
@@ -182,9 +185,12 @@ function createBot(cfg) {
         bSize.z = Math.max(bSize.z, b.z + 1);
       }
       const hillHeight = Math.max(8, Math.min(24, Math.round(summary.dims.y / 3)));
+      const surfaceBlock = summary.themes[0] === 'sable' ? 'sand'
+        : summary.themes[0] === 'neige_glace' ? 'snow_block'
+        : 'grass_block';
       const terrain = terrainFromHeightmap(summary.heightmap, {
         sizeX: dio.size_x, sizeZ: dio.size_z, maxHeight: hillHeight,
-        underground, taperWidth: 12
+        underground, surfaceBlock, taperWidth: 12
       });
       const offX = Math.floor((dio.size_x - bSize.x) / 2);
       const offZ = Math.floor((dio.size_z - bSize.z) / 2);
