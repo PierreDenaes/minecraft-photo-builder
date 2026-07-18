@@ -103,3 +103,12 @@ test('undo sans snapshot (volume trop grand) restaure le terrain plat', async ()
   assert.ok(bot.sent.some((c) => c === '/fill -1 -61 -1 4 -61 4 grass_block'));
   assert.strictEqual(b.undo(), false); // lastBuild consommé
 });
+
+test('enqueue supporte un très grand nombre de commandes sans exploser la pile', () => {
+  const bot = fakeBot();
+  const b = new Builder(bot, { maxBlocks: 100000 });
+  const cmds = new Array(250000).fill('/setblock 0 0 0 stone');
+  assert.doesNotThrow(() => b.enqueue(cmds));
+  assert.strictEqual(b.status().total, 250000);
+  clearInterval(b.timer); // ne pas drainer 250k commandes dans le test
+});

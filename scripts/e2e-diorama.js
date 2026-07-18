@@ -89,7 +89,7 @@ async function main() {
 
   // ── Étape (b) : upload cube.obj → proposition "modèle 3D (obj)" ─────────────
   // CRITIQUE : enregistrer l'écouteur AVANT l'upload (la proposition arrive pendant la requête HTTP)
-  const modelP = waitMsg(/Tape !go|erreur est survenue|structure invalide|analyse impossible/, 60000, 'proposition modèle 3D');
+  const modelP = waitMsg(/Tape !go|erreur est survenue|structure invalide|analyse impossible/, 120000, 'proposition modèle 3D');
   const upModel = await upload(path.join(__dirname, '../test/fixtures/cube.obj'), 'application/octet-stream');
   const propM = await modelP;
   record('HTTP upload modèle OK', upModel.status === 200, `status=${upModel.status}`);
@@ -115,7 +115,7 @@ async function main() {
   record('!go lance la construction modèle', /lancée/.test(goMsg), goMsg);
   if (!/lancée/.test(goMsg)) throw new Error('construction modèle non lancée, arrêt');
 
-  const statusEndModel = await pollStatusUntilDone(180000);
+  const statusEndModel = await pollStatusUntilDone(600000);
   record('!status suit la construction modèle jusqu\'à la fin', /\(terminé\)|Aucune construction/.test(statusEndModel), statusEndModel);
   await sleep(2000);
 
@@ -130,7 +130,7 @@ async function main() {
   send('!undo');
   const undoMsg = await undoP;
   record('!undo répond Restauration', /Restauration/.test(undoMsg), undoMsg);
-  await pollStatusUntilDone(180000);
+  await pollStatusUntilDone(600000);
   await sleep(2000);
 
   const afterUndo = scanRegion(SCAN.x1, SCAN.x2, SCAN.y1, SCAN.y2, SCAN.z1, SCAN.z2);

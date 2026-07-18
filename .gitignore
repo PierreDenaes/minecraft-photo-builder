@@ -2,3 +2,5 @@ node_modules/
 mc-data/
 models/
 *.log
+.DS_Store
+docs/*.glb

@@ -118,7 +118,7 @@ class Builder {
   }
 
   enqueue(cmds) {
-    this.queue.push(...cmds);
+    for (let i = 0; i < cmds.length; i++) this.queue.push(cmds[i]);
     if (this.timer) {
       this.progress.total += cmds.length;
       return;
