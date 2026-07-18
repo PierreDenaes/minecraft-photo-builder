@@ -35,3 +35,9 @@ test('garde-fou : un voxel bas isolé ne détruit pas le bâtiment', () => {
   assert.strictEqual(removed, 0);
   assert.strictEqual(blocks.length, 126);        // tout conservé (couche de base anormale)
 });
+
+test('supporte 200k blocs sans explosion de pile', () => {
+  const big = [];
+  for (let i = 0; i < 200000; i++) big.push({ x: i % 100, y: Math.floor(i / 10000), z: Math.floor(i / 100) % 100, block: 'stone' });
+  assert.doesNotThrow(() => enforceSupport(big));
+});

@@ -3,7 +3,8 @@ function enforceSupport(blocks) {
   if (blocks.length === 0) return { blocks: [], removed: 0 };
   const key = (x, y, z) => `${x},${y},${z}`;
   const all = new Set(blocks.map((b) => key(b.x, b.y, b.z)));
-  const minY = Math.min(...blocks.map((b) => b.y));
+  let minY = Infinity;
+  for (const b of blocks) if (b.y < minY) minY = b.y;
   const kept = new Set();
   const queue = [];
   for (const b of blocks) {
