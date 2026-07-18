@@ -14,7 +14,7 @@ const { voxelizeScene } = require('./voxelizer');
 const { composite } = require('./composite');
 const { parseModel } = require('./mesh');
 const { voxelizeMesh } = require('./meshvoxelizer');
-const { loadBlockColors } = require('./blockcolors');
+const { loadBlockColors, filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS } = require('./blockcolors');
 
 const validBlocks = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../data/valid_blocks.json'), 'utf8')
@@ -49,6 +49,9 @@ function createBot(cfg) {
   bot.on('chat', handleChat);
 
   const blockColors = loadBlockColors();
+  const colorsNature = filterColors(blockColors, NATURAL_BLOCKS);
+  const colorsBati = filterColors(blockColors, new Set([...NATURAL_BLOCKS, ...CONSTRUCTION_BLOCKS]));
+  const materiaux = validBlocks.filter((b) => CONSTRUCTION_BLOCKS.has(b) || b === 'air');
   const dio = cfg.limits.diorama;
 
   function proposeStructure(username, blocks, description, { maxSize, maxBlocks }) {
@@ -76,7 +79,7 @@ function createBot(cfg) {
     const { data, info } = await sharp(buffer).removeAlpha().raw().toBuffer({ resolveWithObject: true });
     const image = { data, width: info.width, height: info.height };
     let blocks = voxelizeScene(image, depthMap, {
-      sizeX: dio.size_x, sizeZ: dio.size_z, maxY: dio.max_y, colors: blockColors
+      sizeX: dio.size_x, sizeZ: dio.size_z, maxY: dio.max_y, colors: colorsNature
     });
     const zone = description.erreur ? null : description.zone_batiment;
     if (zone) {
@@ -96,7 +99,7 @@ function createBot(cfg) {
         dimensions_estimees: { largeur: bWidth, profondeur: Math.min(bWidth, dio.size_z), hauteur: bHeight }
       };
       const building = await generateStructure(buildingDesc, {
-        timeoutMs: cfg.limits.sandbox_timeout_ms, validBlocks
+        timeoutMs: cfg.limits.sandbox_timeout_ms, validBlocks: materiaux
       });
       blocks = composite(blocks, building, { x1, x2, zAnchor });
     }
@@ -112,7 +115,7 @@ function createBot(cfg) {
     if (warning) bot.chat(`${username} : ${warning}`);
     const blocks = voxelizeMesh(triangles, {
       maxX: dio.size_x, maxY: dio.max_y, maxZ: dio.size_z,
-      defaultBlock: 'stone', colors: blockColors, zUp: ext === 'stl'
+      defaultBlock: 'stone', colors: colorsBati, zUp: ext === 'stl'
     });
     return proposeStructure(username, blocks, { type_batiment: `modèle 3D (${ext})` }, { maxSize: Math.max(dio.size_x, dio.max_y, dio.size_z), maxBlocks: dio.max_blocks });
   }
@@ -129,7 +132,7 @@ function createBot(cfg) {
     }
     const blocks = await generateStructure(description, {
       timeoutMs: cfg.limits.sandbox_timeout_ms,
-      validBlocks
+      validBlocks: materiaux
     });
     return proposeStructure(username, blocks, description, { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks });
   }

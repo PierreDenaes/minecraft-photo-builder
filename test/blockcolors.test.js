@@ -27,3 +27,29 @@ test('loadBlockColors charge la table réelle', () => {
   assert.ok(colors.size > 50);
   assert.ok(Array.isArray(colors.get('stone')));
 });
+
+const { filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS } = require('../src/blockcolors');
+
+test('filterColors ne garde que l\'intersection', () => {
+  const src = new Map([['stone', [1, 1, 1]], ['furnace', [2, 2, 2]], ['dirt', [3, 3, 3]]]);
+  const out = filterColors(src, new Set(['stone', 'dirt', 'absent']));
+  assert.deepStrictEqual([...out.keys()].sort(), ['dirt', 'stone']);
+});
+
+test('la palette nature exclut les blocs fonctionnels et manufacturés', () => {
+  for (const b of ['furnace', 'bookshelf', 'crafting_table', 'chest', 'hay_block', 'white_concrete']) {
+    assert.ok(!NATURAL_BLOCKS.has(b), `${b} ne doit pas être naturel`);
+  }
+  for (const b of ['dirt', 'grass_block', 'stone', 'gravel', 'oak_leaves', 'tuff']) {
+    assert.ok(NATURAL_BLOCKS.has(b), `${b} doit être naturel`);
+  }
+});
+
+test('la palette construction exclut les blocs fonctionnels', () => {
+  for (const b of ['furnace', 'bookshelf', 'chest', 'pumpkin', 'campfire', 'lantern']) {
+    assert.ok(!CONSTRUCTION_BLOCKS.has(b), `${b} ne doit pas être un matériau`);
+  }
+  for (const b of ['stone_bricks', 'oak_planks', 'white_concrete', 'glass_pane', 'dark_oak_log']) {
+    assert.ok(CONSTRUCTION_BLOCKS.has(b), `${b} doit être un matériau`);
+  }
+});
