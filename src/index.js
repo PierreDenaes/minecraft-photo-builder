@@ -153,10 +153,9 @@ function createBot(cfg) {
     bot.chat(`Modèle 3D (${ext}) reçu de ${username}, voxelisation...`);
     const { triangles, warning } = await parseModel(buffer, ext);
     if (warning) bot.chat(`${username} : ${warning}`);
-    const cleaned = cleanTriangles(triangles);
-    if (cleaned.removed > 0) bot.chat(`Nettoyage du scan : ${cleaned.removed} triangles de débris ignorés.`);
-
+    // Statues : modèles auteurés — pas de nettoyage anti-débris (il ampute yeux et petites pièces)
     if (mode === 'statue') {
+      const cleaned = { triangles };
       const colorsStatue = filterColors(blockColors, THEME_BLOCKS.couleurs_vives);
       // Un personnage debout est plus haut que large : son axe le plus long est la verticale
       const span = [0, 1, 2].map((a) => {
@@ -186,6 +185,9 @@ function createBot(cfg) {
       bot.chat(`Statue voxelisée : ${sx + 1}x${sz + 1} sur socle.`);
       return proposeStructure(username, statueBlocks, { type_batiment: `statue (${ext})` }, { maxSize: 96, maxBlocks: cfg.limits.max_blocks });
     }
+
+    const cleaned = cleanTriangles(triangles);
+    if (cleaned.removed > 0) bot.chat(`Nettoyage du scan : ${cleaned.removed} triangles de débris ignorés.`);
 
     const seed = Math.floor(Math.random() * 2 ** 31);
     console.log(`[modele] graine sous-sol : ${seed}`);
