@@ -75,3 +75,14 @@ test('signale clairement une réponse tronquée (max_tokens)', async () => {
     /tronquée/
   );
 });
+
+test('injecte le résumé structurel dans le prompt', async () => {
+  const code = 'function generateStructure() { return [{ x: 0, y: 0, z: 0, block: "stone" }]; }';
+  let captured;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
+  const structuralSummary = { dims: { x: 40, y: 25, z: 30 }, towers: [{ cx: 5, cz: 5, radius: 3, height: 25 }] };
+  await generateStructure({ type_batiment: 'château' }, { client, timeoutMs: 5000, structuralSummary });
+  assert.match(captured.messages[0].content, /Résumé structurel/);
+  assert.match(captured.messages[0].content, /"height":25/);
+  assert.match(captured.system, /architecte/i);
+});

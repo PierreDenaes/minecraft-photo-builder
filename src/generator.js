@@ -21,7 +21,12 @@ Qualité et détail (important) :
 - Fenêtres avec encadrement (log ou stone autour du glass_pane), porte avec porche ou arche
 - Évite les grands murs plats uniformes : ajoute pilastres, retraits, variations de profondeur de 1 bloc
 - Les tours sont cylindriques (teste x*x + z*z contre un rayon), les toits coniques ou en pente réguliers
-- Ajoute les éléments notables décrits (cheminées, tourelles, créneaux, drapeaux en wool, lave si décrit)`;
+- Ajoute les éléments notables décrits (cheminées, tourelles, créneaux, drapeaux en wool, lave si décrit)
+
+Rôle d'architecte (quand un résumé structurel est fourni) :
+- Le résumé décrit une référence réelle : respecte ses masses — emprise (footprint), carte de hauteurs, position/hauteur/rayon des tours
+- Reconstruis PROPREMENT en vocabulaire Minecraft : murs droits et pleins, créneaux, arches, fenêtres alignées, toits cohérents — jamais le bruit du scan
+- Reste dans dims ; les tours sont cylindriques aux positions données`;
 
 function runStructureCode(code, timeoutMs) {
   const context = vm.createContext(Object.create(null));
@@ -60,10 +65,13 @@ function normalizeOrigin(blocks) {
   return blocks;
 }
 
-async function generateStructure(description, { client, timeoutMs = 5000, validBlocks } = {}) {
+async function generateStructure(description, { client, timeoutMs = 5000, validBlocks, structuralSummary } = {}) {
   const c = client || createClient();
   const blocksSection = validBlocks
     ? `\n\nBlocs autorisés — n'utilise QUE ces noms, aucun autre :\n${validBlocks.join(', ')}`
+    : '';
+  const summarySection = structuralSummary
+    ? `\n\nRésumé structurel de la référence (respecte ces masses) :\n${JSON.stringify(structuralSummary)}`
     : '';
   const response = await withRetry(() =>
     c.messages.create({
@@ -72,7 +80,7 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',
-        content: `Description du bâtiment :\n${JSON.stringify(description, null, 2)}${blocksSection}\n\nÉcris generateStructure().`
+        content: `Description du bâtiment :\n${JSON.stringify(description, null, 2)}${summarySection}${blocksSection}\n\nÉcris generateStructure().`
       }]
     })
   );
