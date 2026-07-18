@@ -28,12 +28,27 @@ test('loadBlockColors charge la table réelle', () => {
   assert.ok(Array.isArray(colors.get('stone')));
 });
 
-const { filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS } = require('../src/blockcolors');
+const { filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS, THEME_BLOCKS } = require('../src/blockcolors');
 
 test('filterColors ne garde que l\'intersection', () => {
   const src = new Map([['stone', [1, 1, 1]], ['furnace', [2, 2, 2]], ['dirt', [3, 3, 3]]]);
   const out = filterColors(src, new Set(['stone', 'dirt', 'absent']));
   assert.deepStrictEqual([...out.keys()].sort(), ['dirt', 'stone']);
+});
+
+test('le gravier est exclu du thème roche mais reste dans terre', () => {
+  assert.ok(!THEME_BLOCKS.roche.has('gravel'));
+  assert.ok(THEME_BLOCKS.terre.has('gravel'));
+});
+
+test('les minerais sont dans la liste blanche', () => {
+  const valid = new Set(require('../data/valid_blocks.json'));
+  for (const ore of ['coal_ore', 'iron_ore', 'copper_ore', 'gold_ore', 'redstone_ore', 'lapis_ore',
+    'diamond_ore', 'emerald_ore', 'deepslate_coal_ore', 'deepslate_iron_ore', 'deepslate_copper_ore',
+    'deepslate_gold_ore', 'deepslate_redstone_ore', 'deepslate_lapis_ore', 'deepslate_diamond_ore',
+    'deepslate_emerald_ore']) {
+    assert.ok(valid.has(ore), ore);
+  }
 });
 
 test('la palette nature exclut les blocs fonctionnels et manufacturés', () => {

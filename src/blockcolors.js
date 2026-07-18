@@ -66,7 +66,7 @@ const CONSTRUCTION_BLOCKS = new Set([
 const THEME_BLOCKS = {
   roche: new Set(['stone', 'cobblestone', 'mossy_cobblestone', 'smooth_stone', 'andesite',
     'polished_andesite', 'diorite', 'granite', 'deepslate', 'cobbled_deepslate', 'tuff',
-    'calcite', 'dripstone_block', 'blackstone', 'gravel']),
+    'calcite', 'dripstone_block', 'blackstone']),
   terre: new Set(['dirt', 'mud', 'packed_mud', 'clay', 'terracotta', 'brown_terracotta', 'gravel']),
   vegetation: new Set(['grass_block', 'moss_block', 'oak_leaves', 'spruce_leaves', 'birch_leaves',
     'dark_oak_leaves', 'acacia_leaves', 'jungle_leaves', 'mangrove_leaves', 'cherry_leaves',

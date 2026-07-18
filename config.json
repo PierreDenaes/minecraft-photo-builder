@@ -3,10 +3,10 @@
   "web": { "port": 3000, "public_host": "localhost" },
   "limits": {
     "max_size": 96,
-    "max_blocks": 100000,
+    "max_blocks": 300000,
     "sandbox_timeout_ms": 5000,
-    "throttle_cmds_per_tick": 8,
-    "diorama": { "size_x": 128, "size_z": 96, "max_y": 96, "max_blocks": 500000 }
+    "throttle_cmds_per_tick": 16,
+    "diorama": { "size_x": 160, "size_z": 120, "max_y": 120, "max_blocks": 1200000 }
   },
   "generation_mode": "code"
 }
