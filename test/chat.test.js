@@ -180,3 +180,9 @@ test('!go retrouve une proposition enregistrée avec une casse différente', () 
   assert.ok(calls.find((c) => c[0] === 'startBuild'), 'construction non lancée malgré la proposition');
   assert.strictEqual(pending.has('steve'), false);
 });
+
+test('!statue donne le lien mode=statue', () => {
+  const { messages, handle } = setup();
+  handle('Steve', '!statue');
+  assert.match(messages[0], /upload\/Steve\?mode=statue/);
+});

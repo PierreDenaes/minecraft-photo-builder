@@ -122,3 +122,28 @@ test('le formulaire diorama contient le champ mode', async () => {
   assert.match(html, /\.obj/);
   server.close();
 });
+
+test('mode statue routé vers onModel avec le mode', async () => {
+  let got = null;
+  const app = createWebServer({
+    onPhoto: async () => {}, onDiorama: async () => {},
+    onModel: async (u, buf, ext, mode) => { got = { ext, mode }; return 'ok'; }
+  });
+  const server = await listen(app);
+  const fd = new FormData();
+  fd.append('username', 'Steve');
+  fd.append('mode', 'statue');
+  fd.append('photo', new Blob(['v 0 0 0'], { type: 'application/octet-stream' }), 'sonic.obj');
+  const res = await post(server.address().port, fd);
+  assert.strictEqual(res.status, 200);
+  assert.deepStrictEqual(got, { ext: 'obj', mode: 'statue' });
+  server.close();
+});
+
+test('le formulaire statue est servi', async () => {
+  const app = createWebServer({ onPhoto: async () => {}, onDiorama: async () => {}, onModel: async () => {} });
+  const server = await listen(app);
+  const res = await fetch(`http://localhost:${server.address().port}/upload/Steve?mode=statue`);
+  assert.match(await res.text(), /name="mode" value="statue"/);
+  server.close();
+});

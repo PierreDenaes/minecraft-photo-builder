@@ -149,12 +149,32 @@ function createBot(cfg) {
     return proposeStructure(username, blocks, desc, { maxSize: Math.max(dio.size_x, dio.max_y, dio.size_z), maxBlocks: dio.max_blocks });
   }
 
-  async function onModel(username, buffer, ext) {
+  async function onModel(username, buffer, ext, mode) {
     bot.chat(`Modèle 3D (${ext}) reçu de ${username}, voxelisation...`);
     const { triangles, warning } = await parseModel(buffer, ext);
     if (warning) bot.chat(`${username} : ${warning}`);
     const cleaned = cleanTriangles(triangles);
     if (cleaned.removed > 0) bot.chat(`Nettoyage du scan : ${cleaned.removed} triangles de débris ignorés.`);
+
+    if (mode === 'statue') {
+      const colorsStatue = filterColors(blockColors, THEME_BLOCKS.couleurs_vives);
+      const shell = voxelizeMesh(cleaned.triangles, {
+        maxX: 48, maxY: 72, maxZ: 48, defaultBlock: 'white_concrete',
+        colors: colorsStatue, zUp: ext === 'stl'
+      });
+      const statue = enforceSupport(shell).blocks.map((b) => ({ ...b, y: b.y + 2 }));
+      let sx = 0;
+      let sz = 0;
+      for (const b of statue) { sx = Math.max(sx, b.x); sz = Math.max(sz, b.z); }
+      const socle = [];
+      for (let x = -1; x <= sx + 1; x++) for (let z = -1; z <= sz + 1; z++) for (let y = 0; y <= 1; y++) {
+        socle.push({ x: x + 1, y, z: z + 1, block: 'smooth_stone' });
+      }
+      const statueBlocks = socle.concat(statue.map((b) => ({ ...b, x: b.x + 1, z: b.z + 1 })));
+      bot.chat(`Statue voxelisée : ${sx + 1}x${sz + 1} sur socle.`);
+      return proposeStructure(username, statueBlocks, { type_batiment: `statue (${ext})` }, { maxSize: 96, maxBlocks: cfg.limits.max_blocks });
+    }
+
     const seed = Math.floor(Math.random() * 2 ** 31);
     console.log(`[modele] graine sous-sol : ${seed}`);
     const underground = createUnderground({ seed, maxY: dio.max_y });

@@ -20,7 +20,7 @@ function createWebServer({ onPhoto, onDiorama, onModel }) {
 
   app.get('/upload/:username', (req, res) => {
     const username = String(req.params.username).replace(/[^A-Za-z0-9_]/g, '');
-    const mode = req.query.mode === 'diorama' ? 'diorama' : '';
+    const mode = ['diorama', 'statue'].includes(req.query.mode) ? req.query.mode : '';
     const accept = mode
       ? 'image/jpeg,image/png,image/webp,.obj,.stl,.glb'
       : 'image/jpeg,image/png,image/webp';
@@ -47,7 +47,7 @@ function createWebServer({ onPhoto, onDiorama, onModel }) {
         let message;
         if (MODEL_EXTS.has(ext)) {
           console.log(`[web] modèle ${ext} reçu de ${req.body.username} (${req.file.size} octets)`);
-          message = await onModel(req.body.username, req.file.buffer, ext.slice(1));
+          message = await onModel(req.body.username, req.file.buffer, ext.slice(1), req.body.mode || '');
         } else {
           if (req.file.size > IMAGE_MAX) {
             return res.status(400).json({ ok: false, error: 'image trop lourde (5 Mo max)' });

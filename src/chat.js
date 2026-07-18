@@ -14,6 +14,11 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
         return;
       }
 
+      if (cmd === '!statue') {
+        bot.chat(`${username} : statue fidèle depuis un modèle 3D → http://${config.web.public_host}:${config.web.port}/upload/${username}?mode=statue`);
+        return;
+      }
+
       if (cmd === '!go') {
         const pkey = username.toLowerCase();
         const p = pending.get(pkey);
