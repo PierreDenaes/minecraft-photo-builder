@@ -156,3 +156,15 @@ test('!go joueur introuvable même après téléportation : message et propositi
   assert.match(messages.join(' '), /je ne te vois pas/);
   assert.strictEqual(pending.has('Steve'), true);
 });
+
+test('!go annonce l\'emprise et le centre', () => {
+  const { messages, pending, handle } = setup();
+  pending.set('Steve', {
+    blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }],
+    size: { x: 10, y: 5, z: 8 },
+    description: { type_batiment: 'test' }
+  });
+  handle('Steve', '!go');
+  const m = messages.join(' | ');
+  assert.match(m, /Emprise : \(0,-9\) → \(9,-2\), centre \(5,-5\)/);
+});

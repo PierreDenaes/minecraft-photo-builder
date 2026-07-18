@@ -22,6 +22,7 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
           const origin = builder.computeOrigin(player.entity.position, player.entity.yaw, p.size);
           const { total } = builder.startBuild(p.blocks, origin, p.size);
           bot.chat(`Construction de ${p.description.type_batiment} lancée (~${builder.estimateSeconds(total)} s, ${total} commandes). !status pour suivre, !undo pour annuler.`);
+          bot.chat(`Emprise : (${origin.x},${origin.z}) → (${origin.x + p.size.x - 1},${origin.z + p.size.z - 1}), centre (${origin.x + Math.floor(p.size.x / 2)},${origin.z + Math.floor(p.size.z / 2)})`);
         };
         const player = bot.players[username];
         if (player && player.entity) { launch(player); return; }
