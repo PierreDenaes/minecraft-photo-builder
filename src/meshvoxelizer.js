@@ -3,10 +3,11 @@ const { nearestBlock } = require('./blockcolors');
 const dist = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
 const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2];
 
-function voxelizeMesh(triangles, { maxX, maxY, maxZ, defaultBlock, colors, zUp = false, solid = false, underground, surfaceThemeOf }) {
+function voxelizeMesh(triangles, { maxX, maxY, maxZ, defaultBlock, colors, zUp = false, up, solid = false, underground, surfaceThemeOf }) {
   if (!triangles.length) throw new Error('modèle vide : aucun triangle');
   const pick = typeof colors === 'function' ? colors : (colors ? (r, g, b) => nearestBlock(r, g, b, colors) : null);
-  const axis = ([x, y, z]) => (zUp ? [x, z, y] : [x, y, z]);
+  const upAxis = up || (zUp ? 'z' : 'y');
+  const axis = ([x, y, z]) => (upAxis === 'z' ? [x, z, y] : upAxis === 'x' ? [y, x, z] : [x, y, z]);
   const min = [Infinity, Infinity, Infinity];
   const max = [-Infinity, -Infinity, -Infinity];
   for (const t of triangles) {

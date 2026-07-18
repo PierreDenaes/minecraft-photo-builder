@@ -85,3 +85,19 @@ test('solid géologique : petits vides internes comblés, grands volumes laissé
   assert.ok(inner, 'petit vide non comblé');
   assert.strictEqual(inner.block, 'stone_bricks');      // continuité de structure, pas de strates
 });
+
+test('option up:x redresse un modèle couché sur x', () => {
+  const tris = [{ a: [0, 0, 0], b: [6, 0, 0], c: [6, 1, 0], color: null }]; // longiligne en x
+  const flat = voxelizeMesh(tris, { maxX: 8, maxY: 8, maxZ: 8, defaultBlock: 'stone' });
+  const up = voxelizeMesh(tris, { maxX: 8, maxY: 8, maxZ: 8, defaultBlock: 'stone', up: 'x' });
+  const maxY = (bs) => Math.max(...bs.map((b) => b.y));
+  assert.ok(maxY(flat) <= 2, 'sans up: doit rester couché');
+  assert.ok(maxY(up) >= 5, 'up:x doit redresser en hauteur');
+});
+
+test('option up:z équivaut à zUp:true', () => {
+  const tris = [{ a: [0, 0, 0], b: [0, 0, 6], c: [1, 0, 6], color: null }];
+  const a = voxelizeMesh(tris, { maxX: 8, maxY: 8, maxZ: 8, defaultBlock: 'stone', zUp: true });
+  const b = voxelizeMesh(tris, { maxX: 8, maxY: 8, maxZ: 8, defaultBlock: 'stone', up: 'z' });
+  assert.deepStrictEqual(a.sort((p, q) => p.x - q.x || p.y - q.y || p.z - q.z), b.sort((p, q) => p.x - q.x || p.y - q.y || p.z - q.z));
+});
