@@ -84,7 +84,7 @@ function createBot(cfg) {
     return buildThemePicker(centroids, themes, allowedColors);
   }
 
-  function proposeStructure(username, blocks, description, { maxSize, maxBlocks }) {
+  function proposeStructure(username, blocks, description, { maxSize, maxBlocks }, extras = {}) {
     const check = validateStructure(blocks, {
       maxSize,
       maxBlocks,
@@ -95,7 +95,7 @@ function createBot(cfg) {
       throw new Error(check.errors.join(' ; '));
     }
     const size = structureSize(blocks);
-    pending.set(username.toLowerCase(), { blocks, size, description });
+    pending.set(username.toLowerCase(), { blocks, size, description, ...extras });
     bot.chat(`Construction de ${description.type_batiment} (${size.x}x${size.z}x${size.y}, ${blocks.length} blocs) devant toi. Tape !go pour confirmer, !cancel pour annuler.`);
     return 'proposition envoyée en jeu, tape !go dans le chat Minecraft';
   }
@@ -174,7 +174,7 @@ function createBot(cfg) {
       }
       const statueBlocks = socle.concat(statue.map((b) => ({ ...b, x: b.x + 1, z: b.z + 1 })));
       bot.chat(`Statue voxelisée : ${sx + 1}x${sz + 1} sur socle.`);
-      return proposeStructure(username, statueBlocks, { type_batiment: `statue (${ext})` }, { maxSize: 96, maxBlocks: cfg.limits.max_blocks });
+      return proposeStructure(username, statueBlocks, { type_batiment: `statue (${ext})` }, { maxSize: 96, maxBlocks: cfg.limits.max_blocks }, { socle: { h: 2, block: 'smooth_stone', margin: 1 } });
     }
 
     const cleaned = cleanTriangles(triangles);

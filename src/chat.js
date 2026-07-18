@@ -1,5 +1,40 @@
 const { rotateY, rotateX } = require('./support');
 
+// Applique une rotation à la proposition ; si elle a un socle, seul le corps tourne
+// et le socle est régénéré à plat sous la nouvelle emprise
+function transformProposal(prop, fn) {
+  if (!prop.socle) {
+    prop.blocks = fn(prop.blocks);
+    return;
+  }
+  const { h, block, margin } = prop.socle;
+  const body = prop.blocks.filter((b) => b.y >= h).map((b) => ({ ...b, y: b.y - h }));
+  const turned = fn(body).map((b) => ({ ...b, x: b.x + margin, y: b.y + h, z: b.z + margin }));
+  let maxX = 0;
+  let maxZ = 0;
+  for (const b of turned) {
+    maxX = Math.max(maxX, b.x);
+    maxZ = Math.max(maxZ, b.z);
+  }
+  const socle = [];
+  for (let x = 0; x <= maxX + margin; x++) {
+    for (let z = 0; z <= maxZ + margin; z++) {
+      for (let y = 0; y < h; y++) socle.push({ x, y, z, block });
+    }
+  }
+  prop.blocks = socle.concat(turned);
+}
+
+function sizeOf(blocks) {
+  const s2 = { x: 0, y: 0, z: 0 };
+  for (const b of blocks) {
+    s2.x = Math.max(s2.x, b.x + 1);
+    s2.y = Math.max(s2.y, b.y + 1);
+    s2.z = Math.max(s2.z, b.z + 1);
+  }
+  return s2;
+}
+
 function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) {
   const lastBuilt = new Map(); // pseudo (minuscules) → dernière proposition construite
   return function handle(username, message) {
@@ -60,8 +95,8 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
           lastBuilt.delete(pkey2);
         }
         if (!prop) { bot.chat(`${username} : aucune proposition à tourner.`); return; }
-        prop.blocks = rotateY(prop.blocks);
-        prop.size = { x: prop.size.z, y: prop.size.y, z: prop.size.x };
+        transformProposal(prop, rotateY);
+        prop.size = sizeOf(prop.blocks);
         pending.set(pkey2, prop);
         bot.chat(`Proposition pivotée de 90° (${prop.size.x}x${prop.size.z}x${prop.size.y}). !tourner encore ou !go.`);
         return;
@@ -76,8 +111,8 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
           lastBuilt.delete(pk);
         }
         if (!prop) { bot.chat(`${username} : aucune proposition à redresser.`); return; }
-        prop.blocks = rotateX(prop.blocks);
-        prop.size = { x: prop.size.x, y: prop.size.z, z: prop.size.y };
+        transformProposal(prop, rotateX);
+        prop.size = sizeOf(prop.blocks);
         pending.set(pk, prop);
         bot.chat(`Proposition redressée (${prop.size.x}x${prop.size.z}x${prop.size.y}). !redresser/!tourner encore, ou !go.`);
         return;

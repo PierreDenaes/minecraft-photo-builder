@@ -233,6 +233,28 @@ test('!redresser bascule la proposition (y/z échangés)', () => {
   });
   handle('Steve', '!redresser');
   const p = pending.get('steve');
-  assert.deepStrictEqual(p.size, { x: 2, y: 2, z: 4 });
+  // taille recalculée depuis les blocs réels : (0,3,1) redressé → (0,1,0)
+  assert.deepStrictEqual(p.size, { x: 1, y: 2, z: 1 });
   assert.match(messages.join(' '), /redressée/);
+});
+
+test('!redresser préserve le socle à plat sous la nouvelle emprise', () => {
+  const { pending, handle } = setup();
+  const socleBlocks = [];
+  for (let x = 0; x <= 3; x++) for (let z = 0; z <= 3; z++) for (let y = 0; y < 2; y++) socleBlocks.push({ x, y, z, block: 'smooth_stone' });
+  pending.set('steve', {
+    blocks: [...socleBlocks, { x: 1, y: 2, z: 1, block: 'red_wool' }, { x: 1, y: 5, z: 2, block: 'blue_wool' }],
+    size: { x: 4, y: 6, z: 4 },
+    description: { type_batiment: 'statue' },
+    socle: { h: 2, block: 'smooth_stone', margin: 1 }
+  });
+  handle('Steve', '!redresser');
+  const p = pending.get('steve');
+  const socle = p.blocks.filter((b) => b.block === 'smooth_stone');
+  const statue = p.blocks.filter((b) => b.block !== 'smooth_stone');
+  assert.ok(socle.every((b) => b.y < 2), 'socle non plat');
+  assert.ok(statue.every((b) => b.y >= 2), 'statue sous le socle');
+  const sMinX = Math.min(...statue.map((b) => b.x));
+  const socMinX = Math.min(...socle.map((b) => b.x));
+  assert.ok(socMinX <= sMinX - 1, 'marge du socle absente');
 });
