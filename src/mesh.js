@@ -143,14 +143,20 @@ async function parseGLB(buffer) {
         vcolScale = acc.componentType === 5126 ? 255 : acc.componentType === 5123 ? 255 / 65535 : 1;
       }
       if (prim.material !== undefined) {
-        const mat = json.materials?.[prim.material]?.pbrMetallicRoughness;
-        if (mat?.baseColorTexture !== undefined && prim.attributes.TEXCOORD_0 !== undefined) {
-          tex = await textureImage(mat.baseColorTexture.index);
+        const matFull = json.materials?.[prim.material];
+        const mat = matFull?.pbrMetallicRoughness;
+        const specGloss = matFull?.extensions?.KHR_materials_pbrSpecularGlossiness;
+        // matériau totalement transparent = géométrie invisible dans la source → ignorée
+        const alpha = specGloss?.diffuseFactor?.[3] ?? mat?.baseColorFactor?.[3] ?? 1;
+        if (alpha < 0.1) continue;
+        const texRef = mat?.baseColorTexture ?? specGloss?.diffuseTexture;
+        if (texRef !== undefined && prim.attributes.TEXCOORD_0 !== undefined) {
+          tex = await textureImage(texRef.index);
           if (tex) uv = readAccessor(prim.attributes.TEXCOORD_0);
         }
-        if (!tex && mat?.baseColorFactor) {
-          const f = mat.baseColorFactor;
-          color = [Math.round(f[0] * 255), Math.round(f[1] * 255), Math.round(f[2] * 255)];
+        const factor = mat?.baseColorFactor ?? specGloss?.diffuseFactor;
+        if (!tex && factor) {
+          color = [Math.round(factor[0] * 255), Math.round(factor[1] * 255), Math.round(factor[2] * 255)];
         }
       }
       const p = (i) => [pos[idx[i] * 3], pos[idx[i] * 3 + 1], pos[idx[i] * 3 + 2]];

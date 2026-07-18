@@ -105,7 +105,7 @@ test('STL binaire avec en-tête commençant par "solid" reste binaire', async ()
   assert.deepStrictEqual(triangles[0].b, [3, 0, 0]);
 });
 
-function makeTexturedGLB(pngBuffer) {
+function makeTexturedGLB(pngBuffer, { specGloss = false, alphaZero = false } = {}) {
   const positions = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]); // 36 o, view 0
   const uvs = new Float32Array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5]);    // 24 o, view 1 @36
   const indices = new Uint16Array([0, 1, 2]);                       // 6 o, view 2 @60
@@ -118,7 +118,11 @@ function makeTexturedGLB(pngBuffer) {
   const json = {
     asset: { version: '2.0' },
     meshes: [{ primitives: [{ attributes: { POSITION: 0, TEXCOORD_0: 1 }, indices: 2, material: 0 }] }],
-    materials: [{ pbrMetallicRoughness: { baseColorTexture: { index: 0 } } }],
+    materials: [specGloss
+      ? { extensions: { KHR_materials_pbrSpecularGlossiness: { diffuseTexture: { index: 0 }, diffuseFactor: [1, 1, 1, alphaZero ? 0 : 1] } } }
+      : alphaZero
+        ? { pbrMetallicRoughness: { baseColorFactor: [1, 0, 0, 0] } }
+        : { pbrMetallicRoughness: { baseColorTexture: { index: 0 } } }],
     textures: [{ source: 0 }],
     images: [{ bufferView: 3, mimeType: 'image/png' }],
     accessors: [
@@ -204,4 +208,19 @@ test('GLB TRIANGLE_STRIP triangulé (2 triangles depuis 4 sommets)', async () =>
 test('GLB COLOR_0 par sommet lu comme couleur de triangle', async () => {
   const { triangles } = await parseModel(makeStripGLB(true), 'glb');
   assert.deepStrictEqual(triangles[0].color, [255, 0, 0]);
+});
+
+test('GLB specularGlossiness : diffuseTexture échantillonnée', async () => {
+  const sharp = require('sharp');
+  const png = await sharp({ create: { width: 1, height: 1, channels: 3, background: { r: 0, g: 200, b: 0 } } }).png().toBuffer();
+  const { triangles } = await parseModel(makeTexturedGLB(png, { specGloss: true }), 'glb');
+  assert.strictEqual(triangles.length, 1);
+  assert.deepStrictEqual(triangles[0].color, [0, 200, 0]);
+});
+
+test('GLB matériau alpha 0 : géométrie invisible ignorée', async () => {
+  const sharp = require('sharp');
+  const png = await sharp({ create: { width: 1, height: 1, channels: 3, background: { r: 9, g: 9, b: 9 } } }).png().toBuffer();
+  const { triangles } = await parseModel(makeTexturedGLB(png, { alphaZero: true }), 'glb');
+  assert.strictEqual(triangles.length, 0);
 });
