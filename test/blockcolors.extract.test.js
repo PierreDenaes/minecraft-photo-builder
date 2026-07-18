@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const sharp = require('sharp');
-const { averagePng } = require('../scripts/extract-block-colors');
+const { averagePng, applyTint } = require('../scripts/extract-block-colors');
 
 test('moyenne RGB d\'une texture unie', async () => {
   const buf = await sharp({ create: { width: 8, height: 8, channels: 4, background: { r: 200, g: 100, b: 50, alpha: 1 } } }).png().toBuffer();
@@ -18,4 +18,9 @@ test('ignore les pixels transparents', async () => {
 test('texture entièrement transparente → null', async () => {
   const buf = await sharp({ create: { width: 4, height: 4, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).png().toBuffer();
   assert.strictEqual(await averagePng(buf), null);
+});
+
+test('applyTint multiplie canal par canal', () => {
+  assert.deepStrictEqual(applyTint([150, 150, 150], [119, 171, 47]), [70, 101, 28]);
+  assert.deepStrictEqual(applyTint([255, 255, 255], [145, 189, 89]), [145, 189, 89]);
 });
