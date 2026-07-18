@@ -3,7 +3,7 @@ const { nearestBlock } = require('./blockcolors');
 const dist = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
 const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2];
 
-function voxelizeMesh(triangles, { maxX, maxY, maxZ, defaultBlock, colors, zUp = false }) {
+function voxelizeMesh(triangles, { maxX, maxY, maxZ, defaultBlock, colors, zUp = false, solid = false, underground, surfaceThemeOf }) {
   if (!triangles.length) throw new Error('modèle vide : aucun triangle');
   const pick = typeof colors === 'function' ? colors : (colors ? (r, g, b) => nearestBlock(r, g, b, colors) : null);
   const axis = ([x, y, z]) => (zUp ? [x, z, y] : [x, y, z]);
@@ -40,6 +40,40 @@ function voxelizeMesh(triangles, { maxX, maxY, maxZ, defaultBlock, colors, zUp =
     rasterize(a, b, c, block);
     mark(a, block); mark(b, block); mark(c, block);
   }
+
+  if (solid) {
+    const columns = new Map(); // "x,z" → { top: y max de coquille, shellYs: Set }
+    for (const [k] of marked) {
+      const [x, y, z] = k.split(',').map(Number);
+      const ck = `${x},${z}`;
+      if (!columns.has(ck)) columns.set(ck, { top: y, shellYs: new Set([y]) });
+      else {
+        const c = columns.get(ck);
+        c.top = Math.max(c.top, y);
+        c.shellYs.add(y);
+      }
+    }
+    for (const [ck, { top, shellYs }] of columns) {
+      const [x, z] = ck.split(',').map(Number);
+      for (let y = 0; y < top; y++) {
+        if (shellYs.has(y) || marked.has(`${x},${y},${z}`)) continue;
+        // profondeur = distance au voxel de coquille supérieur le plus proche
+        let depth = 1;
+        for (let yy = y + 1; yy <= top; yy++) {
+          if (shellYs.has(yy)) break;
+          depth++;
+        }
+        if (underground) {
+          const theme = surfaceThemeOf ? surfaceThemeOf(marked.get(`${x},${top},${z}`)) : null;
+          const filled = underground.fill(x, y, z, depth, theme);
+          if (filled !== null) marked.set(`${x},${y},${z}`, filled);
+        } else {
+          marked.set(`${x},${y},${z}`, defaultBlock);
+        }
+      }
+    }
+  }
+
   return [...marked.entries()].map(([k, block]) => {
     const [x, y, z] = k.split(',').map(Number);
     return { x, y, z, block };

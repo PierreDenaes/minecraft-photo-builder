@@ -52,3 +52,21 @@ test('accepte une fonction de choix de bloc', () => {
   const blocks = voxelizeMesh(tris, { maxX: 4, maxY: 4, maxZ: 4, defaultBlock: 'stone', colors: () => 'bricks' });
   assert.ok(blocks.every((b) => b.block === 'bricks'));
 });
+
+test('solid : colonnes pleines du sol à la surface, sous-sol appliqué', () => {
+  const underground = { fill: (x, y, z, depth) => (depth <= 2 ? 'dirt' : 'stone') };
+  const blocks = voxelizeMesh(cubeTriangles(), {
+    maxX: 8, maxY: 8, maxZ: 8, defaultBlock: 'stone_bricks', solid: true, underground,
+    surfaceThemeOf: () => 'roche'
+  });
+  const has = (x, y, z) => blocks.find((b) => b.x === x && b.y === y && b.z === z);
+  assert.ok(has(3, 3, 3), 'intérieur rempli');            // creux avant, plein maintenant
+  assert.strictEqual(has(3, 5, 3).block, 'dirt');         // 2 sous la coquille haute (y=7)
+  assert.strictEqual(has(3, 3, 3).block, 'stone');        // plus profond
+  assert.strictEqual(has(0, 3, 3).block, 'stone_bricks'); // la coquille garde son bloc
+});
+
+test('solid sans underground : rempli avec defaultBlock', () => {
+  const blocks = voxelizeMesh(cubeTriangles(), { maxX: 6, maxY: 6, maxZ: 6, defaultBlock: 'stone', solid: true });
+  assert.ok(blocks.some((b) => b.x === 3 && b.y === 3 && b.z === 3));
+});
