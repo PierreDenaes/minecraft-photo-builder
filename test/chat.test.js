@@ -206,3 +206,20 @@ test('!tourner sans proposition informe', () => {
   handle('Steve', '!tourner');
   assert.match(messages[0], /aucune proposition/i);
 });
+
+test('!tourner après !go : undo + nouvelle proposition pivotée', () => {
+  const { messages, calls, pending, handle } = setup();
+  pending.set('steve', {
+    blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }, { x: 3, y: 0, z: 1, block: 'dirt' }],
+    size: { x: 4, y: 1, z: 2 },
+    description: { type_batiment: 'statue' }
+  });
+  handle('Steve', '!go');                       // consomme et construit
+  assert.strictEqual(pending.has('steve'), false);
+  handle('Steve', '!tourner');                  // après coup : undo + re-proposition pivotée
+  assert.ok(calls.some((c) => c[0] === 'undo'), 'undo non déclenché');
+  const p = pending.get('steve');
+  assert.ok(p, 'proposition pivotée absente');
+  assert.deepStrictEqual(p.size, { x: 2, y: 1, z: 4 });
+  assert.match(messages.join(' '), /pivotée/);
+});

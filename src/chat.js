@@ -1,6 +1,7 @@
 const { rotateY } = require('./support');
 
 function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) {
+  const lastBuilt = new Map(); // pseudo (minuscules) → dernière proposition construite
   return function handle(username, message) {
     if (username === bot.username) return;
     try {
@@ -27,6 +28,7 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
         if (!p) { bot.chat(`${username} : aucune proposition en attente. Envoie une photo avec !photo`); return; }
         const launch = (player) => {
           pending.delete(pkey);
+          lastBuilt.set(pkey, { blocks: p.blocks, size: p.size, description: p.description });
           const origin = builder.computeOrigin(player.entity.position, player.entity.yaw, p.size);
           const { total } = builder.startBuild(p.blocks, origin, p.size);
           bot.chat(`Construction de ${p.description.type_batiment} lancée (~${builder.estimateSeconds(total)} s, ${total} commandes). !status pour suivre, !undo pour annuler.`);
@@ -51,7 +53,12 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
 
       if (cmd === '!tourner') {
         const pkey2 = username.toLowerCase();
-        const prop = pending.get(pkey2);
+        let prop = pending.get(pkey2);
+        if (!prop && lastBuilt.has(pkey2)) {
+          if (builder.undo()) bot.chat('Construction précédente effacée pour rotation...');
+          prop = lastBuilt.get(pkey2);
+          lastBuilt.delete(pkey2);
+        }
         if (!prop) { bot.chat(`${username} : aucune proposition à tourner.`); return; }
         prop.blocks = rotateY(prop.blocks);
         prop.size = { x: prop.size.z, y: prop.size.y, z: prop.size.x };
