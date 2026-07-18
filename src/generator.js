@@ -13,7 +13,8 @@ Contraintes strictes :
 - Utilise uniquement les blocs de palette_blocs, plus "air" pour les ouvertures (portes, fenêtres) et "glass_pane" pour les vitres
 - Code pur : pas de require, pas d'accès réseau/fichiers, pas de récursion infinie
 - Construis paramétriquement : murs pleins, ouvertures, toit selon la forme décrite
-- Les intérieurs sont creux (air)
+- Intérieurs HABITABLES : un plancher plein tous les 5-6 blocs de hauteur (oak_planks ou pierre selon le style), un escalier (stairs) reliant chaque étage, 2 à 4 pièces par étage séparées par des cloisons avec portes
+- Le toit est COMPLET et fermé : il couvre toute l'emprise des murs sans aucun trou, pignons remplis
 
 Qualité et détail (important) :
 - Vise le MAXIMUM de détail architectural : varie les matériaux (3 à 5 blocs différents par façade)
