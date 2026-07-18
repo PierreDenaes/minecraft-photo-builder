@@ -15,10 +15,11 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
       }
 
       if (cmd === '!go') {
-        const p = pending.get(username);
+        const pkey = username.toLowerCase();
+        const p = pending.get(pkey);
         if (!p) { bot.chat(`${username} : aucune proposition en attente. Envoie une photo avec !photo`); return; }
         const launch = (player) => {
-          pending.delete(username);
+          pending.delete(pkey);
           const origin = builder.computeOrigin(player.entity.position, player.entity.yaw, p.size);
           const { total } = builder.startBuild(p.blocks, origin, p.size);
           bot.chat(`Construction de ${p.description.type_batiment} lancée (~${builder.estimateSeconds(total)} s, ${total} commandes). !status pour suivre, !undo pour annuler.`);
@@ -42,7 +43,7 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
       }
 
       if (cmd === '!cancel') {
-        if (pending.delete(username)) bot.chat(`${username} : proposition annulée.`);
+        if (pending.delete(username.toLowerCase())) bot.chat(`${username} : proposition annulée.`);
         else bot.chat(`${username} : rien à annuler.`);
         return;
       }

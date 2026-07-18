@@ -94,7 +94,7 @@ function createBot(cfg) {
       throw new Error(check.errors.join(' ; '));
     }
     const size = structureSize(blocks);
-    pending.set(username, { blocks, size, description });
+    pending.set(username.toLowerCase(), { blocks, size, description });
     bot.chat(`Construction de ${description.type_batiment} (${size.x}x${size.z}x${size.y}, ${blocks.length} blocs) devant toi. Tape !go pour confirmer, !cancel pour annuler.`);
     return 'proposition envoyée en jeu, tape !go dans le chat Minecraft';
   }

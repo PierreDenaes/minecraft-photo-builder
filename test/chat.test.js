@@ -39,7 +39,7 @@ test('!go sans proposition en attente informe le joueur', () => {
 
 test('!go avec proposition lance la construction', () => {
   const { calls, pending, handle, messages } = setup();
-  pending.set('Steve', {
+  pending.set('steve', {
     blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }],
     size: { x: 1, y: 1, z: 1 },
     description: { type_batiment: 'cabane' }
@@ -50,7 +50,7 @@ test('!go avec proposition lance la construction', () => {
   assert.strictEqual(co[1][1], 0);                              // yaw
   assert.deepStrictEqual(co[1][2], { x: 1, y: 1, z: 1 });       // size
   assert.strictEqual(calls.find((c) => c[0] === 'startBuild')[0], 'startBuild');
-  assert.strictEqual(pending.has('Steve'), false);
+  assert.strictEqual(pending.has('steve'), false);
   assert.match(messages.join(' '), /construction/i);
 });
 
@@ -58,22 +58,22 @@ test('!go consomme la proposition même si startBuild lève', () => {
   const { messages, pending, handle } = setup({
     startBuild: () => { throw new Error('boom'); }
   });
-  pending.set('Steve', {
+  pending.set('steve', {
     blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }],
     size: { x: 1, y: 1, z: 1 },
     description: { type_batiment: 'cabane' }
   });
   assert.doesNotThrow(() => handle('Steve', '!go'));
-  assert.strictEqual(pending.has('Steve'), false);
+  assert.strictEqual(pending.has('steve'), false);
   assert.match(messages.join(' '), /erreur/i);
   assert.match(messages.join(' '), /boom/);
 });
 
 test('!cancel vide la proposition', () => {
   const { pending, handle, messages } = setup();
-  pending.set('Steve', { blocks: [], size: {}, description: {} });
+  pending.set('steve', { blocks: [], size: {}, description: {} });
   handle('Steve', '!cancel');
-  assert.strictEqual(pending.has('Steve'), false);
+  assert.strictEqual(pending.has('steve'), false);
   assert.match(messages[0], /annul/i);
 });
 
@@ -122,7 +122,7 @@ test('!status terminé affiche le suffixe', () => {
 test('!go joueur hors de vue : le bot se téléporte puis lance', async () => {
   const { messages, calls, pending, handle, bot } = setup();
   delete bot.players.Steve;
-  pending.set('Steve', {
+  pending.set('steve', {
     blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }],
     size: { x: 1, y: 1, z: 1 },
     description: { type_batiment: 'cabane' }
@@ -132,7 +132,7 @@ test('!go joueur hors de vue : le bot se téléporte puis lance', async () => {
   bot.players.Steve = { entity: { position: { x: 9.5, y: -60, z: 9.5 }, yaw: 0 } };
   await new Promise((r) => setTimeout(r, 90));
   assert.ok(calls.find((c) => c[0] === 'startBuild'));
-  assert.strictEqual(pending.has('Steve'), false);
+  assert.strictEqual(pending.has('steve'), false);
   assert.match(messages.join(' '), /lancée/);
 });
 
@@ -145,7 +145,7 @@ test('!diorama donne le lien d\'upload avec mode=diorama', () => {
 test('!go joueur introuvable même après téléportation : message et proposition conservée', async () => {
   const { messages, calls, pending, handle, bot } = setup();
   delete bot.players.Steve;
-  pending.set('Steve', {
+  pending.set('steve', {
     blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }],
     size: { x: 1, y: 1, z: 1 },
     description: { type_batiment: 'cabane' }
@@ -154,12 +154,12 @@ test('!go joueur introuvable même après téléportation : message et propositi
   await new Promise((r) => setTimeout(r, 90));
   assert.strictEqual(calls.find((c) => c[0] === 'startBuild'), undefined);
   assert.match(messages.join(' '), /je ne te vois pas/);
-  assert.strictEqual(pending.has('Steve'), true);
+  assert.strictEqual(pending.has('steve'), true);
 });
 
 test('!go annonce l\'emprise et le centre', () => {
   const { messages, pending, handle } = setup();
-  pending.set('Steve', {
+  pending.set('steve', {
     blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }],
     size: { x: 10, y: 5, z: 8 },
     description: { type_batiment: 'test' }
@@ -167,4 +167,16 @@ test('!go annonce l\'emprise et le centre', () => {
   handle('Steve', '!go');
   const m = messages.join(' | ');
   assert.match(m, /Emprise : \(0,-9\) → \(9,-2\), centre \(5,-5\)/);
+});
+
+test('!go retrouve une proposition enregistrée avec une casse différente', () => {
+  const { calls, pending, handle } = setup();
+  pending.set('steve', {
+    blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }],
+    size: { x: 1, y: 1, z: 1 },
+    description: { type_batiment: 'cabane' }
+  });
+  handle('Steve', '!go');
+  assert.ok(calls.find((c) => c[0] === 'startBuild'), 'construction non lancée malgré la proposition');
+  assert.strictEqual(pending.has('steve'), false);
 });
