@@ -55,3 +55,16 @@ test('réponse tronquée → [] sans lever', async () => {
   const client = { messages: { create: async () => ({ stop_reason: 'max_tokens', content: [{ type: 'text', text: 'function generateStructure() { return [' }] }) } };
   assert.deepStrictEqual(await decorateInterior(building, {}, { client, timeoutMs: 5000 }), []);
 });
+
+test('plafond de densité : le mobilier excédentaire est aminci déterministiquement', async () => {
+  const items = [];
+  for (let x = 1; x < 9; x++) for (let z = 1; z < 7; z++) items.push({ x, y: 1, z, block: 'bookshelf' });
+  const code = `function generateStructure() { return ${JSON.stringify(items)}; }`;
+  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
+  const a = await decorateInterior(building, {}, { client, timeoutMs: 5000 });
+  const b = await decorateInterior(building, {}, { client, timeoutMs: 5000 });
+  const cap = Math.ceil(10 * 8 * 2 * 0.10); // footprint 10×8 × 2 planchers × 10 %
+  assert.ok(a.length <= cap, `trop de mobilier : ${a.length} > ${cap}`);
+  assert.ok(a.length > 0);
+  assert.deepStrictEqual(a, b); // amincissement déterministe
+});

@@ -15,6 +15,7 @@ Contraintes strictes :
 - Construis paramétriquement : murs pleins, ouvertures, toit selon la forme décrite
 - Intérieurs HABITABLES : un plancher plein tous les 5-6 blocs de hauteur (oak_planks ou pierre selon le style), un escalier (stairs) reliant chaque étage, 2 à 4 pièces par étage séparées par des cloisons avec portes
 - Le toit est COMPLET et fermé : il couvre toute l'emprise des murs sans aucun trou, pignons remplis
+- ACCESSIBILITÉ : chaque pièce a une porte (oak_door ou ouverture de 1x2), les escaliers des étages sont ALIGNÉS verticalement (même x,z d'un étage à l'autre) et débouchent sur un couloir, l'entrée principale donne sur la circulation
 
 Qualité et détail (important) :
 - Vise le MAXIMUM de détail architectural : varie les matériaux (3 à 5 blocs différents par façade)

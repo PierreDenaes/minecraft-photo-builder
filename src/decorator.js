@@ -38,7 +38,7 @@ async function decorateInterior(building, description, { client, timeoutMs = 200
     const response = await withRetry(() => client.messages.create({
       model: MODEL,
       max_tokens: 16000,
-      system: `Tu es décorateur d'intérieur Minecraft. Écris une fonction JavaScript pure generateStructure() retournant [{x, y, z, block}] : mobilier, rangements et éclairage posés SUR les planchers (y du plancher + 1), à l'intérieur des murs (marge de 1 bloc), pièces cohérentes (coin repas, bibliothèque, atelier, éclairage régulier aux murs). Code COMPACT : boucles et fonctions d'aide, jamais de longues listes de blocs un par un. Blocs autorisés UNIQUEMENT : ${[...INTERIOR_BLOCKS].join(', ')}. Réponds UNIQUEMENT avec le code, sans texte autour.`,
+      system: `Tu es décorateur d'intérieur Minecraft. Écris une fonction JavaScript pure generateStructure() retournant [{x, y, z, block}] : mobilier, rangements et éclairage posés SUR les planchers (y du plancher + 1), à l'intérieur des murs (marge de 1 bloc), pièces cohérentes (coin repas, bibliothèque, atelier, éclairage régulier aux murs). PARCIMONIE : 10 à 20 éléments par pièce MAXIMUM, laisse les axes de circulation totalement libres, jamais de remplissage en tapis intégral. Code COMPACT : boucles et fonctions d'aide, jamais de longues listes de blocs un par un. Blocs autorisés UNIQUEMENT : ${[...INTERIOR_BLOCKS].join(', ')}. Réponds UNIQUEMENT avec le code, sans texte autour.`,
       messages: [{
         role: 'user',
         content: `Bâtiment ${d.x}x${d.z}x${d.y} (x,z,y). Niveaux de plancher (y) : ${floors.join(', ')}. Style : ${description.type_batiment || 'bâtiment'}${description.style ? ' — ' + description.style : ''}. Écris generateStructure().`
@@ -50,11 +50,20 @@ async function decorateInterior(building, description, { client, timeoutMs = 200
     }
     const code = stripCodeFences(response.content.find((b) => b.type === 'text').text);
     const raw = runStructureCode(code, timeoutMs);
-    return raw.filter((b) => b && typeof b === 'object'
+    const filtered = raw.filter((b) => b && typeof b === 'object'
       && INTERIOR_BLOCKS.has(b.block)
       && Number.isInteger(b.x) && Number.isInteger(b.y) && Number.isInteger(b.z)
       && b.x >= 0 && b.x < d.x && b.y >= 0 && b.y < d.y && b.z >= 0 && b.z < d.z
       && !occupied.has(`${b.x},${b.y},${b.z}`));
+    const cap = Math.ceil(d.x * d.z * floors.length * 0.10);
+    if (filtered.length > cap) {
+      const step = filtered.length / cap;
+      const thinned = [];
+      for (let i = 0; i < filtered.length; i += step) thinned.push(filtered[Math.floor(i)]);
+      console.warn(`[decorateur] densité plafonnée : ${filtered.length} → ${thinned.length}`);
+      return thinned.slice(0, cap);
+    }
+    return filtered;
   } catch (err) {
     console.warn('[decorateur] indisponible :', err.message);
     return [];
