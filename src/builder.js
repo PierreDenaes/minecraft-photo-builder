@@ -11,6 +11,7 @@ class Builder {
     this.queue = [];
     this.timer = null;
     this.snapshot = null;
+    this.lastBuild = null;
     this.progress = { active: false, done: 0, total: 0 };
   }
 
@@ -64,6 +65,7 @@ class Builder {
 
   startBuild(blocks, origin, size) {
     this.snapshot = this.takeSnapshot(origin, size);
+    this.lastBuild = { origin, size };
     const cmds = [
       ...this.flattenCommands(origin, size),
       ...optimizeToCommands(blocks, origin)
@@ -73,15 +75,33 @@ class Builder {
   }
 
   undo() {
-    if (!this.snapshot) return false;
-    // Restaurer : d'abord tout vider (air) par couches, puis reposer les blocs sauvegardés non-air
-    const cmds = [
-      ...this.flattenCommandsFromSnapshot(),
-      ...optimizeToCommands(this.snapshot.blocks, this.snapshot.origin)
-    ];
-    this.snapshot = null;
-    this.enqueue(cmds);
-    return true;
+    if (this.snapshot) {
+      const cmds = [
+        ...this.flattenCommandsFromSnapshot(),
+        ...optimizeToCommands(this.snapshot.blocks, this.snapshot.origin)
+      ];
+      this.snapshot = null;
+      this.lastBuild = null;
+      this.enqueue(cmds);
+      return true;
+    }
+    if (this.lastBuild) {
+      this.enqueue(this.undoFlatCommands(this.lastBuild));
+      this.lastBuild = null;
+      return true;
+    }
+    return false;
+  }
+
+  undoFlatCommands({ origin, size }) {
+    const x1 = origin.x - 1, x2 = origin.x + size.x;
+    const z1 = origin.z - 1, z2 = origin.z + size.z;
+    const cmds = [];
+    for (let y = origin.y; y < origin.y + size.y; y++) {
+      cmds.push(`/fill ${x1} ${y} ${z1} ${x2} ${y} ${z2} air`);
+    }
+    cmds.push(`/fill ${x1} ${origin.y - 1} ${z1} ${x2} ${origin.y - 1} ${z2} grass_block`);
+    return cmds;
   }
 
   flattenCommandsFromSnapshot() {

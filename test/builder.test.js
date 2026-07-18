@@ -90,3 +90,16 @@ test('cmdsPerTick configurable accélère le drain', async () => {
   assert.strictEqual(bot.sent.length, 16);
   assert.strictEqual(b.status().active, false);
 });
+
+test('undo sans snapshot (volume trop grand) restaure le terrain plat', async () => {
+  const bot = fakeBot();
+  const b = new Builder(bot, { maxBlocks: 10 }); // cap minuscule → takeSnapshot retourne null
+  b.startBuild([{ x: 0, y: 0, z: 0, block: 'stone' }], { x: 0, y: -60, z: 0 }, { x: 4, y: 3, z: 4 });
+  await new Promise((r) => setTimeout(r, 600));
+  bot.sent.length = 0;
+  assert.strictEqual(b.undo(), true);
+  await new Promise((r) => setTimeout(r, 600));
+  assert.ok(bot.sent.some((c) => c === '/fill -1 -60 -1 4 -60 4 air'));
+  assert.ok(bot.sent.some((c) => c === '/fill -1 -61 -1 4 -61 4 grass_block'));
+  assert.strictEqual(b.undo(), false); // lastBuild consommé
+});
