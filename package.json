@@ -7,6 +7,7 @@
     "start": "node src/index.js",
     "test": "node --test test/**/*.test.js",
     "colors": "node scripts/extract-block-colors.js",
+    "setup:depth": "node scripts/setup-depth.js",
     "server": "docker compose up -d && docker compose logs -f",
     "server:reset": "docker compose down && rm -rf mc-data && docker compose up -d"
   },
