@@ -51,10 +51,10 @@ function createBot(cfg) {
   const blockColors = loadBlockColors();
   const dio = cfg.limits.diorama;
 
-  function proposeStructure(username, blocks, description) {
+  function proposeStructure(username, blocks, description, { maxSize, maxBlocks }) {
     const check = validateStructure(blocks, {
-      maxSize: Math.max(dio.size_x, dio.max_y, dio.size_z),
-      maxBlocks: dio.max_blocks,
+      maxSize,
+      maxBlocks,
       validBlocks
     });
     if (!check.ok) {
@@ -103,7 +103,7 @@ function createBot(cfg) {
     const desc = description.erreur
       ? { type_batiment: 'diorama' }
       : { ...description, type_batiment: `diorama : ${description.type_batiment}` };
-    return proposeStructure(username, blocks, desc);
+    return proposeStructure(username, blocks, desc, { maxSize: Math.max(dio.size_x, dio.max_y, dio.size_z), maxBlocks: dio.max_blocks });
   }
 
   async function onModel(username, buffer, ext) {
@@ -114,7 +114,7 @@ function createBot(cfg) {
       maxX: dio.size_x, maxY: dio.max_y, maxZ: dio.size_z,
       defaultBlock: 'stone', colors: blockColors, zUp: ext === 'stl'
     });
-    return proposeStructure(username, blocks, { type_batiment: `modèle 3D (${ext})` });
+    return proposeStructure(username, blocks, { type_batiment: `modèle 3D (${ext})` }, { maxSize: Math.max(dio.size_x, dio.max_y, dio.size_z), maxBlocks: dio.max_blocks });
   }
 
   async function onPhoto(username, buffer, mimeType) {
@@ -131,7 +131,7 @@ function createBot(cfg) {
       timeoutMs: cfg.limits.sandbox_timeout_ms,
       validBlocks
     });
-    return proposeStructure(username, blocks, description);
+    return proposeStructure(username, blocks, description, { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks });
   }
 
   const app = createWebServer({ onPhoto, onDiorama, onModel });

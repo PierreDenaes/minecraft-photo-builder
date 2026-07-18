@@ -83,12 +83,12 @@ class Builder {
       this.snapshot = null;
       this.lastBuild = null;
       this.enqueue(cmds);
-      return true;
+      return 'snapshot';
     }
     if (this.lastBuild) {
       this.enqueue(this.undoFlatCommands(this.lastBuild));
       this.lastBuild = null;
-      return true;
+      return 'flat';
     }
     return false;
   }

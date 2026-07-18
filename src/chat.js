@@ -47,7 +47,9 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
       }
 
       if (cmd === '!undo') {
-        if (builder.undo()) bot.chat('Restauration de la zone en cours...');
+        const mode = builder.undo();
+        if (mode === 'flat') bot.chat('Restauration en terrain plat (relief d\'origine non conservé)...');
+        else if (mode) bot.chat('Restauration de la zone en cours...');
         else bot.chat('Aucune construction à annuler.');
         return;
       }

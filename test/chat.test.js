@@ -13,7 +13,7 @@ function setup(builderOverrides = {}) {
   const defaultBuilder = {
     computeOrigin: (...args) => { calls.push(['computeOrigin', args]); return { x: 0, y: -60, z: -9 }; },
     startBuild: (...args) => { calls.push(['startBuild', args]); return { total: 42 }; },
-    undo: () => { calls.push(['undo']); return true; },
+    undo: () => { calls.push(['undo']); return 'snapshot'; },
     status: () => ({ active: true, done: 10, total: 42 }),
     estimateSeconds: () => 2
   };
