@@ -37,13 +37,17 @@ async function decorateInterior(building, description, { client, timeoutMs = 200
   try {
     const response = await withRetry(() => client.messages.create({
       model: MODEL,
-      max_tokens: 8000,
-      system: `Tu es décorateur d'intérieur Minecraft. Écris une fonction JavaScript pure generateStructure() retournant [{x, y, z, block}] : mobilier, rangements et éclairage posés SUR les planchers (y du plancher + 1), à l'intérieur des murs (marge de 1 bloc), pièces cohérentes (coin repas, bibliothèque, atelier, éclairage régulier aux murs). Blocs autorisés UNIQUEMENT : ${[...INTERIOR_BLOCKS].join(', ')}. Réponds UNIQUEMENT avec le code, sans texte autour.`,
+      max_tokens: 16000,
+      system: `Tu es décorateur d'intérieur Minecraft. Écris une fonction JavaScript pure generateStructure() retournant [{x, y, z, block}] : mobilier, rangements et éclairage posés SUR les planchers (y du plancher + 1), à l'intérieur des murs (marge de 1 bloc), pièces cohérentes (coin repas, bibliothèque, atelier, éclairage régulier aux murs). Code COMPACT : boucles et fonctions d'aide, jamais de longues listes de blocs un par un. Blocs autorisés UNIQUEMENT : ${[...INTERIOR_BLOCKS].join(', ')}. Réponds UNIQUEMENT avec le code, sans texte autour.`,
       messages: [{
         role: 'user',
         content: `Bâtiment ${d.x}x${d.z}x${d.y} (x,z,y). Niveaux de plancher (y) : ${floors.join(', ')}. Style : ${description.type_batiment || 'bâtiment'}${description.style ? ' — ' + description.style : ''}. Écris generateStructure().`
       }]
     }), { retries: 1 });
+    if (response.stop_reason === 'max_tokens') {
+      console.warn('[decorateur] réponse tronquée — décoration ignorée');
+      return [];
+    }
     const code = stripCodeFences(response.content.find((b) => b.type === 'text').text);
     const raw = runStructureCode(code, timeoutMs);
     return raw.filter((b) => b && typeof b === 'object'

@@ -50,3 +50,8 @@ test('bâtiment sans plancher détecté → [] sans appel API', async () => {
   assert.deepStrictEqual(decor, []);
   assert.strictEqual(called, false);
 });
+
+test('réponse tronquée → [] sans lever', async () => {
+  const client = { messages: { create: async () => ({ stop_reason: 'max_tokens', content: [{ type: 'text', text: 'function generateStructure() { return [' }] }) } };
+  assert.deepStrictEqual(await decorateInterior(building, {}, { client, timeoutMs: 5000 }), []);
+});
