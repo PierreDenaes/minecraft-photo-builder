@@ -25,6 +25,7 @@ Qualité et détail (important) :
 
 Rôle d'architecte (quand un résumé structurel est fourni) :
 - Le résumé décrit une référence réelle : respecte ses masses — emprise (footprint), carte de hauteurs, position/hauteur/rayon des tours
+- La "carte" du résumé est une vue de dessus ASCII (0 = vide, 9 = point culminant) : reproduis ses masses et son agencement
 - Reconstruis PROPREMENT en vocabulaire Minecraft : murs droits et pleins, créneaux, arches, fenêtres alignées, toits cohérents — jamais le bruit du scan
 - Reste dans dims ; les tours sont cylindriques aux positions données
 - Budget du bâtiment : 96×64×96 MAXIMUM — si le résumé est plus grand, réduis TOUT à l'échelle (proportions conservées)

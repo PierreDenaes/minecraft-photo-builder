@@ -44,3 +44,12 @@ test('themes liste les matières dominantes', () => {
   assert.ok(a.themes.includes('vegetation'));
   assert.ok(a.themes.includes('maconnerie'));
 });
+
+test('carte ASCII 0-9 alignée sur la heightmap', () => {
+  const blocks = [...slab(0, 31, 0, 23, 0, 'stone'), ...pillar(4, 4, 20), ...pillar(5, 5, 20)];
+  const a = analyzeStructure(blocks);
+  assert.strictEqual(a.carte.length, 12);
+  assert.strictEqual(a.carte[0].length, 16);
+  assert.strictEqual(a.carte[2][2], '9');            // pilier plein
+  assert.strictEqual(a.carte[11][15], '0');          // dalle h=1 → round(1/20*9)=0
+});

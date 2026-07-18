@@ -86,3 +86,11 @@ test('injecte le résumé structurel dans le prompt', async () => {
   assert.match(captured.messages[0].content, /"height":25/);
   assert.match(captured.system, /architecte/i);
 });
+
+test('le prompt architecte explique la carte ASCII', async () => {
+  const code = 'function generateStructure() { return [{ x: 0, y: 0, z: 0, block: "stone" }]; }';
+  let captured;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
+  await generateStructure({ type_batiment: 't' }, { client, timeoutMs: 5000, structuralSummary: { carte: ['90', '00'] } });
+  assert.match(captured.system, /vue de dessus ASCII/);
+});

@@ -51,7 +51,9 @@ function analyzeStructure(blocks, { gridX = 16, gridZ = 12 } = {}) {
     }
   }
   const themes = [...themeCount.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t);
-  return { dims, heightmap, footprint, towers, themes };
+  const hSafe = Math.max(1, hMax);
+  const carte = heightmap.map((row) => row.map((h) => String(Math.min(9, Math.round((h / hSafe) * 9)))).join(''));
+  return { dims, heightmap, footprint, towers, themes, carte };
 }
 
 module.exports = { analyzeStructure };
