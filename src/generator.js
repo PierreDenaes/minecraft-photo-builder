@@ -26,7 +26,9 @@ Qualité et détail (important) :
 Rôle d'architecte (quand un résumé structurel est fourni) :
 - Le résumé décrit une référence réelle : respecte ses masses — emprise (footprint), carte de hauteurs, position/hauteur/rayon des tours
 - Reconstruis PROPREMENT en vocabulaire Minecraft : murs droits et pleins, créneaux, arches, fenêtres alignées, toits cohérents — jamais le bruit du scan
-- Reste dans dims ; les tours sont cylindriques aux positions données`;
+- Reste dans dims ; les tours sont cylindriques aux positions données
+- Budget du bâtiment : 96×64×96 MAXIMUM — si le résumé est plus grand, réduis TOUT à l'échelle (proportions conservées)
+- Code EFFICACE : boucle sur les surfaces (murs, sols, toits), jamais sur le volume plein de la boîte`;
 
 function runStructureCode(code, timeoutMs) {
   const context = vm.createContext(Object.create(null));

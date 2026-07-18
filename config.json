@@ -1,12 +1,25 @@
 {
-  "minecraft": { "host": "localhost", "port": 25565, "username": "BuilderBot", "version": "1.20.4" },
-  "web": { "port": 3000, "public_host": "localhost" },
+  "minecraft": {
+    "host": "localhost",
+    "port": 25565,
+    "username": "BuilderBot",
+    "version": "1.20.4"
+  },
+  "web": {
+    "port": 3000,
+    "public_host": "localhost"
+  },
   "limits": {
     "max_size": 96,
     "max_blocks": 500000,
-    "sandbox_timeout_ms": 5000,
+    "sandbox_timeout_ms": 20000,
     "throttle_cmds_per_tick": 16,
-    "diorama": { "size_x": 160, "size_z": 120, "max_y": 120, "max_blocks": 2500000 }
+    "diorama": {
+      "size_x": 160,
+      "size_z": 120,
+      "max_y": 120,
+      "max_blocks": 2500000
+    }
   },
   "generation_mode": "code",
   "reconstruction": "inspire"
