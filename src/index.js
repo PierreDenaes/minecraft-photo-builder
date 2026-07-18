@@ -25,6 +25,7 @@ const { terrainFromHeightmap } = require('./terrain');
 const { renderVoxels } = require('./render');
 const { enforceSupport } = require('./support');
 const { plantVegetation } = require('./vegetation');
+const { decorateInterior } = require('./decorator');
 
 const validBlocks = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../data/valid_blocks.json'), 'utf8')
@@ -192,8 +193,11 @@ function createBot(cfg) {
       const support = enforceSupport(generated);
       if (support.removed > 0) console.log(`[modele] gravité : ${support.removed} blocs flottants supprimés`);
       const building = support.blocks;
+      const decor = await decorateInterior(building, buildingDesc, { client: apiClient, timeoutMs: cfg.limits.sandbox_timeout_ms });
+      if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
+      const furnished = building.concat(decor);
       const bSize = { x: 0, y: 0, z: 0 };
-      for (const b of building) {
+      for (const b of furnished) {
         bSize.x = Math.max(bSize.x, b.x + 1);
         bSize.y = Math.max(bSize.y, b.y + 1);
         bSize.z = Math.max(bSize.z, b.z + 1);
@@ -214,7 +218,7 @@ function createBot(cfg) {
           topY = Math.max(topY, t.y);
         }
       }
-      const placed = building.map((b) => ({ x: b.x + offX, y: b.y + topY + 1, z: b.z + offZ, block: b.block }));
+      const placed = furnished.map((b) => ({ x: b.x + offX, y: b.y + topY + 1, z: b.z + offZ, block: b.block }));
       const densite = env.arbres === 'dense' ? 0.03 : env.arbres === 'epars' ? 0.012 : 0;
       const essences = (env.types_arbres || []).filter((t) => t === 'chene' || t === 'sapin');
       const trees = plantVegetation(terrain, {
@@ -242,7 +246,10 @@ function createBot(cfg) {
       timeoutMs: cfg.limits.sandbox_timeout_ms,
       validBlocks: materiaux
     });
-    return proposeStructure(username, blocks, description, { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks });
+    const decor = await decorateInterior(blocks, description, { client: apiClient, timeoutMs: cfg.limits.sandbox_timeout_ms });
+    if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
+    const meubles = blocks.concat(decor);
+    return proposeStructure(username, meubles, description, { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks });
   }
 
   const app = createWebServer({ onPhoto, onDiorama, onModel });
