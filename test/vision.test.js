@@ -46,3 +46,11 @@ test('injecte la liste des blocs autorisés dans le prompt système', async () =
   await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64, validBlocks: ['stone', 'brick_slab'] });
   assert.match(captured.system, /brick_slab/);
 });
+
+test('le prompt système demande zone_batiment en pourcentages', async () => {
+  let captured;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: JSON.stringify(fixture) }] }; } } };
+  await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
+  assert.match(captured.system, /zone_batiment/);
+  assert.match(captured.system, /pourcentage/i);
+});

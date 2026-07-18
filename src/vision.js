@@ -17,13 +17,15 @@ Schéma attendu :
   "etages": N,
   "toit": { "forme": "...", "materiau_suggere": "bloc_minecraft" },
   "elements": ["..."],
-  "palette_blocs": { "murs": "bloc", "toit": "bloc", "fondation": "bloc" }
+  "palette_blocs": { "murs": "bloc", "toit": "bloc", "fondation": "bloc" },
+  "zone_batiment": { "x": N, "y": N, "largeur": N, "hauteur": N }
 }
 
 Règles :
 - Tous les blocs doivent être des noms Minecraft 1.20 valides (snake_case, sans préfixe minecraft:)
 - Dimensions maximales : ${maxSize} sur chaque axe
 - Mappe les couleurs/matériaux réels vers les blocs les plus proches
+- zone_batiment : rectangle englobant du bâtiment principal en POURCENTAGES (0-100) de l'image, x/y = coin haut-gauche ; omets ce champ s'il n'y a pas de bâtiment net
 - Si l'image ne contient aucun bâtiment identifiable, réponds : {"erreur": "raison courte"}${blocksRule}`;
 }
 
