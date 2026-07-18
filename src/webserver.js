@@ -10,7 +10,7 @@ function createWebServer({ onPhoto, onDiorama, onModel }) {
   const app = express();
   const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 20 * 1024 * 1024 },
+    limits: { fileSize: 100 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
       const ext = path.extname(file.originalname).toLowerCase();
       if (IMAGE_TYPES.has(file.mimetype) || MODEL_EXTS.has(ext)) cb(null, true);

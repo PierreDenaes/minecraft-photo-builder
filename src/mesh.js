@@ -1,3 +1,5 @@
+const sharp = require('sharp');
+
 function parseOBJ(text) {
   const verts = [];
   const triangles = [];
@@ -50,7 +52,7 @@ function parseSTL(buffer) {
 
 const GLB_COMPONENT = { 5120: Int8Array, 5121: Uint8Array, 5122: Int16Array, 5123: Uint16Array, 5125: Uint32Array, 5126: Float32Array };
 
-function parseGLB(buffer) {
+async function parseGLB(buffer) {
   if (buffer.length < 20 || buffer.readUInt32LE(0) !== 0x46546c67) throw new Error('GLB invalide : magic absent');
   let offset = 12;
   let json = null;
@@ -65,13 +67,46 @@ function parseGLB(buffer) {
   }
   if (!json || !bin) throw new Error('GLB invalide : chunks JSON/BIN manquants');
 
+  const GLB_COMPS = { SCALAR: 1, VEC2: 2, VEC3: 3 };
+
   function readAccessor(i) {
     const acc = json.accessors[i];
     const view = json.bufferViews[acc.bufferView];
     const Type = GLB_COMPONENT[acc.componentType];
-    const comps = acc.type === 'VEC3' ? 3 : 1;
+    const comps = GLB_COMPS[acc.type] || 1;
     const start = bin.byteOffset + (view.byteOffset || 0) + (acc.byteOffset || 0);
     return new Type(bin.buffer.slice(start, start + acc.count * comps * Type.BYTES_PER_ELEMENT));
+  }
+
+  // Décodage paresseux des textures baseColor (photogrammétrie : couleurs dans les textures)
+  const texCache = new Map();
+  async function textureImage(texIndex) {
+    if (texCache.has(texIndex)) return texCache.get(texIndex);
+    let decoded = null;
+    const src = json.textures?.[texIndex]?.source;
+    const img = json.images?.[src];
+    if (img !== undefined && img.bufferView !== undefined) {
+      const view = json.bufferViews[img.bufferView];
+      const start = bin.byteOffset + (view.byteOffset || 0);
+      const bytes = Buffer.from(bin.buffer.slice(start, start + view.byteLength));
+      try {
+        const { data, info } = await sharp(bytes).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+        decoded = { data, width: info.width, height: info.height };
+      } catch {
+        decoded = null; // texture illisible → repli baseColorFactor/défaut
+      }
+    }
+    texCache.set(texIndex, decoded);
+    return decoded;
+  }
+
+  function sampleTexture(tex, u, v) {
+    const wu = u - Math.floor(u);
+    const wv = v - Math.floor(v);
+    const px = Math.min(tex.width - 1, Math.round(wu * (tex.width - 1)));
+    const py = Math.min(tex.height - 1, Math.round(wv * (tex.height - 1)));
+    const i = (py * tex.width + px) * 3;
+    return [tex.data[i], tex.data[i + 1], tex.data[i + 2]];
   }
 
   const triangles = [];
@@ -82,20 +117,35 @@ function parseGLB(buffer) {
       const idx = prim.indices !== undefined ? readAccessor(prim.indices)
         : Uint32Array.from({ length: pos.length / 3 }, (_, i) => i);
       let color = null;
+      let tex = null;
+      let uv = null;
       if (prim.material !== undefined) {
-        const f = json.materials[prim.material]?.pbrMetallicRoughness?.baseColorFactor;
-        if (f) color = [Math.round(f[0] * 255), Math.round(f[1] * 255), Math.round(f[2] * 255)];
+        const mat = json.materials?.[prim.material]?.pbrMetallicRoughness;
+        if (mat?.baseColorTexture !== undefined && prim.attributes.TEXCOORD_0 !== undefined) {
+          tex = await textureImage(mat.baseColorTexture.index);
+          if (tex) uv = readAccessor(prim.attributes.TEXCOORD_0);
+        }
+        if (!tex && mat?.baseColorFactor) {
+          const f = mat.baseColorFactor;
+          color = [Math.round(f[0] * 255), Math.round(f[1] * 255), Math.round(f[2] * 255)];
+        }
       }
       const p = (i) => [pos[idx[i] * 3], pos[idx[i] * 3 + 1], pos[idx[i] * 3 + 2]];
       for (let i = 0; i + 2 < idx.length; i += 3) {
-        triangles.push({ a: p(i), b: p(i + 1), c: p(i + 2), color });
+        let triColor = color;
+        if (tex && uv) {
+          const u = (uv[idx[i] * 2] + uv[idx[i + 1] * 2] + uv[idx[i + 2] * 2]) / 3;
+          const v = (uv[idx[i] * 2 + 1] + uv[idx[i + 1] * 2 + 1] + uv[idx[i + 2] * 2 + 1]) / 3;
+          triColor = sampleTexture(tex, u, v);
+        }
+        triangles.push({ a: p(i), b: p(i + 1), c: p(i + 2), color: triColor });
       }
     }
   }
   return { triangles };
 }
 
-function parseModel(buffer, ext) {
+async function parseModel(buffer, ext) {
   if (ext === 'obj') return parseOBJ(buffer.toString('utf8'));
   if (ext === 'stl') return parseSTL(buffer);
   if (ext === 'glb') return parseGLB(buffer);

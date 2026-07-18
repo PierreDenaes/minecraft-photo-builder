@@ -108,7 +108,7 @@ function createBot(cfg) {
 
   async function onModel(username, buffer, ext) {
     bot.chat(`Modèle 3D (${ext}) reçu de ${username}, voxelisation...`);
-    const { triangles, warning } = parseModel(buffer, ext);
+    const { triangles, warning } = await parseModel(buffer, ext);
     if (warning) bot.chat(`${username} : ${warning}`);
     const blocks = voxelizeMesh(triangles, {
       maxX: dio.size_x, maxY: dio.max_y, maxZ: dio.size_z,
