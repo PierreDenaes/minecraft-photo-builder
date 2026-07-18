@@ -27,3 +27,11 @@ test('une arche connectée est entièrement conservée', () => {
 test('structure vide : retour vide sans erreur', () => {
   assert.deepStrictEqual(enforceSupport([]), { blocks: [], removed: 0 });
 });
+
+test('garde-fou : un voxel bas isolé ne détruit pas le bâtiment', () => {
+  const mass = box(0, 4, 10, 14, 0, 4);          // 125 blocs en hauteur
+  const outlier = [{ x: 20, y: 0, z: 20, block: 'stone' }];
+  const { blocks, removed } = enforceSupport([...outlier, ...mass]);
+  assert.strictEqual(removed, 0);
+  assert.strictEqual(blocks.length, 126);        // tout conservé (couche de base anormale)
+});

@@ -24,6 +24,12 @@ function enforceSupport(blocks) {
     }
   }
   const out = blocks.filter((b) => kept.has(key(b.x, b.y, b.z)));
+  // Garde-fou : si la couche de base est un artefact (voxel bas isolé), la quasi-totalité
+  // du bâtiment serait « flottante » — mieux vaut tout conserver que proposer un moignon
+  if (out.length < blocks.length * 0.25) {
+    console.warn('[support] couche de base anormale — structure conservée telle quelle');
+    return { blocks, removed: 0 };
+  }
   return { blocks: out, removed: blocks.length - out.length };
 }
 
