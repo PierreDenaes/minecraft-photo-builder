@@ -101,3 +101,12 @@ test('option up:z équivaut à zUp:true', () => {
   const b = voxelizeMesh(tris, { maxX: 8, maxY: 8, maxZ: 8, defaultBlock: 'stone', up: 'z' });
   assert.deepStrictEqual(a.sort((p, q) => p.x - q.x || p.y - q.y || p.z - q.z), b.sort((p, q) => p.x - q.x || p.y - q.y || p.z - q.z));
 });
+
+test('les petits triangles (détails) gagnent sur les grands', () => {
+  const colors = new Map([['white_concrete', [207, 213, 214]], ['black_concrete', [8, 10, 15]]]);
+  const big = { a: [0, 0, 0], b: [6, 0, 0], c: [0, 6, 0], color: [207, 213, 214] };   // face
+  const detail = { a: [2, 2, 0], b: [2.6, 2, 0], c: [2, 2.6, 0], color: [8, 10, 15] }; // œil
+  const blocks = voxelizeMesh([detail, big], { maxX: 8, maxY: 8, maxZ: 8, defaultBlock: 'stone', colors });
+  const eye = blocks.find((b) => b.block === 'black_concrete');
+  assert.ok(eye, 'le détail sombre a été écrasé par la grande face');
+});

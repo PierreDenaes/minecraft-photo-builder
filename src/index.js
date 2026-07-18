@@ -173,7 +173,8 @@ function createBot(cfg) {
         maxX: 48, maxY: 72, maxZ: 48, defaultBlock: 'white_concrete',
         colors: colorsStatue, up
       });
-      const statue = enforceSupport(shell).blocks.map((b) => ({ ...b, y: b.y + 2 }));
+      // Pas de gravité pour les statues : les membres détachés de la coquille sont de l'art, pas des bugs
+      const statue = shell.map((b) => ({ ...b, y: b.y + 2 }));
       let sx = 0;
       let sz = 0;
       for (const b of statue) { sx = Math.max(sx, b.x); sz = Math.max(sz, b.z); }

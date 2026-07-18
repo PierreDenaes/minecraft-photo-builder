@@ -35,7 +35,17 @@ function voxelizeMesh(triangles, { maxX, maxY, maxZ, defaultBlock, colors, zUp =
     rasterize(ac, bc, c, block);
     rasterize(ab, bc, ac, block);
   }
-  for (const t of triangles) {
+  // Les grands triangles d'abord : les petits (détails — yeux, motifs) écrasent en dernier
+  const area = (t) => {
+    const ab = [t.b[0] - t.a[0], t.b[1] - t.a[1], t.b[2] - t.a[2]];
+    const ac = [t.c[0] - t.a[0], t.c[1] - t.a[1], t.c[2] - t.a[2]];
+    const cx = ab[1] * ac[2] - ab[2] * ac[1];
+    const cy = ab[2] * ac[0] - ab[0] * ac[2];
+    const cz = ab[0] * ac[1] - ab[1] * ac[0];
+    return cx * cx + cy * cy + cz * cz;
+  };
+  const byArea = [...triangles].sort((t1, t2) => area(t2) - area(t1));
+  for (const t of byArea) {
     const block = t.color && pick ? pick(t.color[0], t.color[1], t.color[2]) : defaultBlock;
     const [a, b, c] = [toVox(t.a), toVox(t.b), toVox(t.c)];
     rasterize(a, b, c, block);
