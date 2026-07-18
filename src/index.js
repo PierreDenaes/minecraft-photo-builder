@@ -48,6 +48,12 @@ function createBot(cfg) {
   const handleChat = createChatHandler({ bot, builder, config: cfg, pending });
 
   bot.on('spawn', () => console.log('[bot] connecté et apparu en jeu'));
+  bot.on('message', (m) => {
+    const t = m.toString();
+    if (!/Changed the block|Successfully filled|Avancement|Palette|Construction de|!go|!status/.test(t)) {
+      console.log('[mc]', t.slice(0, 200));
+    }
+  });
   bot.on('kicked', (reason) => console.error('[bot] kick:', reason));
   bot.on('error', (err) => console.error('[bot] erreur:', err.message));
   bot.on('chat', handleChat);

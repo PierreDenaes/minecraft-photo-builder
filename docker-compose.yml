@@ -14,6 +14,9 @@ services:
       ALLOW_FLIGHT: "TRUE"
       MEMORY: 2G
       PATCH_DEFINITIONS: /patches
+      # OPS résout via l'API Mojang (UUID premium ≠ UUID offline) → op via RCON à chaque boot
+      RCON_CMDS_STARTUP: |-
+        op BuilderBot
     ports:
       - "25565:25565"
     volumes:
