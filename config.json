@@ -8,5 +8,6 @@
     "throttle_cmds_per_tick": 16,
     "diorama": { "size_x": 160, "size_z": 120, "max_y": 120, "max_blocks": 2500000 }
   },
-  "generation_mode": "code"
+  "generation_mode": "code",
+  "reconstruction": "inspire"
 }

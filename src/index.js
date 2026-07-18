@@ -19,6 +19,9 @@ const { clusterColors, assignThemes, buildThemePicker, themeOfBlock } = require(
 const { THEME_BLOCKS } = require('./blockcolors');
 const { createUnderground } = require('./subsurface');
 const { createClient } = require('./llm');
+const { cleanTriangles } = require('./meshclean');
+const { analyzeStructure } = require('./structure-analysis');
+const { terrainFromHeightmap } = require('./terrain');
 
 const validBlocks = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../data/valid_blocks.json'), 'utf8')
@@ -146,7 +149,13 @@ function createBot(cfg) {
     bot.chat(`Modèle 3D (${ext}) reçu de ${username}, voxelisation...`);
     const { triangles, warning } = await parseModel(buffer, ext);
     if (warning) bot.chat(`${username} : ${warning}`);
-    const colored = triangles.filter((t) => t.color);
+    const cleaned = cleanTriangles(triangles);
+    if (cleaned.removed > 0) bot.chat(`Nettoyage du scan : ${cleaned.removed} triangles de débris ignorés.`);
+    const seed = Math.floor(Math.random() * 2 ** 31);
+    console.log(`[modele] graine sous-sol : ${seed}`);
+    const underground = createUnderground({ seed, maxY: dio.max_y });
+    // voxelisation de référence (sert d'analyse en mode inspire, de rendu en mode brut)
+    const colored = cleaned.triangles.filter((t) => t.color);
     let colors = colorsBati;
     if (colored.length > 0) {
       const step = Math.max(1, Math.floor(colored.length / 4000));
@@ -154,14 +163,41 @@ function createBot(cfg) {
       for (let i = 0; i < colored.length; i += step) samples.push(colored[i].color);
       colors = await deliberatePalette(samples, colorsBati, `modèle 3D scanné (${ext})`);
     }
-    const seed = Math.floor(Math.random() * 2 ** 31);
-    console.log(`[diorama] graine sous-sol : ${seed}`);
-    const underground = createUnderground({ seed, maxY: dio.max_y });
-    const blocks = voxelizeMesh(triangles, {
+    const reference = voxelizeMesh(cleaned.triangles, {
       maxX: dio.size_x, maxY: dio.max_y, maxZ: dio.size_z,
       defaultBlock: 'stone', colors, zUp: ext === 'stl',
       solid: true, underground, surfaceThemeOf: themeOfBlock
     });
+    let blocks = reference;
+    if ((cfg.reconstruction || 'inspire') === 'inspire') {
+      const summary = analyzeStructure(reference);
+      const building = await generateStructure(
+        { type_batiment: `reconstruction fidèle du modèle 3D (${ext})` },
+        { timeoutMs: cfg.limits.sandbox_timeout_ms, validBlocks: materiaux, structuralSummary: summary }
+      );
+      const bSize = { x: 0, y: 0, z: 0 };
+      for (const b of building) {
+        bSize.x = Math.max(bSize.x, b.x + 1);
+        bSize.y = Math.max(bSize.y, b.y + 1);
+        bSize.z = Math.max(bSize.z, b.z + 1);
+      }
+      const hillHeight = Math.max(8, Math.min(24, Math.round(summary.dims.y / 3)));
+      const terrain = terrainFromHeightmap(summary.heightmap, {
+        sizeX: dio.size_x, sizeZ: dio.size_z, maxHeight: hillHeight,
+        underground, taperWidth: 12
+      });
+      const offX = Math.floor((dio.size_x - bSize.x) / 2);
+      const offZ = Math.floor((dio.size_z - bSize.z) / 2);
+      let topY = 0;
+      for (const t of terrain) {
+        if (t.x >= offX && t.x < offX + bSize.x && t.z >= offZ && t.z < offZ + bSize.z) {
+          topY = Math.max(topY, t.y);
+        }
+      }
+      const placed = building.map((b) => ({ x: b.x + offX, y: b.y + topY + 1, z: b.z + offZ, block: b.block }));
+      blocks = terrain.concat(placed);
+      bot.chat(`Reconstruction inspirée : bâtiment ${bSize.x}x${bSize.z}x${bSize.y} posé sur un relief de ${hillHeight} blocs.`);
+    }
     return proposeStructure(username, blocks, { type_batiment: `modèle 3D (${ext})` }, { maxSize: Math.max(dio.size_x, dio.max_y, dio.size_z), maxBlocks: dio.max_blocks });
   }
 
