@@ -15,7 +15,8 @@ const { composite } = require('./composite');
 const { parseModel } = require('./mesh');
 const { voxelizeMesh } = require('./meshvoxelizer');
 const { loadBlockColors, filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS } = require('./blockcolors');
-const { clusterColors, assignBlocks, buildPaletteMap } = require('./palette');
+const { clusterColors, assignThemes, buildThemePicker } = require('./palette');
+const { THEME_BLOCKS } = require('./blockcolors');
 const { createClient } = require('./llm');
 
 const validBlocks = JSON.parse(
@@ -60,9 +61,13 @@ function createBot(cfg) {
 
   async function deliberatePalette(samples, allowedColors, contexte) {
     const centroids = clusterColors(samples, 8);
-    const chosen = await assignBlocks(centroids, allowedColors, { client: apiClient, contexte });
-    bot.chat(`Palette choisie : ${[...new Set(chosen)].join(', ')}`);
-    return buildPaletteMap(centroids, chosen);
+    const themes = await assignThemes(centroids, allowedColors, { client: apiClient, contexte });
+    const uniques = [...new Set(themes)];
+    const detail = uniques
+      .map((t) => `${t} (${[...THEME_BLOCKS[t]].filter((b) => allowedColors.has(b)).length} blocs)`)
+      .join(', ');
+    bot.chat(`Palette par thèmes : ${detail}`);
+    return buildThemePicker(centroids, themes, allowedColors);
   }
 
   function proposeStructure(username, blocks, description, { maxSize, maxBlocks }) {

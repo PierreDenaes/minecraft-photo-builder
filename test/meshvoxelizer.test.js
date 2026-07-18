@@ -46,3 +46,9 @@ test('zUp échange hauteur et profondeur', () => {
   assert.ok(flat.every((b) => b.y === 0));  // sans zUp : plat au sol
   assert.ok(up.some((b) => b.y > 0));       // avec zUp : vertical
 });
+
+test('accepte une fonction de choix de bloc', () => {
+  const tris = [{ a: [0, 0, 0], b: [1, 0, 0], c: [0, 1, 0], color: [200, 0, 0] }];
+  const blocks = voxelizeMesh(tris, { maxX: 4, maxY: 4, maxZ: 4, defaultBlock: 'stone', colors: () => 'bricks' });
+  assert.ok(blocks.every((b) => b.block === 'bricks'));
+});

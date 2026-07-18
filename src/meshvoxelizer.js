@@ -5,6 +5,7 @@ const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2];
 
 function voxelizeMesh(triangles, { maxX, maxY, maxZ, defaultBlock, colors, zUp = false }) {
   if (!triangles.length) throw new Error('modèle vide : aucun triangle');
+  const pick = typeof colors === 'function' ? colors : (colors ? (r, g, b) => nearestBlock(r, g, b, colors) : null);
   const axis = ([x, y, z]) => (zUp ? [x, z, y] : [x, y, z]);
   const min = [Infinity, Infinity, Infinity];
   const max = [-Infinity, -Infinity, -Infinity];
@@ -34,7 +35,7 @@ function voxelizeMesh(triangles, { maxX, maxY, maxZ, defaultBlock, colors, zUp =
     rasterize(ab, bc, ac, block);
   }
   for (const t of triangles) {
-    const block = t.color && colors ? nearestBlock(t.color[0], t.color[1], t.color[2], colors) : defaultBlock;
+    const block = t.color && pick ? pick(t.color[0], t.color[1], t.color[2]) : defaultBlock;
     const [a, b, c] = [toVox(t.a), toVox(t.b), toVox(t.c)];
     rasterize(a, b, c, block);
     mark(a, block); mark(b, block); mark(c, block);

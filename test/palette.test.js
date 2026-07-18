@@ -57,3 +57,44 @@ test('buildPaletteMap déduplique les blocs choisis en gardant le premier centro
   assert.strictEqual(map.size, 1);
   assert.deepStrictEqual(map.get('stone'), [125, 125, 125]);
 });
+
+const { THEME_BLOCKS } = require('../src/blockcolors');
+const { assignThemes, buildThemePicker } = require('../src/palette');
+
+test('les thèmes regroupent tous les blocs de leur famille', () => {
+  assert.ok(THEME_BLOCKS.roche.has('stone') && THEME_BLOCKS.roche.has('tuff') && THEME_BLOCKS.roche.has('deepslate'));
+  assert.ok(!THEME_BLOCKS.roche.has('oak_planks'));
+  assert.ok(THEME_BLOCKS.vegetation.has('oak_leaves') && THEME_BLOCKS.vegetation.has('grass_block'));
+  assert.ok(!THEME_BLOCKS.vegetation.has('stone'));
+  assert.ok(THEME_BLOCKS.maconnerie.has('stone_bricks') && THEME_BLOCKS.bois.has('oak_planks'));
+});
+
+test('assignThemes sans client : repli par appartenance du bloc le plus proche', async () => {
+  const colors = new Map([['stone', [126, 126, 126]], ['oak_leaves', [67, 97, 27]]]);
+  const themes = await assignThemes([[120, 120, 120], [70, 100, 30]], colors, {});
+  assert.strictEqual(themes[0], 'roche');
+  assert.strictEqual(themes[1], 'vegetation');
+});
+
+test('assignThemes avec client : thème invalide → repli', async () => {
+  const colors = new Map([['stone', [126, 126, 126]], ['oak_leaves', [67, 97, 27]]]);
+  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: JSON.stringify([
+    { rgb: [120, 120, 120], theme: 'maconnerie' },
+    { rgb: [70, 100, 30], theme: 'theme_bidon' }
+  ]) }] }) } };
+  const themes = await assignThemes([[120, 120, 120], [70, 100, 30]], colors, { client });
+  assert.strictEqual(themes[0], 'maconnerie');   // choix LLM accepté
+  assert.strictEqual(themes[1], 'vegetation');   // invalide → repli
+});
+
+test('buildThemePicker : nuances dans le thème du centroïde le plus proche', () => {
+  const colors = new Map([
+    ['stone', [126, 126, 126]], ['tuff', [108, 109, 102]], ['deepslate', [80, 80, 82]],
+    ['oak_leaves', [67, 97, 27]], ['grass_block', [84, 109, 51]]
+  ]);
+  const pick = buildThemePicker([[110, 110, 108], [75, 100, 40]], ['roche', 'vegetation'], colors);
+  assert.strictEqual(pick(82, 81, 83), 'deepslate');   // nuance sombre DANS la roche
+  assert.strictEqual(pick(125, 124, 126), 'stone');    // nuance claire DANS la roche
+  assert.strictEqual(pick(85, 108, 50), 'grass_block'); // nuance DANS la végétation
+  assert.strictEqual(pick(66, 96, 28), 'oak_leaves');
+});

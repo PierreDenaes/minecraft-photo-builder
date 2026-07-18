@@ -43,3 +43,9 @@ test('comblement : colonne remplie jusqu\'à y=0', () => {
   const ys = new Set(colFar.map((b) => b.y));
   for (let y = 0; y <= Math.max(...ys); y++) assert.ok(ys.has(y), `y=${y} manquant dans la colonne comblée`);
 });
+
+test('accepte une fonction de choix de bloc à la place de la table', () => {
+  const blocks = voxelizeScene(grayImage(4, 4), flatDepth(0), { sizeX: 2, sizeZ: 4, maxY: 2, colors: () => 'tuff' });
+  assert.ok(blocks.length > 0);
+  assert.ok(blocks.every((b) => b.block === 'tuff'));
+});

@@ -11,6 +11,7 @@ function isSky(d, v) {
 }
 
 function voxelizeScene(image, depthMap, { sizeX, sizeZ, maxY, colors }) {
+  const pick = typeof colors === 'function' ? colors : (r, g, b) => nearestBlock(r, g, b, colors);
   const byCol = new Map(); // "x,z" → Map(y → block)
   const put = (x, z, y, block, overwrite) => {
     const key = `${x},${z}`;
@@ -27,7 +28,7 @@ function voxelizeScene(image, depthMap, { sizeX, sizeZ, maxY, colors }) {
       const ix = Math.min(image.width - 1, Math.round(u * (image.width - 1)));
       const iy = Math.min(image.height - 1, Math.round(v * (image.height - 1)));
       const i = (iy * image.width + ix) * 3;
-      const block = nearestBlock(image.data[i], image.data[i + 1], image.data[i + 2], colors);
+      const block = pick(image.data[i], image.data[i + 1], image.data[i + 2]);
       put(vx, z, vy, block, true);
       if (z - 1 >= 0) put(vx, z - 1, vy, block, false); // épaisseur 2 vers le fond
     }

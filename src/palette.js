@@ -1,5 +1,5 @@
 const { withRetry, stripCodeFences } = require('./llm');
-const { nearestBlock } = require('./blockcolors');
+const { nearestBlock, filterColors, THEME_BLOCKS } = require('./blockcolors');
 
 const MODEL = 'claude-sonnet-4-6';
 
@@ -62,4 +62,51 @@ function buildPaletteMap(centroids, blocks) {
   return map;
 }
 
-module.exports = { clusterColors, assignBlocks, buildPaletteMap };
+function themeOfBlock(block) {
+  for (const [theme, set] of Object.entries(THEME_BLOCKS)) {
+    if (set.has(block)) return theme;
+  }
+  return null;
+}
+
+// Choix délibéré au niveau du THÈME : le LLM décide de la matière de chaque famille
+// de couleurs, le rendu garde ensuite tous les blocs du thème pour les nuances
+async function assignThemes(centroids, allowedColors, { client, contexte } = {}) {
+  const fallback = () => centroids.map((c) => themeOfBlock(nearestBlock(c[0], c[1], c[2], allowedColors)) || 'roche');
+  if (!client || centroids.length === 0) return fallback();
+  try {
+    const response = await withRetry(() => client.messages.create({
+      model: MODEL,
+      max_tokens: 600,
+      system: `Tu es un maître bâtisseur Minecraft. Pour chaque couleur dominante RGB d'une scène, identifie LA MATIÈRE représentée et choisis son thème : roche (falaises, pierre brute), terre (sols, chemins), vegetation (herbe, feuillages), bois (charpentes, troncs), maconnerie (murs bâtis, briques), sable, neige_glace, eau, couleurs_vives (enduits, toits colorés, objets peints), metal. Réponds UNIQUEMENT en JSON strict : [{"rgb":[r,g,b],"theme":"nom"}], dans le même ordre que les couleurs fournies.`,
+      messages: [{
+        role: 'user',
+        content: `Contexte : ${contexte || 'scène extérieure'}\nThèmes possibles : ${Object.keys(THEME_BLOCKS).join(', ')}\nCouleurs dominantes : ${JSON.stringify(centroids)}`
+      }]
+    }), { retries: 1 });
+    const parsed = JSON.parse(stripCodeFences(response.content.find((b) => b.type === 'text').text));
+    const fb = fallback();
+    return centroids.map((c, i) => (THEME_BLOCKS[parsed[i]?.theme] ? parsed[i].theme : fb[i]));
+  } catch (err) {
+    console.warn('[palette] choix de thèmes LLM indisponible, repli :', err.message);
+    return fallback();
+  }
+}
+
+// Retourne une fonction (r,g,b) → bloc : thème du centroïde le plus proche,
+// puis plus proche voisin parmi TOUS les blocs de ce thème
+function buildThemePicker(centroids, themes, allowedColors) {
+  const themeMaps = themes.map((t) => filterColors(allowedColors, THEME_BLOCKS[t] || new Set()));
+  return (r, g, b) => {
+    let bi = 0;
+    let bd = Infinity;
+    for (let i = 0; i < centroids.length; i++) {
+      const d = (r - centroids[i][0]) ** 2 + (g - centroids[i][1]) ** 2 + (b - centroids[i][2]) ** 2;
+      if (d < bd) { bd = d; bi = i; }
+    }
+    const m = themeMaps[bi];
+    return m.size > 0 ? nearestBlock(r, g, b, m) : nearestBlock(r, g, b, allowedColors);
+  };
+}
+
+module.exports = { clusterColors, assignBlocks, buildPaletteMap, assignThemes, buildThemePicker, themeOfBlock };
