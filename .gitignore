@@ -4,3 +4,4 @@ models/
 *.log
 .DS_Store
 docs/*.glb
+.env

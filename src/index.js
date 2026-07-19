@@ -1,3 +1,4 @@
+try { process.loadEnvFile(); } catch { /* pas de .env : clé attendue dans l'environnement */ }
 const fs = require('node:fs');
 const path = require('node:path');
 const mineflayer = require('mineflayer');
