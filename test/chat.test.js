@@ -293,3 +293,9 @@ test('!redresser après !go garde le socle à plat (métadonnée socle transmise
   const socle = p.blocks.filter((b) => b.block === 'smooth_stone');
   assert.ok(socle.length > 0 && socle.every((b) => b.y < 2), 'socle devenu mur après !go + !redresser');
 });
+
+test('!portrait donne le lien mode=portrait', () => {
+  const { messages, handle } = setup();
+  handle('Steve', '!portrait');
+  assert.match(messages[0], /upload\/Steve\?mode=portrait/);
+});

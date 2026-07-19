@@ -19,6 +19,7 @@ Schéma attendu :
   "elements": ["..."],
   "palette_blocs": { "murs": "bloc", "toit": "bloc", "fondation": "bloc" },
   "zone_batiment": { "x": N, "y": N, "largeur": N, "hauteur": N },
+  "cadrage": "sujet_seul|scene_complete",
   "environnement": { "vegetation": "...", "arbres": "aucun|epars|dense", "types_arbres": ["chene","sapin"], "sol": "...", "ambiance": "..." }
 }
 
@@ -27,6 +28,7 @@ Règles :
 - Dimensions maximales : ${maxSize} sur chaque axe
 - Mappe les couleurs/matériaux réels vers les blocs les plus proches
 - zone_batiment : rectangle englobant du bâtiment principal en POURCENTAGES (0-100) de l'image, x/y = coin haut-gauche ; omets ce champ s'il n'y a pas de bâtiment net
+- cadrage : "sujet_seul" si l'image montre UN sujet principal sans environnement significatif (bâtiment isolé, objet, personne), "scene_complete" si le décor fait partie du sujet (paysage, terrain, jardin)
 - environnement : décris TOUJOURS la végétation (densité d'arbres : aucun/epars/dense, essences parmi chene/sapin), la nature du sol et l'ambiance générale de la scène
 - Si l'image ne contient aucun bâtiment identifiable, réponds : {"erreur": "raison courte"}${blocksRule}`;
 }

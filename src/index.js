@@ -26,6 +26,7 @@ const { renderVoxels } = require('./render');
 const { enforceSupport } = require('./support');
 const { plantVegetation } = require('./vegetation');
 const { decorateInterior } = require('./decorator');
+const { portraitBlocks } = require('./portrait');
 
 const validBlocks = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../data/valid_blocks.json'), 'utf8')
@@ -228,11 +229,13 @@ function createBot(cfg) {
         bSize.y = Math.max(bSize.y, b.y + 1);
         bSize.z = Math.max(bSize.z, b.z + 1);
       }
-      const hillHeight = Math.max(8, Math.min(24, Math.round(summary.dims.y / 3)));
+      const sujetSeul = sceneDesc.cadrage === 'sujet_seul';
+      if (sujetSeul) bot.chat('Cadrage : sujet seul — pas de relief ni de végétation ajoutés.');
+      const hillHeight = sujetSeul ? 0 : Math.max(8, Math.min(24, Math.round(summary.dims.y / 3)));
       const surfaceBlock = summary.themes[0] === 'sable' ? 'sand'
         : summary.themes[0] === 'neige_glace' ? 'snow_block'
         : 'grass_block';
-      const terrain = terrainFromHeightmap(summary.heightmap, {
+      const terrain = sujetSeul ? [] : terrainFromHeightmap(summary.heightmap, {
         sizeX: dio.size_x, sizeZ: dio.size_z, maxHeight: hillHeight,
         underground, surfaceBlock, taperWidth: 12
       });
@@ -254,7 +257,7 @@ function createBot(cfg) {
         .map((k) => { const [x, z] = k.split(',').map(Number); return { x, z }; });
       const fondations = buildFoundations(baseCells, topY, (x, z) => terrainTop.get(`${x},${z}`) ?? 0, 'stone_bricks');
       if (fondations.length > 0) console.log(`[modele] fondations : ${fondations.length} blocs`);
-      const densite = env.arbres === 'dense' ? 0.03 : env.arbres === 'epars' ? 0.012 : 0;
+      const densite = sujetSeul ? 0 : env.arbres === 'dense' ? 0.03 : env.arbres === 'epars' ? 0.012 : 0;
       const essences = (env.types_arbres || []).filter((t) => t === 'chene' || t === 'sapin');
       const trees = plantVegetation(terrain, {
         seed, densite,
@@ -265,6 +268,15 @@ function createBot(cfg) {
       bot.chat(`Reconstruction inspirée : bâtiment ${bSize.x}x${bSize.z}x${bSize.y} posé sur un relief de ${hillHeight} blocs, ${trees.length > 0 ? Math.round(trees.length / 14) + ' arbres plantés' : 'sans arbres'}.`);
     }
     return proposeStructure(username, blocks, { type_batiment: `modèle 3D (${ext})` }, { maxSize: Math.max(dio.size_x, dio.max_y, dio.size_z), maxBlocks: dio.max_blocks });
+  }
+
+  async function onPortrait(username, buffer) {
+    bot.chat(`Photo reçue de ${username}, fresque pixel-art en préparation...`);
+    const { data, info } = await sharp(buffer).removeAlpha()
+      .resize(128, 96, { fit: 'inside' }).raw().toBuffer({ resolveWithObject: true });
+    const blocks = portraitBlocks({ data, width: info.width, height: info.height }, { colors: colorsBati, frame: true });
+    return proposeStructure(username, blocks, { type_batiment: `fresque (${info.width}x${info.height} pixels)` },
+      { maxSize: 130, maxBlocks: cfg.limits.max_blocks });
   }
 
   async function onPhoto(username, buffer, mimeType) {
@@ -287,7 +299,7 @@ function createBot(cfg) {
     return proposeStructure(username, meubles, description, { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks });
   }
 
-  const app = createWebServer({ onPhoto, onDiorama, onModel });
+  const app = createWebServer({ onPhoto, onDiorama, onModel, onPortrait });
   app.listen(cfg.web.port, () =>
     console.log(`[web] upload sur http://${cfg.web.public_host}:${cfg.web.port}/upload/<pseudo>`)
   );

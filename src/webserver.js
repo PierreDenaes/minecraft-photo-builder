@@ -6,7 +6,7 @@ const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MODEL_EXTS = new Set(['.obj', '.stl', '.glb']);
 const IMAGE_MAX = 5 * 1024 * 1024;
 
-function createWebServer({ onPhoto, onDiorama, onModel }) {
+function createWebServer({ onPhoto, onDiorama, onModel, onPortrait }) {
   const app = express();
   const upload = multer({
     storage: multer.memoryStorage(),
@@ -20,7 +20,7 @@ function createWebServer({ onPhoto, onDiorama, onModel }) {
 
   app.get('/upload/:username', (req, res) => {
     const username = String(req.params.username).replace(/[^A-Za-z0-9_]/g, '');
-    const mode = ['diorama', 'statue'].includes(req.query.mode) ? req.query.mode : '';
+    const mode = ['diorama', 'statue', 'portrait'].includes(req.query.mode) ? req.query.mode : '';
     const accept = mode
       ? 'image/jpeg,image/png,image/webp,.obj,.stl,.glb'
       : 'image/jpeg,image/png,image/webp';
@@ -55,7 +55,9 @@ function createWebServer({ onPhoto, onDiorama, onModel }) {
           console.log(`[web] image reçue de ${req.body.username} (${req.file.size} octets, ${req.file.mimetype}, mode=${req.body.mode || 'code'})`);
           message = req.body.mode === 'diorama'
             ? await onDiorama(req.body.username, req.file.buffer, req.file.mimetype)
-            : await onPhoto(req.body.username, req.file.buffer, req.file.mimetype);
+            : req.body.mode === 'portrait'
+              ? await onPortrait(req.body.username, req.file.buffer, req.file.mimetype)
+              : await onPhoto(req.body.username, req.file.buffer, req.file.mimetype);
         }
         res.json({ ok: true, message: message || 'fichier reçu, analyse en cours' });
       } catch (e) {

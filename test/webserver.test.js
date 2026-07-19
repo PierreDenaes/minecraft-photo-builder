@@ -147,3 +147,20 @@ test('le formulaire statue est servi', async () => {
   assert.match(await res.text(), /name="mode" value="statue"/);
   server.close();
 });
+
+test('image en mode portrait routée vers onPortrait', async () => {
+  let called = null;
+  const app = createWebServer({
+    onPhoto: async () => { called = 'photo'; }, onDiorama: async () => { called = 'diorama'; },
+    onModel: async () => { called = 'model'; }, onPortrait: async () => { called = 'portrait'; return 'ok'; }
+  });
+  const server = await listen(app);
+  const fd = new FormData();
+  fd.append('username', 'Steve');
+  fd.append('mode', 'portrait');
+  fd.append('photo', new Blob([Buffer.from([0xff, 0xd8, 0xff])], { type: 'image/jpeg' }), 'moi.jpg');
+  const res = await post(server.address().port, fd);
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(called, 'portrait');
+  server.close();
+});

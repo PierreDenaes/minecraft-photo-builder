@@ -57,6 +57,11 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
         return;
       }
 
+      if (cmd === '!portrait') {
+        bot.chat(`${username} : fresque pixel-art depuis une photo → http://${config.web.public_host}:${config.web.port}/upload/${username}?mode=portrait`);
+        return;
+      }
+
       if (cmd === '!go') {
         const pkey = username.toLowerCase();
         const p = pending.get(pkey);

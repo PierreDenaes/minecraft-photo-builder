@@ -63,3 +63,11 @@ test('le prompt système demande la description de l\'environnement', async () =
   assert.match(captured.system, /ambiance/);
   assert.match(captured.system, /types_arbres/);
 });
+
+test('le prompt système demande le cadrage sujet_seul/scene_complete', async () => {
+  let captured;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: JSON.stringify(fixture) }] }; } } };
+  await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
+  assert.match(captured.system, /cadrage/);
+  assert.match(captured.system, /sujet_seul/);
+});
