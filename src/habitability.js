@@ -44,11 +44,13 @@ function auditHabitability(blocks) {
     }
   }
 
-  // 2. Entrée au rez-de-chaussée : colonne de mur avec ouverture 1x2 et linteau
+  // 2. Entrée au rez-de-chaussée : ouverture 1x2 sous linteau dans une colonne
+  // de la bande périmétrique (≤ 2 du bord — un puits central n'est pas une porte)
   const ground = habitable[0] ?? floors[0] ?? 0;
   let entrance = false;
   for (let x = 0; x < d.x && !entrance; x++) {
     for (let z = 0; z < d.z && !entrance; z++) {
+      if (Math.min(x, d.x - 1 - x, z, d.z - 1 - z) > 2) continue;
       if (!occ.has(`${x},${ground + 1},${z}`) && !occ.has(`${x},${ground + 2},${z}`)
         && occ.has(`${x},${ground + 3},${z}`)) entrance = true;
     }

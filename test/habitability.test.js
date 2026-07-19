@@ -50,3 +50,11 @@ test('étage sans escalier → défaut d\'accès ; avec trémie + escaliers → 
   const avec = box(12, 10, 10, { doorAt: 4, floors: [4], stairsAt: { x: 5, z: 5 } });
   assert.deepStrictEqual(avec.length > 0 && auditHabitability(avec).filter((d) => /escalier|accès/i.test(d)), []);
 });
+
+test('un puits intérieur ne compte pas comme entrée (bande périmétrique)', () => {
+  // grande boîte scellée 20x16 avec un « puits » central surmonté d'une poutre à y=3
+  const b = box(20, 8, 16);
+  b.push({ x: 10, y: 3, z: 8, block: 'stone_bricks' }); // poutre au-dessus d'une colonne d'air intérieure
+  const defects = auditHabitability(b);
+  assert.ok(defects.some((d) => /entrée/i.test(d)), `entrée manquante attendue : ${defects.join(' | ')}`);
+});
