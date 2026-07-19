@@ -62,11 +62,29 @@ function fixAttachments(items, isSolid) {
   return kept;
 }
 
+// Carte d'un plancher au niveau de marche (y+1) : # mur, . sol libre, espace = vide
+function floorMap(occupied, fy, d) {
+  const rows = [];
+  for (let z = 0; z < d.z; z++) {
+    let row = '';
+    for (let x = 0; x < d.x; x++) {
+      if (occupied.has(`${x},${fy + 1},${z}`)) row += '#';
+      else if (occupied.has(`${x},${fy},${z}`)) row += '.';
+      else row += ' ';
+    }
+    rows.push(row);
+  }
+  return rows.join('\n');
+}
+
 async function decorateInterior(building, description, { client, timeoutMs = 20000 } = {}) {
   const floors = detectFloors(building);
   if (!client || floors.length === 0) return [];
   const d = dimsOf(building);
   const occupied = new Set(building.map((b) => `${b.x},${b.y},${b.z}`));
+  const cartes = floors
+    .map((fy) => `Plancher y=${fy} (pose les meubles à y=${fy + 1}) — carte (# mur, . sol libre, espace = vide ; 1 ligne = z croissant, 1 colonne = x) :\n${floorMap(occupied, fy, d)}`)
+    .join('\n\n');
   try {
     const response = await withRetry(() => client.messages.create({
       model: MODEL,
@@ -74,7 +92,7 @@ async function decorateInterior(building, description, { client, timeoutMs = 200
       system: `Tu es décorateur d'intérieur Minecraft. Écris une fonction JavaScript pure generateStructure() retournant [{x, y, z, block}] : mobilier, rangements et éclairage posés SUR les planchers (y du plancher + 1), à l'intérieur des murs (marge de 1 bloc), pièces cohérentes (coin repas, bibliothèque, atelier, éclairage régulier aux murs). PARCIMONIE : 10 à 20 éléments par pièce MAXIMUM, laisse les axes de circulation totalement libres, jamais de remplissage en tapis intégral. Code COMPACT : boucles et fonctions d'aide, jamais de longues listes de blocs un par un. Blocs autorisés UNIQUEMENT : ${[...INTERIOR_BLOCKS].join(', ')}. Réponds UNIQUEMENT avec le code, sans texte autour.`,
       messages: [{
         role: 'user',
-        content: `Bâtiment ${d.x}x${d.z}x${d.y} (x,z,y). Niveaux de plancher (y) : ${floors.join(', ')}. Style : ${description.type_batiment || 'bâtiment'}${description.style ? ' — ' + description.style : ''}. Écris generateStructure().`
+        content: `Bâtiment ${d.x}x${d.z}x${d.y} (x,z,y). Style : ${description.type_batiment || 'bâtiment'}${description.style ? ' — ' + description.style : ''}.\n\n${cartes}\n\nPose UNIQUEMENT sur des cases « . », les meubles et l'éclairage CONTRE les murs « # », jamais sur « # » ni dans le vide. Écris generateStructure().`
       }]
     }), { retries: 1 });
     if (response.stop_reason === 'max_tokens') {

@@ -140,3 +140,19 @@ test('une torche ne sert pas de support à une autre torche', () => {
   ], isSolid);
   assert.strictEqual(out.length, 0);
 });
+
+test('le décorateur reçoit la carte des murs de chaque plancher', async () => {
+  const room = [...slabAt(0), ...wallsTo(4)];
+  let captured = null;
+  const code = 'function generateStructure() { return []; }';
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
+  await decorateInterior(room, {}, { client, timeoutMs: 5000 });
+  const msg = captured.messages[0].content;
+  assert.ok(msg.includes('carte'), 'le message doit annoncer une carte');
+  // plancher y=0 : rangée z=0 pleine de murs (#), intérieur libre (.)
+  const lines = msg.split('\n');
+  const wallRow = lines.find((l) => /^#{10}$/.test(l));
+  assert.ok(wallRow, `rangée de mur attendue (##########) dans :\n${msg}`);
+  assert.ok(lines.some((l) => /^\.{10}$/.test(l)), 'rangée intérieure .......... (sol libre) attendue');
+  assert.ok(/[#]\s*=\s*mur/.test(msg) || msg.includes('# mur'), 'légende # = mur attendue');
+});
