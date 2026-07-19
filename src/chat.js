@@ -8,7 +8,7 @@ function transformProposal(prop, fn) {
     return;
   }
   const { h, block, margin } = prop.socle;
-  const body = prop.blocks.filter((b) => b.y >= h).map((b) => ({ ...b, y: b.y - h }));
+  const body = prop.blocks.filter((b) => b.y >= h).map((b) => ({ ...b, x: b.x - margin, y: b.y - h, z: b.z - margin }));
   const turned = fn(body).map((b) => ({ ...b, x: b.x + margin, y: b.y + h, z: b.z + margin }));
   let maxX = 0;
   let maxZ = 0;
@@ -63,7 +63,7 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
         if (!p) { bot.chat(`${username} : aucune proposition en attente. Envoie une photo avec !photo`); return; }
         const launch = (player) => {
           pending.delete(pkey);
-          lastBuilt.set(pkey, { blocks: p.blocks, size: p.size, description: p.description });
+          lastBuilt.set(pkey, { blocks: p.blocks, size: p.size, description: p.description, socle: p.socle });
           const origin = builder.computeOrigin(player.entity.position, player.entity.yaw, p.size);
           const { total } = builder.startBuild(p.blocks, origin, p.size);
           bot.chat(`Construction de ${p.description.type_batiment} lancée (~${builder.estimateSeconds(total)} s, ${total} commandes). !status pour suivre, !undo pour annuler.`);

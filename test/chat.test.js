@@ -258,3 +258,34 @@ test('!redresser préserve le socle à plat sous la nouvelle emprise', () => {
   const socMinX = Math.min(...socle.map((b) => b.x));
   assert.ok(socMinX <= sMinX - 1, 'marge du socle absente');
 });
+
+test('4 rotations !tourner reviennent à l\'identique (pas de dérive de marge)', () => {
+  const { pending, handle } = setup();
+  const socleBlocks = [];
+  for (let x = 0; x <= 4; x++) for (let z = 0; z <= 4; z++) for (let y = 0; y < 2; y++) socleBlocks.push({ x, y, z, block: 'smooth_stone' });
+  const body = [{ x: 1, y: 2, z: 2, block: 'red_wool' }, { x: 3, y: 4, z: 1, block: 'blue_wool' }];
+  pending.set('steve', {
+    blocks: [...socleBlocks, ...body], size: { x: 5, y: 5, z: 5 },
+    description: { type_batiment: 'statue' }, socle: { h: 2, block: 'smooth_stone', margin: 1 }
+  });
+  const snapshot = JSON.stringify([...pending.get('steve').blocks].sort((a, b2) => a.x - b2.x || a.y - b2.y || a.z - b2.z));
+  for (let i = 0; i < 4; i++) handle('Steve', '!tourner');
+  const after = JSON.stringify([...pending.get('steve').blocks].sort((a, b2) => a.x - b2.x || a.y - b2.y || a.z - b2.z));
+  assert.strictEqual(after, snapshot, 'dérive après 4 rotations');
+});
+
+test('!redresser après !go garde le socle à plat (métadonnée socle transmise)', () => {
+  const { pending, handle } = setup();
+  const socleBlocks = [];
+  for (let x = 0; x <= 3; x++) for (let z = 0; z <= 3; z++) for (let y = 0; y < 2; y++) socleBlocks.push({ x, y, z, block: 'smooth_stone' });
+  pending.set('steve', {
+    blocks: [...socleBlocks, { x: 1, y: 2, z: 1, block: 'red_wool' }, { x: 1, y: 5, z: 1, block: 'blue_wool' }],
+    size: { x: 4, y: 6, z: 4 }, description: { type_batiment: 'statue' },
+    socle: { h: 2, block: 'smooth_stone', margin: 1 }
+  });
+  handle('Steve', '!go');
+  handle('Steve', '!redresser');
+  const p = pending.get('steve');
+  const socle = p.blocks.filter((b) => b.block === 'smooth_stone');
+  assert.ok(socle.length > 0 && socle.every((b) => b.y < 2), 'socle devenu mur après !go + !redresser');
+});
