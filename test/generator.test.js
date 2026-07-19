@@ -113,3 +113,26 @@ test('le prompt interdit les toits en débord', async () => {
   await generateStructure({ type_batiment: 't' }, { client, timeoutMs: 5000 });
   assert.match(captured.system, /déborde/);
 });
+
+test('l\'architecte reçoit la photo de référence quand elle est fournie', async () => {
+  const codeImg = 'function generateStructure() { return [{ x: 0, y: 0, z: 0, block: "stone" }]; }';
+  let captured = null;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: codeImg }] }; } } };
+  await generateStructure({ type_batiment: 'maison' }, { client, timeoutMs: 5000, image: { base64: 'QUJD', mimeType: 'image/jpeg' } });
+  const content = captured.messages[0].content;
+  assert.ok(Array.isArray(content), 'contenu multimodal attendu (tableau image + texte)');
+  const img = content.find((b) => b.type === 'image');
+  assert.strictEqual(img.source.data, 'QUJD');
+  assert.strictEqual(img.source.media_type, 'image/jpeg');
+  const txt = content.find((b) => b.type === 'text');
+  assert.ok(txt.text.includes('Écris generateStructure()'));
+  assert.ok(/référence/.test(txt.text), 'consigne de fidélité à la photo attendue');
+});
+
+test('sans photo, le contenu reste une chaîne simple (compat)', async () => {
+  const codeImg = 'function generateStructure() { return [{ x: 0, y: 0, z: 0, block: "stone" }]; }';
+  let captured = null;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: codeImg }] }; } } };
+  await generateStructure({ type_batiment: 'maison' }, { client, timeoutMs: 5000 });
+  assert.strictEqual(typeof captured.messages[0].content, 'string');
+});

@@ -295,8 +295,9 @@ function createBot(cfg) {
   }
 
   async function onPhoto(username, buffer, mimeType) {
-    bot.chat(`Photo reçue de ${username}, analyse en cours...`);
-    const description = await analyzeImage(buffer.toString('base64'), mimeType, {
+    bot.chat(`Photo reçue de ${username} — étape 1/3 : lecture de la photo...`);
+    const base64 = buffer.toString('base64');
+    const description = await analyzeImage(base64, mimeType, {
       maxSize: cfg.limits.max_size,
       validBlocks
     });
@@ -304,10 +305,13 @@ function createBot(cfg) {
       bot.chat(`${username} : analyse impossible — ${description.erreur}`);
       return `erreur : ${description.erreur}`;
     }
+    bot.chat(`Étape 2/3 : génération de ${description.type_batiment} d'après la photo (l'étape la plus longue, ~1 min)...`);
     const blocks = await generateStructure(description, {
       timeoutMs: cfg.limits.sandbox_timeout_ms,
-      validBlocks: realisticMaterials(materiaux, description)
+      validBlocks: realisticMaterials(materiaux, description),
+      image: { base64, mimeType }
     });
+    bot.chat('Étape 3/3 : décoration intérieure...');
     const decor = await decorateInterior(blocks, description, { client: apiClient, timeoutMs: cfg.limits.sandbox_timeout_ms });
     if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
     const meubles = blocks.concat(decor);

@@ -72,7 +72,7 @@ function normalizeOrigin(blocks) {
   return blocks;
 }
 
-async function generateStructure(description, { client, timeoutMs = 5000, validBlocks, structuralSummary } = {}) {
+async function generateStructure(description, { client, timeoutMs = 5000, validBlocks, structuralSummary, image } = {}) {
   const c = client || createClient();
   const blocksSection = validBlocks
     ? `\n\nBlocs autorisés — n'utilise QUE ces noms, aucun autre :\n${validBlocks.join(', ')}`
@@ -80,15 +80,22 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
   const summarySection = structuralSummary
     ? `\n\nRésumé structurel de la référence (respecte ces masses) :\n${JSON.stringify(structuralSummary)}`
     : '';
+  const imageSection = image
+    ? '\n\nLa photo jointe est LA référence : calque les proportions, le nombre et le rythme des ouvertures, la forme exacte du toit et les couleurs sur ce que tu VOIS, pas seulement sur la description.'
+    : '';
+  const userText = `Description du bâtiment :\n${JSON.stringify(description, null, 2)}${summarySection}${blocksSection}${imageSection}\n\nÉcris generateStructure().`;
+  const content = image
+    ? [
+      { type: 'image', source: { type: 'base64', media_type: image.mimeType, data: image.base64 } },
+      { type: 'text', text: userText }
+    ]
+    : userText;
   const response = await withRetry(() =>
     c.messages.create({
       model: MODEL,
       max_tokens: 16000,
       system: SYSTEM_PROMPT,
-      messages: [{
-        role: 'user',
-        content: `Description du bâtiment :\n${JSON.stringify(description, null, 2)}${summarySection}${blocksSection}\n\nÉcris generateStructure().`
-      }]
+      messages: [{ role: 'user', content }]
     })
   );
   if (response.stop_reason === 'max_tokens') {
