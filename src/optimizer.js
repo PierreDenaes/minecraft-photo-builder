@@ -31,6 +31,10 @@ function validateStructure(blocks, { maxSize, maxBlocks, validBlocks }) {
   return { ok: errors.length === 0, errors };
 }
 
+// Feuilles posées par commande : persistent=true, sinon elles se décomposent
+// sans tronc à moins de 6 blocs (fresques, haies, surfaces végétales)
+const cmdBlock = (name) => (name.endsWith('_leaves') ? `${name}[persistent=true]` : name);
+
 function optimizeToCommands(blocks, origin) {
   const byCoord = new Map();
   for (const b of blocks) {
@@ -63,9 +67,9 @@ function optimizeToCommands(blocks, origin) {
       const b = row[j];
       const ax = origin.x + a.x, ay = origin.y + a.y, az = origin.z + a.z;
       if (i === j) {
-        commands.push(`/setblock ${ax} ${ay} ${az} ${a.block}`);
+        commands.push(`/setblock ${ax} ${ay} ${az} ${cmdBlock(a.block)}`);
       } else {
-        commands.push(`/fill ${ax} ${ay} ${az} ${origin.x + b.x} ${ay} ${az} ${a.block}`);
+        commands.push(`/fill ${ax} ${ay} ${az} ${origin.x + b.x} ${ay} ${az} ${cmdBlock(a.block)}`);
       }
       i = j + 1;
     }

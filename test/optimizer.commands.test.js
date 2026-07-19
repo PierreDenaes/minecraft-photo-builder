@@ -63,3 +63,16 @@ test('ignore les blocs air', () => {
     '/setblock 101 -60 200 stone'
   ]);
 });
+
+test('les feuilles sont posées persistent=true (sinon elles se décomposent sans tronc)', () => {
+  const cmds = optimizeToCommands([
+    { x: 0, y: 0, z: 0, block: 'oak_leaves' },
+    { x: 1, y: 0, z: 0, block: 'oak_leaves' },
+    { x: 5, y: 0, z: 0, block: 'cherry_leaves' },
+    { x: 0, y: 1, z: 0, block: 'stone' }
+  ], { x: 10, y: 20, z: 30 });
+  assert.ok(cmds.some((c) => c.startsWith('/fill') && c.endsWith('oak_leaves[persistent=true]')));
+  assert.ok(cmds.some((c) => c.startsWith('/setblock') && c.endsWith('cherry_leaves[persistent=true]')));
+  assert.ok(cmds.some((c) => c.endsWith(' stone')));
+  assert.ok(!cmds.some((c) => / [a-z_]+_leaves$/.test(c)));
+});
