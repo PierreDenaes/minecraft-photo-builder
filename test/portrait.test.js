@@ -37,3 +37,16 @@ test('fresque déterministe', () => {
   const b = portraitBlocks(image2x2(), { colors, frame: true });
   assert.deepStrictEqual(a, b);
 });
+
+test('fresque : jamais de fluides — l\'eau coulerait hors du mur', () => {
+  const fluides = new Map([
+    ['water', [40, 60, 180]],
+    ['lava', [220, 100, 20]],
+    ['white_concrete', [230, 230, 230]]
+  ]);
+  // pixel bleu pile sur la couleur de l'eau, pixel orange pile sur la lave
+  const img = { data: Buffer.from([40, 60, 180, 220, 100, 20]), width: 2, height: 1 };
+  const blocks = portraitBlocks(img, { colors: fluides, frame: false });
+  assert.ok(blocks.every((b) => b.block !== 'water' && b.block !== 'lava'),
+    `fluide dans la fresque : ${blocks.map((b) => b.block).join(', ')}`);
+});

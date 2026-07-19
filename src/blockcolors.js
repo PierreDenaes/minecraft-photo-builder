@@ -112,4 +112,8 @@ function filterColors(colors, names) {
   return out;
 }
 
-module.exports = { loadBlockColors, nearestBlock, filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS, THEME_BLOCKS, INTERIOR_BLOCKS };
+// Fluides : légitimes en surface horizontale (lacs des dioramas photo), jamais
+// dans une structure verticale ou un mur — ils coulent
+const FLUID_BLOCKS = new Set(['water', 'lava']);
+
+module.exports = { loadBlockColors, nearestBlock, filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS, THEME_BLOCKS, INTERIOR_BLOCKS, FLUID_BLOCKS };

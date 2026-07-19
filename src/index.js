@@ -14,7 +14,7 @@ const { voxelizeScene } = require('./voxelizer');
 const { composite } = require('./composite');
 const { parseModel } = require('./mesh');
 const { voxelizeMesh } = require('./meshvoxelizer');
-const { loadBlockColors, filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS } = require('./blockcolors');
+const { loadBlockColors, filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS, FLUID_BLOCKS } = require('./blockcolors');
 const { clusterColors, assignThemes, buildThemePicker, themeOfBlock, realisticMaterials } = require('./palette');
 const { THEME_BLOCKS } = require('./blockcolors');
 const { createUnderground } = require('./subsurface');
@@ -80,6 +80,8 @@ function createBot(cfg) {
   const blockColors = loadBlockColors();
   const colorsNature = filterColors(blockColors, NATURAL_BLOCKS);
   const colorsBati = filterColors(blockColors, new Set([...NATURAL_BLOCKS, ...CONSTRUCTION_BLOCKS]));
+  // Modèles 3D : structures verticales — un fluide y coulerait hors du mur
+  const colorsSolides = new Map([...colorsBati].filter(([b]) => !FLUID_BLOCKS.has(b)));
   const materiaux = validBlocks.filter((b) => CONSTRUCTION_BLOCKS.has(b) || b === 'air');
   const dio = cfg.limits.diorama;
   let apiClient = null;
@@ -197,12 +199,12 @@ function createBot(cfg) {
     const underground = createUnderground({ seed, maxY: dio.max_y });
     // voxelisation de référence (sert d'analyse en mode inspire, de rendu en mode brut)
     const colored = cleaned.triangles.filter((t) => t.color);
-    let colors = colorsBati;
+    let colors = colorsSolides;
     if (colored.length > 0) {
       const step = Math.max(1, Math.floor(colored.length / 4000));
       const samples = [];
       for (let i = 0; i < colored.length; i += step) samples.push(colored[i].color);
-      colors = await deliberatePalette(samples, colorsBati, `modèle 3D scanné (${ext})`);
+      colors = await deliberatePalette(samples, colorsSolides, `modèle 3D scanné (${ext})`);
     }
     const inspire = (cfg.reconstruction || 'inspire') === 'inspire';
     // mode inspire : la référence analysée est la coquille seule (les strates

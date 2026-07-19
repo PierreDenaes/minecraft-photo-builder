@@ -1,8 +1,9 @@
-const { nearestBlock } = require('./blockcolors');
+const { nearestBlock, FLUID_BLOCKS } = require('./blockcolors');
 
 // Fresque murale en pixel-art : une image → un mur vertical d'un bloc d'épaisseur.
 // Une fresque EST une image : mapping couleur direct sur toute la gamme, sans thèmes.
 function portraitBlocks(image, { colors, frame = true, frameBlock = 'dark_oak_planks' } = {}) {
+  colors = new Map([...colors].filter(([b]) => !FLUID_BLOCKS.has(b)));
   const off = frame ? 1 : 0;
   const blocks = [];
   for (let py = 0; py < image.height; py++) {
