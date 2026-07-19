@@ -68,7 +68,7 @@ async function compareToPhoto(photoBase64, photoMime, renderBase64, { client } =
     const response = await withRetry(() => c.messages.create({
       model: MODEL,
       max_tokens: 600,
-      system: 'Tu compares une PHOTO de référence (première image) et le RENDU voxel Minecraft généré à partir d\'elle (seconde image). Liste les 5 écarts les PLUS VISIBLES qui empêchent de reconnaître la photo dans le rendu : silhouette générale, proportions, forme du toit, tours, rythme des ouvertures, couleurs dominantes. Réponds en liste à puces courte et actionnable, uniquement les écarts, sans compliments.',
+      system: 'Tu compares une PHOTO de référence (première image) et le RENDU voxel Minecraft généré à partir d\'elle (seconde image). Liste les 5 écarts les PLUS VISIBLES qui empêchent de reconnaître la photo dans le rendu : silhouette générale, proportions, forme du toit, tours, rythme des ouvertures, couleurs dominantes. Signale AUSSI tout défaut de construction visible dans le rendu : tour ou mur incomplet, face manquante, trou non voulu, toit inachevé. Réponds en liste à puces courte et actionnable, uniquement les écarts et défauts, sans compliments.',
       messages: [{
         role: 'user',
         content: [

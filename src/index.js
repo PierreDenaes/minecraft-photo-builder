@@ -28,6 +28,7 @@ const { enforceSupport } = require('./support');
 const { plantVegetation } = require('./vegetation');
 const { decorateInterior } = require('./decorator');
 const { portraitBlocks } = require('./portrait');
+const { auditHabitability } = require('./habitability');
 
 const validBlocks = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../data/valid_blocks.json'), 'utf8')
@@ -316,10 +317,19 @@ function createBot(cfg) {
     try {
       const render = await renderVoxels(blocks, blockColors);
       const critique = await compareToPhoto(base64, mimeType, render.toString('base64'), { client: apiClient });
-      if (critique) blocks = await generateStructure(description, { ...genOpts, critique });
+      const defauts = auditHabitability(blocks);
+      const corrections = [
+        critique,
+        defauts.length > 0
+          ? `Défauts structurels MESURÉS sur la première version — corrige-les impérativement :\n- ${defauts.join('\n- ')}`
+          : null
+      ].filter(Boolean).join('\n\n');
+      if (corrections) blocks = await generateStructure(description, { ...genOpts, critique: corrections });
     } catch (err) {
       console.warn('[photo] passe de correction ignorée :', err.message);
     }
+    const restants = auditHabitability(blocks);
+    if (restants.length > 0) bot.chat(`⚠ Défauts restants : ${restants.join(' ; ')}`.slice(0, 250));
     bot.chat('Étape 4/4 : décoration intérieure...');
     const decor = await decorateInterior(blocks, description, { client: apiClient, timeoutMs: cfg.limits.sandbox_timeout_ms });
     if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);

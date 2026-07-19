@@ -17,8 +17,14 @@ function dimsOf(blocks) {
 function detectFloors(building) {
   if (building.length === 0) return [];
   const d = dimsOf(building);
+  const occ = new Set(building.map((b) => `${b.x},${b.y},${b.z}`));
   const perY = new Map();
-  for (const b of building) perY.set(b.y, (perY.get(b.y) || 0) + 1);
+  for (const b of building) {
+    // un plancher est une surface de MARCHE : bloc avec de l'air au-dessus
+    // (sinon les anneaux de murs des petits bâtiments comptent comme étages)
+    if (occ.has(`${b.x},${b.y + 1},${b.z}`)) continue;
+    perY.set(b.y, (perY.get(b.y) || 0) + 1);
+  }
   const footprint = d.x * d.z;
   const floors = [];
   for (let y = 0; y < d.y; y++) {
