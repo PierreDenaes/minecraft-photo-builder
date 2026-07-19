@@ -3,8 +3,19 @@ const { nearestBlock } = require('./blockcolors');
 const dist = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
 const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2];
 
-function voxelizeMesh(triangles, { maxX, maxY, maxZ, defaultBlock, colors, zUp = false, up, solid = false, underground, surfaceThemeOf }) {
+// Cession périodique de l'event loop : sans elle, un gros modèle bloque le thread
+// > 30 s et le serveur kicke le bot (keep-alive sans réponse)
+const YIELD_MS = 25;
+
+async function voxelizeMesh(triangles, { maxX, maxY, maxZ, defaultBlock, colors, zUp = false, up, solid = false, underground, surfaceThemeOf }) {
   if (!triangles.length) throw new Error('modèle vide : aucun triangle');
+  let lastYield = Date.now();
+  const breathe = async () => {
+    if (Date.now() - lastYield >= YIELD_MS) {
+      await new Promise((resolve) => setImmediate(resolve));
+      lastYield = Date.now();
+    }
+  };
   const pick = typeof colors === 'function' ? colors : (colors ? (r, g, b) => nearestBlock(r, g, b, colors) : null);
   const upAxis = up || (zUp ? 'z' : 'y');
   const axis = ([x, y, z]) => (upAxis === 'z' ? [x, z, y] : upAxis === 'x' ? [y, x, z] : [x, y, z]);
@@ -50,6 +61,7 @@ function voxelizeMesh(triangles, { maxX, maxY, maxZ, defaultBlock, colors, zUp =
     const [a, b, c] = [toVox(t.a), toVox(t.b), toVox(t.c)];
     rasterize(a, b, c, block);
     mark(a, block); mark(b, block); mark(c, block);
+    await breathe();
   }
 
   if (solid) {
@@ -66,6 +78,7 @@ function voxelizeMesh(triangles, { maxX, maxY, maxZ, defaultBlock, colors, zUp =
       columns.get(ck).push(y);
     }
     for (const [ck, ys] of columns) {
+      await breathe();
       const [x, z] = ck.split(',').map(Number);
       ys.sort((a, b) => a - b);
       const bottom = ys[0];

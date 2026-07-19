@@ -43,28 +43,39 @@ function structureSize(blocks) {
 }
 
 function createBot(cfg) {
-  const bot = mineflayer.createBot({
-    host: cfg.minecraft.host,
-    port: cfg.minecraft.port,
-    username: cfg.minecraft.username,
-    version: cfg.minecraft.version,
-    auth: 'offline'
-  });
-
   const pending = new Map();
-  const builder = new Builder(bot, { maxBlocks: cfg.limits.max_blocks, cmdsPerTick: cfg.limits.throttle_cmds_per_tick });
-  const handleChat = createChatHandler({ bot, builder, config: cfg, pending });
+  const builder = new Builder(null, { maxBlocks: cfg.limits.max_blocks, cmdsPerTick: cfg.limits.throttle_cmds_per_tick });
+  let bot = null;
 
-  bot.on('spawn', () => console.log('[bot] connecté et apparu en jeu'));
-  bot.on('message', (m) => {
-    const t = m.toString();
-    if (!/Changed the block|Successfully filled|Avancement|Palette|Construction de|!go|!status/.test(t)) {
-      console.log('[mc]', t.slice(0, 200));
-    }
-  });
-  bot.on('kicked', (reason) => console.error('[bot] kick:', reason));
-  bot.on('error', (err) => console.error('[bot] erreur:', err.message));
-  bot.on('chat', handleChat);
+  // Reconnexion automatique : un kick (keep-alive, redémarrage serveur...) ne doit
+  // jamais laisser le bot hors jeu — l'état (pending, builder) survit à la coupure
+  function connect() {
+    bot = mineflayer.createBot({
+      host: cfg.minecraft.host,
+      port: cfg.minecraft.port,
+      username: cfg.minecraft.username,
+      version: cfg.minecraft.version,
+      auth: 'offline'
+    });
+    builder.bot = bot;
+    const handleChat = createChatHandler({ bot, builder, config: cfg, pending });
+
+    bot.on('spawn', () => console.log('[bot] connecté et apparu en jeu'));
+    bot.on('message', (m) => {
+      const t = m.toString();
+      if (!/Changed the block|Successfully filled|Avancement|Palette|Construction de|!go|!status/.test(t)) {
+        console.log('[mc]', t.slice(0, 200));
+      }
+    });
+    bot.on('kicked', (reason) => console.error('[bot] kick:', reason));
+    bot.on('error', (err) => console.error('[bot] erreur:', err.message));
+    bot.on('chat', handleChat);
+    bot.on('end', (reason) => {
+      console.error(`[bot] déconnecté (${reason}), reconnexion dans 5 s...`);
+      setTimeout(connect, 5000);
+    });
+  }
+  connect();
 
   const blockColors = loadBlockColors();
   const colorsNature = filterColors(blockColors, NATURAL_BLOCKS);
@@ -160,7 +171,7 @@ function createBot(cfg) {
       const colorsStatue = filterColors(blockColors, THEME_BLOCKS.couleurs_vives);
       // Le fichier fait foi : glTF est y-up par spécification — aucune rotation automatique
       // (!redresser et !tourner corrigent manuellement les rares exports non conformes)
-      const shell = voxelizeMesh(cleaned.triangles, {
+      const shell = await voxelizeMesh(cleaned.triangles, {
         maxX: 48, maxY: 72, maxZ: 48, defaultBlock: 'white_concrete',
         colors: colorsStatue
       });
@@ -196,7 +207,7 @@ function createBot(cfg) {
     const inspire = (cfg.reconstruction || 'inspire') === 'inspire';
     // mode inspire : la référence analysée est la coquille seule (les strates
     // géologiques noieraient les thèmes du bâtiment sous « roche »)
-    const reference = voxelizeMesh(cleaned.triangles, {
+    const reference = await voxelizeMesh(cleaned.triangles, {
       maxX: dio.size_x, maxY: dio.max_y, maxZ: dio.size_z,
       defaultBlock: 'stone', colors, zUp: ext === 'stl',
       solid: !inspire, underground: inspire ? undefined : underground, surfaceThemeOf: themeOfBlock
