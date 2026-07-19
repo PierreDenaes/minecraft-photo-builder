@@ -239,15 +239,16 @@ function createBot(cfg) {
         sizeX: dio.size_x, sizeZ: dio.size_z, maxHeight: hillHeight,
         underground, surfaceBlock, taperWidth: 12
       });
-      const offX = Math.floor((dio.size_x - bSize.x) / 2);
-      const offZ = Math.floor((dio.size_z - bSize.z) / 2);
+      const offX = sujetSeul ? 0 : Math.floor((dio.size_x - bSize.x) / 2);
+      const offZ = sujetSeul ? 0 : Math.floor((dio.size_z - bSize.z) / 2);
       let topY = 0;
       for (const t of terrain) {
         if (t.x >= offX && t.x < offX + bSize.x && t.z >= offZ && t.z < offZ + bSize.z) {
           topY = Math.max(topY, t.y);
         }
       }
-      const placed = furnished.map((b) => ({ x: b.x + offX, y: b.y + topY + 1, z: b.z + offZ, block: b.block }));
+      const lift = sujetSeul ? 0 : topY + 1;
+      const placed = furnished.map((b) => ({ x: b.x + offX, y: b.y + lift, z: b.z + offZ, block: b.block }));
       const terrainTop = new Map();
       for (const t of terrain) {
         const k = `${t.x},${t.z}`;
