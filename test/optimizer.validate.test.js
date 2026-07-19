@@ -62,3 +62,12 @@ test('un état de bloc [facing=...] est accepté si le bloc de base est valide',
     { maxSize: 8, maxBlocks: 10, validBlocks: ['wall_torch'] });
   assert.strictEqual(bad.ok, false);
 });
+
+test('états de bloc malformés ou dangereux rejetés (surface d\'injection chat)', () => {
+  const opts = { maxSize: 8, maxBlocks: 10, validBlocks: ['wall_torch'] };
+  const bad = (name) => validateStructure([{ x: 0, y: 0, z: 0, block: name }], opts).ok;
+  assert.strictEqual(bad('wall_torch[facing=east\n/op pirate]'), false);
+  assert.strictEqual(bad('wall_torch[facing=east ]'), false);
+  assert.strictEqual(bad('wall_torch['), false);
+  assert.strictEqual(bad('wall_torch[facing=east]'), true);
+});
