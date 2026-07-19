@@ -71,3 +71,21 @@ test('le prompt système demande le cadrage sujet_seul/scene_complete', async ()
   assert.match(captured.system, /cadrage/);
   assert.match(captured.system, /sujet_seul/);
 });
+
+const { compareToPhoto } = require('../src/vision');
+
+test('compareToPhoto envoie les deux images et retourne la critique', async () => {
+  let captured = null;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: '- toit trop plat\n- tours absentes' }] }; } } };
+  const critique = await compareToPhoto('UEhPVE8=', 'image/jpeg', 'UkVORFU=', { client });
+  const images = captured.messages[0].content.filter((b) => b.type === 'image');
+  assert.strictEqual(images.length, 2);
+  assert.strictEqual(images[0].source.data, 'UEhPVE8=');
+  assert.strictEqual(images[1].source.data, 'UkVORFU=');
+  assert.ok(critique.includes('toit trop plat'));
+});
+
+test('compareToPhoto : panne API → null sans lever', async () => {
+  const client = { messages: { create: async () => { throw new Error('panne'); } } };
+  assert.strictEqual(await compareToPhoto('a', 'image/png', 'b', { client }), null);
+});

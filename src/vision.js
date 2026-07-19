@@ -60,4 +60,29 @@ async function analyzeImage(imageBase64, mimeType, { client, maxSize = 64, valid
   return parsed;
 }
 
-module.exports = { analyzeImage };
+// Boucle de fidélité : compare la photo de référence au rendu voxel généré
+// et liste les écarts les plus visibles ; null si indisponible (non bloquant)
+async function compareToPhoto(photoBase64, photoMime, renderBase64, { client } = {}) {
+  try {
+    const c = client || createClient();
+    const response = await withRetry(() => c.messages.create({
+      model: MODEL,
+      max_tokens: 600,
+      system: 'Tu compares une PHOTO de référence (première image) et le RENDU voxel Minecraft généré à partir d\'elle (seconde image). Liste les 5 écarts les PLUS VISIBLES qui empêchent de reconnaître la photo dans le rendu : silhouette générale, proportions, forme du toit, tours, rythme des ouvertures, couleurs dominantes. Réponds en liste à puces courte et actionnable, uniquement les écarts, sans compliments.',
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: photoMime, data: photoBase64 } },
+          { type: 'image', source: { type: 'base64', media_type: 'image/png', data: renderBase64 } },
+          { type: 'text', text: 'Écarts entre la photo (référence) et le rendu :' }
+        ]
+      }]
+    }), { retries: 1 });
+    return response.content.find((b) => b.type === 'text').text.trim();
+  } catch (err) {
+    console.warn('[vision] comparaison photo/rendu indisponible :', err.message);
+    return null;
+  }
+}
+
+module.exports = { analyzeImage, compareToPhoto };

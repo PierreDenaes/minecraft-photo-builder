@@ -136,3 +136,17 @@ test('sans photo, le contenu reste une chaîne simple (compat)', async () => {
   await generateStructure({ type_batiment: 'maison' }, { client, timeoutMs: 5000 });
   assert.strictEqual(typeof captured.messages[0].content, 'string');
 });
+
+test('la critique des écarts est injectée dans la régénération', async () => {
+  const codeC = 'function generateStructure() { return [{ x: 0, y: 0, z: 0, block: "stone" }]; }';
+  let captured = null;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: codeC }] }; } } };
+  await generateStructure({ type_batiment: 'maison' }, {
+    client, timeoutMs: 5000,
+    image: { base64: 'QUJD', mimeType: 'image/jpeg' },
+    critique: '- toit trop plat\n- tours absentes'
+  });
+  const txt = captured.messages[0].content.find((b) => b.type === 'text').text;
+  assert.ok(txt.includes('toit trop plat'));
+  assert.ok(/CORRIGE/i.test(txt));
+});

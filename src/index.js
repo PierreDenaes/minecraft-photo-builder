@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const mineflayer = require('mineflayer');
 const config = require('../config.json');
-const { analyzeImage } = require('./vision');
+const { analyzeImage, compareToPhoto } = require('./vision');
 const { generateStructure } = require('./generator');
 const { validateStructure } = require('./optimizer');
 const { Builder } = require('./builder');
@@ -295,7 +295,7 @@ function createBot(cfg) {
   }
 
   async function onPhoto(username, buffer, mimeType) {
-    bot.chat(`Photo reçue de ${username} — étape 1/3 : lecture de la photo...`);
+    bot.chat(`Photo reçue de ${username} — étape 1/4 : lecture de la photo...`);
     const base64 = buffer.toString('base64');
     const description = await analyzeImage(base64, mimeType, {
       maxSize: cfg.limits.max_size,
@@ -305,13 +305,22 @@ function createBot(cfg) {
       bot.chat(`${username} : analyse impossible — ${description.erreur}`);
       return `erreur : ${description.erreur}`;
     }
-    bot.chat(`Étape 2/3 : génération de ${description.type_batiment} d'après la photo (l'étape la plus longue, ~1 min)...`);
-    const blocks = await generateStructure(description, {
+    bot.chat(`Étape 2/4 : génération de ${description.type_batiment} d'après la photo (~1 min)...`);
+    const genOpts = {
       timeoutMs: cfg.limits.sandbox_timeout_ms,
       validBlocks: realisticMaterials(materiaux, description),
       image: { base64, mimeType }
-    });
-    bot.chat('Étape 3/3 : décoration intérieure...');
+    };
+    let blocks = await generateStructure(description, genOpts);
+    bot.chat('Étape 3/4 : comparaison du résultat à la photo, puis correction (~1 min)...');
+    try {
+      const render = await renderVoxels(blocks, blockColors);
+      const critique = await compareToPhoto(base64, mimeType, render.toString('base64'), { client: apiClient });
+      if (critique) blocks = await generateStructure(description, { ...genOpts, critique });
+    } catch (err) {
+      console.warn('[photo] passe de correction ignorée :', err.message);
+    }
+    bot.chat('Étape 4/4 : décoration intérieure...');
     const decor = await decorateInterior(blocks, description, { client: apiClient, timeoutMs: cfg.limits.sandbox_timeout_ms });
     if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
     const meubles = blocks.concat(decor);

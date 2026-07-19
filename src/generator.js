@@ -72,7 +72,7 @@ function normalizeOrigin(blocks) {
   return blocks;
 }
 
-async function generateStructure(description, { client, timeoutMs = 5000, validBlocks, structuralSummary, image } = {}) {
+async function generateStructure(description, { client, timeoutMs = 5000, validBlocks, structuralSummary, image, critique } = {}) {
   const c = client || createClient();
   const blocksSection = validBlocks
     ? `\n\nBlocs autorisés — n'utilise QUE ces noms, aucun autre :\n${validBlocks.join(', ')}`
@@ -83,7 +83,10 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
   const imageSection = image
     ? '\n\nLa photo jointe est LA référence : calque les proportions, le nombre et le rythme des ouvertures, la forme exacte du toit et les couleurs sur ce que tu VOIS, pas seulement sur la description.'
     : '';
-  const userText = `Description du bâtiment :\n${JSON.stringify(description, null, 2)}${summarySection}${blocksSection}${imageSection}\n\nÉcris generateStructure().`;
+  const critiqueSection = critique
+    ? `\n\nUne première version a été générée puis comparée à la photo — voici les écarts constatés, CORRIGE-les TOUS dans cette nouvelle version :\n${critique}`
+    : '';
+  const userText = `Description du bâtiment :\n${JSON.stringify(description, null, 2)}${summarySection}${blocksSection}${imageSection}${critiqueSection}\n\nÉcris generateStructure().`;
   const content = image
     ? [
       { type: 'image', source: { type: 'base64', media_type: image.mimeType, data: image.base64 } },
