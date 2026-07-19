@@ -85,5 +85,58 @@ test('physique du décor : sous toit et attaché uniquement', async () => {
   const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
   const decor = await decorateInterior(room, {}, { client, timeoutMs: 5000 });
   const names = decor.map((b) => `${b.block}@${b.x},${b.y},${b.z}`).sort();
-  assert.deepStrictEqual(names, ['bookshelf@3,1,3', 'torch@1,2,3']);
+  // la torche contre le mur x0 devient une wall_torch orientée vers l'est (mur à l'ouest)
+  assert.deepStrictEqual(names, ['bookshelf@3,1,3', 'wall_torch[facing=east]@1,2,3']);
+});
+
+const { fixAttachments } = require('../src/decorator');
+
+test('torche : sur sol → debout, contre mur → wall_torch orientée, flottante → supprimée', () => {
+  const solid = new Set(['5,0,5', '9,1,5']);
+  const isSolid = (x, y, z) => solid.has(`${x},${y},${z}`);
+  const items = [
+    { x: 5, y: 1, z: 5, block: 'torch' },      // sol dessous → debout
+    { x: 10, y: 1, z: 5, block: 'torch' },     // mur à x-1 → wall_torch facing=east
+    { x: 20, y: 3, z: 20, block: 'torch' }     // rien → supprimée
+  ];
+  const out = fixAttachments(items, isSolid);
+  assert.strictEqual(out.length, 2);
+  assert.strictEqual(out[0].block, 'torch');
+  assert.strictEqual(out[1].block, 'wall_torch[facing=east]');
+});
+
+test('wall_torch du LLM : orientée selon le mur réel, sinon reposée debout ou supprimée', () => {
+  const solid = new Set(['5,1,6', '8,0,2']);
+  const isSolid = (x, y, z) => solid.has(`${x},${y},${z}`);
+  const out = fixAttachments([
+    { x: 5, y: 1, z: 5, block: 'wall_torch' }, // mur à z+1 → facing=north
+    { x: 8, y: 1, z: 2, block: 'wall_torch' }, // pas de mur mais sol → torch debout
+    { x: 30, y: 5, z: 30, block: 'wall_torch' } // rien → supprimée
+  ], isSolid);
+  assert.strictEqual(out.length, 2);
+  assert.strictEqual(out[0].block, 'wall_torch[facing=north]');
+  assert.strictEqual(out[1].block, 'torch');
+});
+
+test('lanterne/campfire/pot : support plein dessous requis ; échelle : mur requis', () => {
+  const solid = new Set(['1,0,1', '4,2,3']);
+  const isSolid = (x, y, z) => solid.has(`${x},${y},${z}`);
+  const out = fixAttachments([
+    { x: 1, y: 1, z: 1, block: 'lantern' },   // posée
+    { x: 2, y: 4, z: 2, block: 'lantern' },   // flottante → supprimée
+    { x: 3, y: 2, z: 3, block: 'ladder' },    // mur à x+1 → facing=west
+    { x: 9, y: 2, z: 9, block: 'ladder' }     // sans mur → supprimée
+  ], isSolid);
+  assert.strictEqual(out.length, 2);
+  assert.strictEqual(out[0].block, 'lantern');
+  assert.strictEqual(out[1].block, 'ladder[facing=west]');
+});
+
+test('une torche ne sert pas de support à une autre torche', () => {
+  const isSolid = () => false;
+  const out = fixAttachments([
+    { x: 5, y: 0, z: 5, block: 'torch' },
+    { x: 5, y: 1, z: 5, block: 'torch' }
+  ], isSolid);
+  assert.strictEqual(out.length, 0);
 });

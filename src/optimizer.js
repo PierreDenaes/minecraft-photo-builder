@@ -20,7 +20,8 @@ function validateStructure(blocks, { maxSize, maxBlocks, validBlocks }) {
       min[axis] = Math.min(min[axis], b[axis]);
       max[axis] = Math.max(max[axis], b[axis]);
     }
-    if (typeof b.block !== 'string' || !valid.has(b.block)) badNames.add(String(b.block));
+    // le nom peut porter un état de bloc ([facing=...], [persistent=...]) : on valide le nom de base
+    if (typeof b.block !== 'string' || !valid.has(b.block.replace(/\[[^\]]*\]$/, ''))) badNames.add(String(b.block));
   }
   if (badCoord) errors.push('coordonnées invalides : entiers >= 0 requis');
   if (badNames.size > 0) errors.push(`blocs inconnus : ${[...badNames].join(', ')}`);

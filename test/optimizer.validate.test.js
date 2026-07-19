@@ -53,3 +53,12 @@ test('rejette des éléments non-objets sans planter', () => {
   const r2 = validateStructure([42], limits);
   assert.strictEqual(r2.ok, false);
 });
+
+test('un état de bloc [facing=...] est accepté si le bloc de base est valide', () => {
+  const ok = validateStructure([{ x: 0, y: 0, z: 0, block: 'wall_torch[facing=east]' }],
+    { maxSize: 8, maxBlocks: 10, validBlocks: ['wall_torch'] });
+  assert.strictEqual(ok.ok, true);
+  const bad = validateStructure([{ x: 0, y: 0, z: 0, block: 'lave_magique[facing=east]' }],
+    { maxSize: 8, maxBlocks: 10, validBlocks: ['wall_torch'] });
+  assert.strictEqual(bad.ok, false);
+});

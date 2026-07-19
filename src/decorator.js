@@ -29,6 +29,39 @@ function detectFloors(building) {
   return floors;
 }
 
+// Physique des attachements Minecraft : une torche debout exige un bloc plein
+// DESSOUS, au mur c'est wall_torch avec orientation, sinon l'objet saute à la pose
+const NEEDS_FLOOR = new Set(['torch', 'lantern', 'campfire', 'flower_pot']);
+const ATTACH_FACINGS = [['east', -1, 0], ['west', 1, 0], ['south', 0, -1], ['north', 0, 1]];
+const SOLID_DECOR = new Set(['bookshelf', 'crafting_table', 'furnace', 'smoker', 'barrel', 'glowstone',
+  'sea_lantern', 'hay_block', 'white_wool', 'red_wool', 'blue_wool', 'green_wool', 'yellow_wool',
+  'brown_wool', 'black_wool']);
+
+function fixAttachments(items, isSolid) {
+  const keptSolid = new Set();
+  const solidAt = (x, y, z) => isSolid(x, y, z) || keptSolid.has(`${x},${y},${z}`);
+  const kept = [];
+  for (const b of [...items].sort((p, q) => p.y - q.y)) {
+    const below = solidAt(b.x, b.y - 1, b.z);
+    const lateral = ATTACH_FACINGS.find(([, dx, dz]) => solidAt(b.x + dx, b.y, b.z + dz));
+    let block = b.block;
+    if (b.block === 'torch' || b.block === 'wall_torch') {
+      if (b.block === 'torch' && below) block = 'torch';
+      else if (lateral) block = `wall_torch[facing=${lateral[0]}]`;
+      else if (below) block = 'torch';
+      else continue;
+    } else if (NEEDS_FLOOR.has(b.block)) {
+      if (!below) continue;
+    } else if (b.block === 'ladder') {
+      if (!lateral) continue;
+      block = `ladder[facing=${lateral[0]}]`;
+    }
+    if (SOLID_DECOR.has(b.block)) keptSolid.add(`${b.x},${b.y},${b.z}`);
+    kept.push(block === b.block ? b : { ...b, block });
+  }
+  return kept;
+}
+
 async function decorateInterior(building, description, { client, timeoutMs = 20000 } = {}) {
   const floors = detectFloors(building);
   if (!client || floors.length === 0) return [];
@@ -71,19 +104,20 @@ async function decorateInterior(building, description, { client, timeoutMs = 200
       keptDecor.add(`${b.x},${b.y},${b.z}`);
       physical.push(b);
     }
+    const anchored = fixAttachments(physical, (x, y, z) => occupied.has(`${x},${y},${z}`));
     const cap = Math.ceil(d.x * d.z * floors.length * 0.10);
-    if (physical.length > cap) {
-      const step = physical.length / cap;
+    if (anchored.length > cap) {
+      const step = anchored.length / cap;
       const thinned = [];
-      for (let i = 0; i < physical.length; i += step) thinned.push(physical[Math.floor(i)]);
-      console.warn(`[decorateur] densité plafonnée : ${physical.length} → ${thinned.length}`);
+      for (let i = 0; i < anchored.length; i += step) thinned.push(anchored[Math.floor(i)]);
+      console.warn(`[decorateur] densité plafonnée : ${anchored.length} → ${thinned.length}`);
       return thinned.slice(0, cap);
     }
-    return physical;
+    return anchored;
   } catch (err) {
     console.warn('[decorateur] indisponible :', err.message);
     return [];
   }
 }
 
-module.exports = { detectFloors, decorateInterior };
+module.exports = { detectFloors, decorateInterior, fixAttachments };
