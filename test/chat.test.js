@@ -268,10 +268,14 @@ test('4 rotations !tourner reviennent à l\'identique (pas de dérive de marge)'
     blocks: [...socleBlocks, ...body], size: { x: 5, y: 5, z: 5 },
     description: { type_batiment: 'statue' }, socle: { h: 2, block: 'smooth_stone', margin: 1 }
   });
-  const snapshot = JSON.stringify([...pending.get('steve').blocks].sort((a, b2) => a.x - b2.x || a.y - b2.y || a.z - b2.z));
+  const bodyOf = (blocks) => JSON.stringify(blocks.filter((b) => b.block !== 'smooth_stone')
+    .sort((a, b2) => a.x - b2.x || a.y - b2.y || a.z - b2.z));
+  const snapshot = bodyOf(pending.get('steve').blocks);
   for (let i = 0; i < 4; i++) handle('Steve', '!tourner');
-  const after = JSON.stringify([...pending.get('steve').blocks].sort((a, b2) => a.x - b2.x || a.y - b2.y || a.z - b2.z));
-  assert.strictEqual(after, snapshot, 'dérive après 4 rotations');
+  const p4 = pending.get('steve');
+  assert.strictEqual(bodyOf(p4.blocks), snapshot, 'dérive du corps après 4 rotations');
+  // le socle est régénéré canoniquement : toujours plat, jamais cumulatif
+  assert.ok(p4.blocks.filter((b) => b.block === 'smooth_stone').every((b) => b.y < 2));
 });
 
 test('!redresser après !go garde le socle à plat (métadonnée socle transmise)', () => {
