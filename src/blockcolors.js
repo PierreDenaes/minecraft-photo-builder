@@ -98,7 +98,7 @@ const THEME_BLOCKS = {
 // Mobilier et aménagement : autorisé UNIQUEMENT à l'intérieur des bâtiments
 const INTERIOR_BLOCKS = new Set(['bookshelf', 'crafting_table', 'furnace', 'smoker', 'chest', 'barrel',
   'lantern', 'torch', 'wall_torch', 'glowstone', 'sea_lantern', 'chain', 'campfire', 'ladder',
-  'flower_pot', 'hay_block', 'oak_door', 'spruce_door', 'dark_oak_door', 'birch_door', 'iron_door',
+  'flower_pot', 'hay_block', 'red_bed', 'white_bed', 'oak_door', 'spruce_door', 'dark_oak_door', 'birch_door', 'iron_door',
   'oak_trapdoor', 'spruce_trapdoor', 'oak_fence', 'spruce_fence', 'dark_oak_fence', 'birch_fence',
   'oak_stairs', 'spruce_stairs', 'dark_oak_stairs', 'birch_stairs', 'oak_slab', 'spruce_slab',
   'dark_oak_slab', 'stone_slab', 'glass_pane', 'iron_bars',

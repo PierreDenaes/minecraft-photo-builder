@@ -31,7 +31,7 @@ test('decorateInterior filtre collisions, hors-boîte et blocs interdits', async
       { x: 99, y: 1, z: 3, block: 'chest' },
       { x: 4, y: 1, z: 4, block: 'diamond_ore' }
     ];
-  }`;
+  }\n// FIN_STRUCTURE`;
   const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
   const decor = await decorateInterior(building, { type_batiment: 'manoir' }, { client, timeoutMs: 5000 });
   assert.strictEqual(decor.length, 1);            // seul le bookshelf libre survit
@@ -59,7 +59,7 @@ test('réponse tronquée → [] sans lever', async () => {
 test('plafond de densité : le mobilier excédentaire est aminci déterministiquement', async () => {
   const items = [];
   for (let x = 1; x < 9; x++) for (let z = 1; z < 7; z++) items.push({ x, y: 1, z, block: 'bookshelf' });
-  const code = `function generateStructure() { return ${JSON.stringify(items)}; }`;
+  const code = `function generateStructure() { return ${JSON.stringify(items)}; }\n// FIN_STRUCTURE`;
   const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
   const a = await decorateInterior(building, {}, { client, timeoutMs: 5000 });
   const b = await decorateInterior(building, {}, { client, timeoutMs: 5000 });
@@ -81,7 +81,7 @@ test('physique du décor : sous toit et attaché uniquement', async () => {
       { x: 5, y: 2, z: 5, block: 'torch' },       // en l'air au milieu → supprimé
       { x: 5, y: 3, z: 10, block: 'lantern' }     // au-dessus du rampart sans toit → supprimé
     ];
-  }`;
+  }\n// FIN_STRUCTURE`;
   const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
   const decor = await decorateInterior(room, {}, { client, timeoutMs: 5000 });
   const names = decor.map((b) => `${b.block}@${b.x},${b.y},${b.z}`).sort();
@@ -144,7 +144,7 @@ test('une torche ne sert pas de support à une autre torche', () => {
 test('le décorateur reçoit la carte des murs de chaque plancher', async () => {
   const room = [...slabAt(0), ...wallsTo(4)];
   let captured = null;
-  const code = 'function generateStructure() { return []; }';
+  const code = 'function generateStructure() { return []; }\n// FIN_STRUCTURE';
   const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
   await decorateInterior(room, {}, { client, timeoutMs: 5000 });
   const msg = captured.messages[0].content;
@@ -155,4 +155,43 @@ test('le décorateur reçoit la carte des murs de chaque plancher', async () => 
   assert.ok(wallRow, `rangée de mur attendue (##########) dans :\n${msg}`);
   assert.ok(lines.some((l) => /^\.{10}$/.test(l)), 'rangée intérieure .......... (sol libre) attendue');
   assert.ok(/[#]\s*=\s*mur/.test(msg) || msg.includes('# mur'), 'légende # = mur attendue');
+});
+
+// ---- Itération 10 : prompt contexte + circulation, sentinelle, états, lits ----
+test('prompt décorateur : sentinelle, circulation, contexte bâtiment transmis', async () => {
+  let captured = null;
+  const code = 'function generateStructure() { return []; }\n// FIN_STRUCTURE';
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
+  await decorateInterior(building, { type_batiment: 'manoir', style: 'medieval' }, { client, timeoutMs: 5000 });
+  assert.ok(captured.system.includes('FIN_STRUCTURE'));
+  assert.ok(captured.system.includes('Circulation'));
+  assert.ok(captured.system.includes('part=foot'));
+  assert.ok(captured.messages[0].content.includes('Bâtiment : manoir, style medieval.'));
+});
+
+test('sentinelle décorateur : réponse sans FIN_STRUCTURE → décoration ignorée', async () => {
+  const code = 'function generateStructure() { return [{ x: 3, y: 1, z: 3, block: "bookshelf" }]; }';
+  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
+  assert.deepStrictEqual(await decorateInterior(building, {}, { client, timeoutMs: 5000 }), []);
+});
+
+test('fixAttachments : wall_torch avec état est réorientée selon le mur réel', () => {
+  const solid = new Set(['4,1,5']);
+  const isSolid = (x, y, z) => solid.has(`${x},${y},${z}`);
+  const out = fixAttachments([{ x: 5, y: 1, z: 5, block: 'wall_torch[facing=south]' }], isSolid);
+  assert.strictEqual(out.length, 1);
+  assert.strictEqual(out[0].block, 'wall_torch[facing=east]');
+});
+
+test('lits : moitié tête complétée dans la direction du facing, lit flottant supprimé', () => {
+  const solid = new Set(['2,0,5', '2,0,4']);
+  const isSolid = (x, y, z) => solid.has(`${x},${y},${z}`);
+  const out = fixAttachments([
+    { x: 2, y: 1, z: 5, block: 'red_bed[facing=north,part=foot]' },
+    { x: 9, y: 4, z: 9, block: 'red_bed[facing=north,part=foot]' }
+  ], isSolid);
+  const head = out.find((b) => b.block === 'red_bed[facing=north,part=head]');
+  assert.ok(head, 'tête de lit attendue');
+  assert.deepStrictEqual([head.x, head.y, head.z], [2, 1, 4]);
+  assert.ok(!out.some((b) => b.x === 9), 'lit flottant supprimé');
 });

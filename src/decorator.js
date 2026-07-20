@@ -43,26 +43,39 @@ const SOLID_DECOR = new Set(['bookshelf', 'crafting_table', 'furnace', 'smoker',
   'sea_lantern', 'hay_block', 'white_wool', 'red_wool', 'blue_wool', 'green_wool', 'yellow_wool',
   'brown_wool', 'black_wool']);
 
+const baseOf = (n) => n.replace(/\[[^\]]*\]$/, '');
+const BED_HEAD = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
+
 function fixAttachments(items, isSolid) {
   const keptSolid = new Set();
   const solidAt = (x, y, z) => isSolid(x, y, z) || keptSolid.has(`${x},${y},${z}`);
   const kept = [];
   for (const b of [...items].sort((p, q) => p.y - q.y)) {
+    const base = baseOf(b.block);
     const below = solidAt(b.x, b.y - 1, b.z);
     const lateral = ATTACH_FACINGS.find(([, dx, dz]) => solidAt(b.x + dx, b.y, b.z + dz));
     let block = b.block;
-    if (b.block === 'torch' || b.block === 'wall_torch') {
-      if (b.block === 'torch' && below) block = 'torch';
+    if (base === 'torch' || base === 'wall_torch') {
+      // l'orientation fournie par le LLM est ignorée : recalculée d'après le mur réel
+      if (base === 'torch' && below) block = 'torch';
       else if (lateral) block = `wall_torch[facing=${lateral[0]}]`;
       else if (below) block = 'torch';
       else continue;
-    } else if (NEEDS_FLOOR.has(b.block)) {
+    } else if (base.endsWith('_bed')) {
+      if (/part=head/.test(b.block)) continue; // la tête est régénérée depuis le pied
       if (!below) continue;
-    } else if (b.block === 'ladder') {
+      const facing = (/facing=(north|south|east|west)/.exec(b.block) || [, 'north'])[1];
+      const [dx, dz] = BED_HEAD[facing];
+      kept.push({ x: b.x, y: b.y, z: b.z, block: `${base}[facing=${facing},part=foot]` });
+      kept.push({ x: b.x + dx, y: b.y, z: b.z + dz, block: `${base}[facing=${facing},part=head]` });
+      continue;
+    } else if (NEEDS_FLOOR.has(base)) {
+      if (!below) continue;
+    } else if (base === 'ladder') {
       if (!lateral) continue;
       block = `ladder[facing=${lateral[0]}]`;
     }
-    if (SOLID_DECOR.has(b.block)) keptSolid.add(`${b.x},${b.y},${b.z}`);
+    if (SOLID_DECOR.has(base)) keptSolid.add(`${b.x},${b.y},${b.z}`);
     kept.push(block === b.block ? b : { ...b, block });
   }
   return kept;
@@ -95,10 +108,32 @@ async function decorateInterior(building, description, { client, timeoutMs = 200
     const response = await withRetry(() => client.messages.create({
       model: MODEL,
       max_tokens: 16000,
-      system: `Tu es décorateur d'intérieur Minecraft. Écris une fonction JavaScript pure generateStructure() retournant [{x, y, z, block}] : mobilier, rangements et éclairage posés SUR les planchers (y du plancher + 1), à l'intérieur des murs (marge de 1 bloc), pièces cohérentes (coin repas, bibliothèque, atelier, éclairage régulier aux murs). PARCIMONIE : 10 à 20 éléments par pièce MAXIMUM, laisse les axes de circulation totalement libres, jamais de remplissage en tapis intégral. Code COMPACT : boucles et fonctions d'aide, jamais de longues listes de blocs un par un. Blocs autorisés UNIQUEMENT : ${[...INTERIOR_BLOCKS].join(', ')}. Réponds UNIQUEMENT avec le code, sans texte autour.`,
+      system: `Tu es décorateur d'intérieur Minecraft (version 1.20). Écris une fonction JavaScript pure generateStructure() retournant [{x, y, z, block}].
+Réponds UNIQUEMENT avec le code, sans texte autour, sans balises markdown. Termine par le commentaire exact : // FIN_STRUCTURE
+
+Placement :
+- Mobilier, rangements et éclairage posés SUR les planchers (y du plancher + 1), à l'intérieur des murs (marge de 1 bloc)
+- Les cartes ASCII fournies donnent, pour chaque plancher, la vue de dessus : chaque ligne = z croissant vers le bas, chaque colonne = x croissant vers la droite ; le y du plancher est indiqué en en-tête de chaque carte
+- "#" = mur, "." = sol libre, espace = vide. Pose UNIQUEMENT sur des cases ".", les meubles et l'éclairage CONTRE les murs "#", jamais sur "#" ni dans le vide
+
+Circulation (obligatoire) :
+- Ne pose RIEN sur les cases d'escalier ni sur les 2 cases devant chaque porte ou ouverture
+- Laisse un chemin libre d'au moins 1 case de large entre chaque porte et chaque escalier de l'étage
+
+Cohérence :
+- Pièces cohérentes avec le type et le style du bâtiment fournis : coin repas, bibliothèque, atelier, chambre... adapte le mobilier au contexte (une chapelle n'a pas de lit, une forge a des fourneaux)
+- Éclairage régulier contre les murs
+- PARCIMONIE : 10 à 20 éléments par pièce MAXIMUM, jamais de remplissage en tapis intégral
+
+Blocs et états :
+- Blocs autorisés UNIQUEMENT : ${[...INTERIOR_BLOCKS].join(', ')}
+- Les blocs orientables portent leur état entre crochets : "wall_torch[facing=east]" (facing = direction OPPOSÉE au mur porteur), lit en DEUX blocs "red_bed[facing=north,part=foot]" puis "red_bed[facing=north,part=head]" dans la direction du facing
+- Les blocs posés au sol sans orientation (barrel, bookshelf, crafting_table, lantern, flower_pot...) s'écrivent sans crochets
+
+Code COMPACT : boucles et fonctions d'aide, jamais de longues listes de blocs un par un.`,
       messages: [{
         role: 'user',
-        content: `Bâtiment ${d.x}x${d.z}x${d.y} (x,z,y). Style : ${description.type_batiment || 'bâtiment'}${description.style ? ' — ' + description.style : ''}.\n\n${cartes}\n\nPose UNIQUEMENT sur des cases « . », les meubles et l'éclairage CONTRE les murs « # », jamais sur « # » ni dans le vide. Écris generateStructure().`
+        content: `Bâtiment : ${description.type_batiment || 'bâtiment'}, style ${description.style || 'non précisé'}.\nDimensions ${d.x}x${d.z}x${d.y} (x,z,y).\n\n${cartes}\n\nÉcris generateStructure().`
       }]
     }), { retries: 1 });
     if (response.stop_reason === 'max_tokens') {
@@ -106,9 +141,13 @@ async function decorateInterior(building, description, { client, timeoutMs = 200
       return [];
     }
     const code = stripCodeFences(response.content.find((b) => b.type === 'text').text);
+    if (!code.includes('// FIN_STRUCTURE')) {
+      console.warn('[decorateur] sentinelle absente (réponse tronquée ?) — décoration ignorée');
+      return [];
+    }
     const raw = runStructureCode(code, timeoutMs);
     const filtered = raw.filter((b) => b && typeof b === 'object'
-      && INTERIOR_BLOCKS.has(b.block)
+      && typeof b.block === 'string' && INTERIOR_BLOCKS.has(baseOf(b.block))
       && Number.isInteger(b.x) && Number.isInteger(b.y) && Number.isInteger(b.z)
       && b.x >= 0 && b.x < d.x && b.y >= 0 && b.y < d.y && b.z >= 0 && b.z < d.z
       && !occupied.has(`${b.x},${b.y},${b.z}`));
