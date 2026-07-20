@@ -136,7 +136,7 @@ test('STYLES exporte les 22 styles de l\'almanach + autre', () => {
   assert.ok(TOIT_FORMES.includes('mansarde'));
 });
 
-test('réglages API vision : temperature 0, cache_control, prefill JSON recomposé', async () => {
+test('réglages API vision : temperature 0, cache_control, recomposition JSON tolérante', async () => {
   let captured = null;
   // le modèle répond SANS l'accolade ouvrante (prefill assistant)
   const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: '"type_batiment":"grange"}' }] }; } } };
@@ -145,7 +145,6 @@ test('réglages API vision : temperature 0, cache_control, prefill JSON recompos
   assert.strictEqual(captured.temperature, 0);
   assert.ok(Array.isArray(captured.system));
   assert.deepStrictEqual(captured.system[0].cache_control, { type: 'ephemeral' });
-  const last = captured.messages[captured.messages.length - 1];
-  assert.strictEqual(last.role, 'assistant');
-  assert.strictEqual(last.content, '{');
+  // les modèles 4.x refusent le prefill assistant : la conversation DOIT finir par un message user
+  assert.strictEqual(captured.messages[captured.messages.length - 1].role, 'user');
 });

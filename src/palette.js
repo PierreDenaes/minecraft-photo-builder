@@ -89,7 +89,7 @@ Réponds UNIQUEMENT en JSON strict : [{"rgb":[r,g,b],"theme":"nom"}], dans le m�
       messages: [{
         role: 'user',
         content: `Contexte : ${contexte || 'scène extérieure'}\nThèmes possibles : ${Object.keys(THEME_BLOCKS).join(', ')}\nCouleurs dominantes : ${JSON.stringify(centroids)}\n\nRéférentiel des palettes par thème (applique ces règles) :\n${getSections([8])}`
-      }, { role: 'assistant', content: '[' }]
+      }]
     }), { retries: 1 });
     const rawT = stripCodeFences(response.content.find((b) => b.type === 'text').text).trim();
     const parsed = JSON.parse(rawT.startsWith('[') ? rawT : `[${rawT}`);

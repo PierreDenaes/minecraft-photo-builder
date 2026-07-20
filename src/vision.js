@@ -60,10 +60,10 @@ async function analyzeImage(imageBase64, mimeType, { client, maxSize = 64, valid
           { type: 'image', source: { type: 'base64', media_type: mimeType, data: imageBase64 } },
           { type: 'text', text: 'Analyse ce bâtiment et réponds avec le JSON demandé.' }
         ]
-      }, { role: 'assistant', content: '{' }]
+      }]
     })
   );
-  // prefill : la réponse arrive sans l'accolade ouvrante ; recomposition tolérante
+  // recomposition tolérante (accolade ouvrante parfois omise par le modèle)
   const rawText = stripCodeFences(response.content.find((b) => b.type === 'text').text).trim();
   const text = rawText.startsWith('{') ? rawText : `{${rawText}`;
   let parsed;
