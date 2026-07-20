@@ -101,7 +101,7 @@ function completeDoors(blocks) {
   return blocks.concat(added);
 }
 
-async function generateStructure(description, { client, timeoutMs = 5000, validBlocks, structuralSummary, image, correction } = {}) {
+async function generateStructure(description, { client, timeoutMs = 5000, validBlocks, existingBlocks, structuralSummary, image, correction } = {}) {
   const c = client || createClient();
   const blocksSection = validBlocks
     ? `\n\nBlocs autorisés — n'utilise QUE ces noms, aucun autre :\n${validBlocks.join(', ')}`
@@ -152,8 +152,10 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
       const blocks = completeDoors(runStructureCode(code, timeoutMs));
       // Blocs inventés (ex : smooth_stone_wall n'existe pas) : réinjectés dans la
       // boucle pour que le modèle les corrige lui-même
-      if (validBlocks) {
-        const valid = new Set(validBlocks);
+      // existence contre la liste blanche COMPLÈTE : la palette (validBlocks)
+      // guide le style, les variantes stairs/slab/wall existantes restent légales
+      if (validBlocks || existingBlocks) {
+        const valid = new Set(existingBlocks || validBlocks);
         const alwaysOk = new Set(['air', 'glass_pane', 'oak_door', 'ladder', 'lantern', 'torch', 'wall_torch']);
         const unknown = [...new Set(blocks
           .map((b) => String(b.block).replace(/\[[^\]]*\]$/, ''))

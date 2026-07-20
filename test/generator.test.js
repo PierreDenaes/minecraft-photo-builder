@@ -263,3 +263,16 @@ test('bloc hors liste blanche → réinjecté dans la boucle, corrigé à la 2e 
   assert.strictEqual(reqs.length, 2);
   assert.ok(JSON.stringify(reqs[1].messages).includes('smooth_stone_wall'));
 });
+
+test('les variantes hors palette mais existantes passent ; les blocs inventés sont retentés', async () => {
+  const withStairs = 'function generateStructure() { return [{ x: 0, y: 0, z: 0, block: "oak_stairs[facing=north]" }]; }\n// FIN_STRUCTURE';
+  let calls = 0;
+  const client = { messages: { create: async () => { calls++; return { content: [{ type: 'text', text: withStairs }] }; } } };
+  const out = await generateStructure({ type_batiment: 't' }, {
+    client, timeoutMs: 5000,
+    validBlocks: ['white_concrete'],               // palette de style (sans stairs)
+    existingBlocks: ['white_concrete', 'oak_stairs'] // liste blanche complète
+  });
+  assert.strictEqual(out.blocks[0].block, 'oak_stairs[facing=north]');
+  assert.strictEqual(calls, 1, 'aucune retentative attendue pour un bloc existant');
+});
