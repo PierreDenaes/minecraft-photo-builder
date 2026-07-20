@@ -113,7 +113,9 @@ function buildThemePicker(centroids, themes, allowedColors) {
 // explicitement cartoon/modernes — un château de pierre n'a pas de toit en béton noir
 const VIVID_MATERIAL = /concrete|wool|terracotta/;
 const VIVID_EXCEPTIONS = new Set(['terracotta', 'brown_terracotta', 'white_wool']);
-const VIVID_STYLE = /cartoon|jeu.?vid|moderne|color|arcade|fantaisie|pixel/i;
+// aligné sur l'enum fermée de la vision (moderne, fantaisie, futuriste, art_deco)
+// + les termes libres de type_batiment (cartoon, jeu vidéo...)
+const VIVID_STYLE = /cartoon|jeu.?vid|moderne|color|arcade|fantaisie|pixel|futuriste|art.?deco/i;
 
 function realisticMaterials(materials, description = {}) {
   const style = `${description.style || ''} ${description.type_batiment || ''}`;

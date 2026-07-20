@@ -103,3 +103,33 @@ test('compareToPhoto : RAS (variantes) → null, catégories dans le prompt', as
   assert.ok(captured.system.includes('RAS'));
   assert.ok(captured.system.includes('pixellisation'));
 });
+
+const { STYLES, TOIT_FORMES } = require('../src/vision');
+
+test('prompt vision : calibration d\'échelle et vocabulaires fermés', async () => {
+  let captured = null;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: '{"type_batiment":"x"}' }] }; } } };
+  await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 96, validBlocks: ['stone'] });
+  assert.ok(captured.system.includes('1 bloc Minecraft = 1 mètre'));
+  assert.ok(captured.system.includes('une porte ≈ 2 m'));
+  assert.ok(captured.system.includes('etages × 4'));
+  assert.ok(captured.system.includes('PLUSIEURS bâtiments'));
+  for (const s of ['medieval', 'gothique', 'haussmannien', 'brutaliste', 'chateau_fort', 'autre']) {
+    assert.ok(captured.system.includes(s), `style ${s} attendu dans l'enum`);
+  }
+  assert.ok(captured.system.includes('plate|monopente|deux_pans|quatre_pans|conique|mansarde|dome'));
+});
+
+test('style et toit.forme hors vocabulaire → replis autre / deux_pans', async () => {
+  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: JSON.stringify({ type_batiment: 'x', style: 'roccoco-fantastique', toit: { forme: 'bizarre', materiau_suggere: 'stone' } }) }] }) } };
+  const r = await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
+  assert.strictEqual(r.style, 'autre');
+  assert.strictEqual(r.toit.forme, 'deux_pans');
+});
+
+test('STYLES exporte les 22 styles de l\'almanach + autre', () => {
+  assert.strictEqual(STYLES.length, 23);
+  assert.ok(STYLES.includes('asiatique_japonais'));
+  assert.ok(STYLES.includes('desert_mediterraneen'));
+  assert.ok(TOIT_FORMES.includes('mansarde'));
+});
