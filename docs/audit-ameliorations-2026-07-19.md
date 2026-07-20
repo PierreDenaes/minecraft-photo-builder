@@ -105,3 +105,17 @@ Ordonnancement suggéré : 2 et 3 d'abord (purs npm, une journée chacun, zéro 
 
 Sources détaillées : rapports de recherche du 2026-07-19 (FAWE/Modrinth, PrismarineJS, IntellectualSites, HuggingFace onnx-community, gltf-transform, dépôts TripoSR/SF3D/TRELLIS/Hunyuan3D).
 
+
+---
+
+## Volet 3 (ajout 2026-07-20) : backlog issu de l'analyse de Mindcraft
+
+Analyse du dépôt github.com/mindcraft-bots/mindcraft. Adoptés dans l'itération 10 : boucle de re-prompt sur erreur runtime (3 tentatives, generator.js) et table d'états de blocs façon placeBlock (portes/lits complétés mécaniquement). En backlog :
+
+| Idée | Ce que ça apporte | Effort |
+|---|---|---|
+| Vérification post-construction en jeu (`checkLevel` : bot.blockAt vs structure voulue, couche par couche) | Détecte les blocs manqués par le throttle ou refusés par le serveur, corrections ciblées — ferme la boucle mieux que le rendu offline | M |
+| RAG par embeddings sur l'almanach (sections les plus pertinentes par similarité) | Réduit le prompt de 40-60 % vs routage mécanique quand l'almanach grossira | M |
+| Caméra in-game (prismarine-viewer + node-canvas-webgl : screenshot réel du build pour la critique) | Critique sur le vrai rendu Minecraft (textures, lumière) — dépendances natives lourdes, à évaluer en branche isolée | L |
+| Mémoire compressée entre sessions (résumés des critiques/corrections passées, préfixe stable = cache hit) | Le bot retient les leçons d'une construction à l'autre | S |
+| Sandbox `ses` (Compartment + lockdown) à la place de `vm` | Isolation plus robuste du code généré | S |
