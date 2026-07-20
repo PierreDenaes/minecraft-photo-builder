@@ -1,40 +1,10 @@
 const { withRetry, stripCodeFences } = require('./llm');
-const { runStructureCode, completeDoors } = require('./generator');
 const { INTERIOR_BLOCKS } = require('./blockcolors');
 const { getSections } = require('./almanach');
+const { detectFloors, detectRooms, furnishRooms, dimsOf } = require('./rooms');
 
-const MODEL = 'claude-sonnet-4-6';
-
-function dimsOf(blocks) {
-  const d = { x: 0, y: 0, z: 0 };
-  for (const b of blocks) {
-    d.x = Math.max(d.x, b.x + 1);
-    d.y = Math.max(d.y, b.y + 1);
-    d.z = Math.max(d.z, b.z + 1);
-  }
-  return d;
-}
-
-function detectFloors(building) {
-  if (building.length === 0) return [];
-  const d = dimsOf(building);
-  const occ = new Set(building.map((b) => `${b.x},${b.y},${b.z}`));
-  const perY = new Map();
-  for (const b of building) {
-    // un plancher est une surface de MARCHE : bloc avec de l'air au-dessus
-    // (sinon les anneaux de murs des petits bâtiments comptent comme étages)
-    if (occ.has(`${b.x},${b.y + 1},${b.z}`)) continue;
-    perY.set(b.y, (perY.get(b.y) || 0) + 1);
-  }
-  const footprint = d.x * d.z;
-  const floors = [];
-  for (let y = 0; y < d.y; y++) {
-    if ((perY.get(y) || 0) >= footprint * 0.3) {
-      if (floors.length === 0 || y - floors[floors.length - 1] >= 3) floors.push(y);
-    }
-  }
-  return floors;
-}
+// classification simple : Haiku suffit
+const MODEL_SETS = 'claude-haiku-4-5-20251001';
 
 // Physique des attachements Minecraft : une torche debout exige un bloc plein
 // DESSOUS, au mur c'est wall_torch avec orientation, sinon l'objet saute à la pose
@@ -57,7 +27,7 @@ function fixAttachments(items, isSolid) {
     const lateral = ATTACH_FACINGS.find(([, dx, dz]) => solidAt(b.x + dx, b.y, b.z + dz));
     let block = b.block;
     if (base === 'torch' || base === 'wall_torch') {
-      // l'orientation fournie par le LLM est ignorée : recalculée d'après le mur réel
+      // l'orientation fournie est ignorée : recalculée d'après le mur réel
       if (base === 'torch' && below) block = 'torch';
       else if (lateral) block = `wall_torch[facing=${lateral[0]}]`;
       else if (below) block = 'torch';
@@ -83,107 +53,61 @@ function fixAttachments(items, isSolid) {
   return kept;
 }
 
-// Carte d'un plancher au niveau de marche (y+1) : # mur, . sol libre, espace = vide
-function floorMap(occupied, fy, d) {
-  const rows = [];
-  for (let z = 0; z < d.z; z++) {
-    let row = '';
-    for (let x = 0; x < d.x; x++) {
-      if (occupied.has(`${x},${fy + 1},${z}`)) row += '#';
-      else if (occupied.has(`${x},${fy},${z}`)) row += '.';
-      else row += ' ';
-    }
-    rows.push(row);
-  }
-  return rows.join('\n');
-}
+// Set de repli déterministe quand le LLM est indisponible : mobilier générique
+const DEFAULT_SET = ['wall_torch', 'barrel', 'bookshelf', 'crafting_table'];
 
-async function decorateInterior(building, description, { client, timeoutMs = 20000 } = {}) {
-  const floors = detectFloors(building);
-  if (!client || floors.length === 0) return [];
-  const d = dimsOf(building);
-  const occupied = new Set(building.map((b) => `${b.x},${b.y},${b.z}`));
-  const cartes = floors
-    .map((fy) => `Plancher y=${fy} (pose les meubles à y=${fy + 1}) — carte (# mur, . sol libre, espace = vide ; 1 ligne = z croissant, 1 colonne = x) :\n${floorMap(occupied, fy, d)}`)
-    .join('\n\n');
+// Le LLM ne choisit que la SÉMANTIQUE (rôle et mobilier de chaque pièce) ;
+// les positions sont calculées mécaniquement par furnishRooms
+async function chooseFurnitureSets(rooms, description, { client } = {}) {
+  const fallback = rooms.map(() => ({ role: 'piece', meubles: DEFAULT_SET }));
+  if (!client) return fallback;
   try {
+    const roomsDesc = rooms.map((r, i) => ({ piece: i, etage: r.y, taille_cases: r.cells.length }));
     const response = await withRetry(() => client.messages.create({
-      model: MODEL,
-      max_tokens: 16000,
-      temperature: 0.3,
-      system: [{ type: 'text', text: `Tu es décorateur d'intérieur Minecraft (version 1.20). Écris une fonction JavaScript pure generateStructure() retournant [{x, y, z, block}].
-Réponds UNIQUEMENT avec le code, sans texte autour, sans balises markdown. Termine par le commentaire exact : // FIN_STRUCTURE
-
-Placement :
-- Mobilier, rangements et éclairage posés SUR les planchers (y du plancher + 1), à l'intérieur des murs (marge de 1 bloc)
-- Les cartes ASCII fournies donnent, pour chaque plancher, la vue de dessus : chaque ligne = z croissant vers le bas, chaque colonne = x croissant vers la droite ; le y du plancher est indiqué en en-tête de chaque carte
-- "#" = mur, "." = sol libre, espace = vide. Pose UNIQUEMENT sur des cases ".", les meubles et l'éclairage CONTRE les murs "#", jamais sur "#" ni dans le vide
-
-Circulation (obligatoire) :
-- Ne pose RIEN sur les cases d'escalier ni sur les 2 cases devant chaque porte ou ouverture
-- Laisse un chemin libre d'au moins 1 case de large entre chaque porte et chaque escalier de l'étage
-
-Cohérence :
-- Pièces cohérentes avec le type et le style du bâtiment fournis : coin repas, bibliothèque, atelier, chambre... adapte le mobilier au contexte (une chapelle n'a pas de lit, une forge a des fourneaux)
-- Éclairage régulier contre les murs
-- PARCIMONIE : 10 à 20 éléments par pièce MAXIMUM, jamais de remplissage en tapis intégral
-
-Blocs et états :
-- Blocs autorisés UNIQUEMENT : ${[...INTERIOR_BLOCKS].join(', ')}
-- Les blocs orientables portent leur état entre crochets : "wall_torch[facing=east]" (facing = direction OPPOSÉE au mur porteur), lit en DEUX blocs "red_bed[facing=north,part=foot]" puis "red_bed[facing=north,part=head]" dans la direction du facing
-- Les blocs posés au sol sans orientation (barrel, bookshelf, crafting_table, lantern, flower_pot...) s'écrivent sans crochets
-
-Code COMPACT : boucles et fonctions d'aide, jamais de longues listes de blocs un par un.`, cache_control: { type: 'ephemeral' } }],
+      model: MODEL_SETS,
+      max_tokens: 800,
+      temperature: 0,
+      system: `Tu es décorateur d'intérieur Minecraft. Pour chaque pièce listée, choisis un rôle cohérent avec le bâtiment (chambre, coin repas, bibliothèque, atelier, entrée...) et 3 à 6 blocs de mobilier adaptés, UNIQUEMENT parmi : ${[...INTERIOR_BLOCKS].join(', ')}. Une chapelle n'a pas de lit, une forge a des fourneaux. Réponds UNIQUEMENT en JSON strict : [{"piece":N,"role":"...","meubles":["bloc",...]}], une entrée par pièce, dans l'ordre.`,
       messages: [{
         role: 'user',
-        content: `Bâtiment : ${description.type_batiment || 'bâtiment'}, style ${description.style || 'non précisé'}.\nDimensions ${d.x}x${d.z}x${d.y} (x,z,y).\n\n${cartes}\n\nRéférentiel (applique ces règles) :\n${getSections([7])}\n\nÉcris generateStructure().`
+        content: `Bâtiment : ${description.type_batiment || 'bâtiment'}, style ${description.style || 'non précisé'}.\nPièces : ${JSON.stringify(roomsDesc)}\n\nRéférentiel (applique ces règles) :\n${getSections([7])}`
       }]
     }), { retries: 1 });
-    if (response.stop_reason === 'max_tokens') {
-      console.warn('[decorateur] réponse tronquée — décoration ignorée');
-      return [];
-    }
-    const code = stripCodeFences(response.content.find((b) => b.type === 'text').text);
-    if (!code.includes('// FIN_STRUCTURE')) {
-      console.warn('[decorateur] sentinelle absente (réponse tronquée ?) — décoration ignorée');
-      return [];
-    }
-    const raw = completeDoors(runStructureCode(code, timeoutMs));
-    const filtered = raw.filter((b) => b && typeof b === 'object'
-      && typeof b.block === 'string' && INTERIOR_BLOCKS.has(baseOf(b.block))
-      && Number.isInteger(b.x) && Number.isInteger(b.y) && Number.isInteger(b.z)
-      && b.x >= 0 && b.x < d.x && b.y >= 0 && b.y < d.y && b.z >= 0 && b.z < d.z
-      && !occupied.has(`${b.x},${b.y},${b.z}`));
-    // Physique du décor : sous un toit (bloc de structure plus haut dans la colonne),
-    // et attaché (adjacent à la structure ou posé sur un élément déjà conservé)
-    const underRoof = (b) => {
-      for (let yy = b.y + 1; yy < d.y; yy++) if (occupied.has(`${b.x},${yy},${b.z}`)) return true;
-      return false;
-    };
-    const keptDecor = new Set();
-    const physical = [];
-    for (const b of [...filtered].sort((p, q) => p.y - q.y)) {
-      if (!underRoof(b)) continue;
-      const touching = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]].some(([dx, dy, dz]) =>
-        occupied.has(`${b.x + dx},${b.y + dy},${b.z + dz}`) || keptDecor.has(`${b.x + dx},${b.y + dy},${b.z + dz}`));
-      if (!touching) continue;
-      keptDecor.add(`${b.x},${b.y},${b.z}`);
-      physical.push(b);
-    }
-    const anchored = fixAttachments(physical, (x, y, z) => occupied.has(`${x},${y},${z}`));
-    const cap = Math.ceil(d.x * d.z * floors.length * 0.10);
-    if (anchored.length > cap) {
-      const step = anchored.length / cap;
-      const thinned = [];
-      for (let i = 0; i < anchored.length; i += step) thinned.push(anchored[Math.floor(i)]);
-      console.warn(`[decorateur] densité plafonnée : ${anchored.length} → ${thinned.length}`);
-      return thinned.slice(0, cap);
-    }
-    return anchored;
+    const rawT = stripCodeFences(response.content.find((b) => b.type === 'text').text).trim();
+    const parsed = JSON.parse(rawT.startsWith('[') ? rawT : `[${rawT}`);
+    return rooms.map((_, i) => {
+      const meubles = (parsed[i]?.meubles || []).filter((m) => INTERIOR_BLOCKS.has(baseOf(String(m))));
+      return meubles.length > 0 ? { role: parsed[i].role, meubles } : fallback[i];
+    });
   } catch (err) {
-    console.warn('[decorateur] indisponible :', err.message);
-    return [];
+    console.warn('[decorateur] choix de mobilier LLM indisponible, repli générique :', err.message);
+    return fallback;
   }
 }
 
-module.exports = { detectFloors, decorateInterior, fixAttachments };
+async function decorateInterior(building, description, { client } = {}) {
+  const rooms = detectRooms(building);
+  if (rooms.length === 0) return [];
+  const d = dimsOf(building);
+  const occupied = new Set(building.map((b) => `${b.x},${b.y},${b.z}`));
+  const sets = await chooseFurnitureSets(rooms, description, { client });
+  const raw = furnishRooms(building, rooms, sets);
+  // Physique : sous un toit uniquement (pas de meubles sur les remparts), hors structure
+  const underRoof = (b) => {
+    for (let yy = b.y + 1; yy < d.y; yy++) if (occupied.has(`${b.x},${yy},${b.z}`)) return true;
+    return false;
+  };
+  const covered = raw.filter((b) => underRoof(b) && !occupied.has(`${b.x},${b.y},${b.z}`));
+  const anchored = fixAttachments(covered, (x, y, z) => occupied.has(`${x},${y},${z}`));
+  const cap = Math.ceil(d.x * d.z * Math.max(1, detectFloors(building).length) * 0.10);
+  if (anchored.length > cap) {
+    const step = anchored.length / cap;
+    const thinned = [];
+    for (let i = 0; i < anchored.length; i += step) thinned.push(anchored[Math.floor(i)]);
+    console.warn(`[decorateur] densité plafonnée : ${anchored.length} → ${thinned.length}`);
+    return thinned.slice(0, cap);
+  }
+  return anchored;
+}
+
+module.exports = { detectFloors, decorateInterior, fixAttachments, chooseFurnitureSets };

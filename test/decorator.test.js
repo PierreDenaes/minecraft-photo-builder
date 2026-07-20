@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { detectFloors, decorateInterior } = require('../src/decorator');
+const { detectFloors, decorateInterior, fixAttachments, chooseFurnitureSets } = require('../src/decorator');
 
 const sysText = (s) => (typeof s === 'string' ? s : s.map((b) => b.text).join('\n'));
 
@@ -19,79 +19,81 @@ function wallsTo(h, w = 10, d = 8) {
   return out;
 }
 
+// pièce fermée : dalle y0, plafond y5, 4 murs
+function closedRoom(w = 12, d = 9, h = 6) {
+  const out = [];
+  const put = (x, y, z, block = 'stone_bricks') => out.push({ x, y, z, block });
+  for (let x = 0; x < w; x++) for (let z = 0; z < d; z++) { put(x, 0, z, 'oak_planks'); put(x, h - 1, z); }
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 0; x < w; x++) { put(x, y, 0); put(x, y, d - 1); }
+    for (let z = 0; z < d; z++) { put(0, y, z); put(w - 1, y, z); }
+  }
+  return out;
+}
+
 const building = [...slabAt(0), ...slabAt(6), ...wallsTo(10)];
 
 test('detectFloors repère les dalles, pas les murs', () => {
   assert.deepStrictEqual(detectFloors(building), [0, 6]);
 });
 
-test('decorateInterior filtre collisions, hors-boîte et blocs interdits', async () => {
-  const code = `function generateStructure() {
-    return [
-      { x: 3, y: 1, z: 3, block: 'bookshelf' },
-      { x: 3, y: 0, z: 3, block: 'lantern' },
-      { x: 99, y: 1, z: 3, block: 'chest' },
-      { x: 4, y: 1, z: 4, block: 'diamond_ore' }
-    ];
-  }\n// FIN_STRUCTURE`;
-  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
-  const decor = await decorateInterior(building, { type_batiment: 'manoir' }, { client, timeoutMs: 5000 });
-  assert.strictEqual(decor.length, 1);            // seul le bookshelf libre survit
-  assert.deepStrictEqual(decor[0], { x: 3, y: 1, z: 3, block: 'bookshelf' });
+test('sets LLM appliqués : Haiku, mobilier du rôle posé mécaniquement contre les murs', async () => {
+  let captured = null;
+  const sets = '[{"piece":0,"role":"chambre","meubles":["red_bed","barrel","bookshelf"]}]';
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: sets }] }; } } };
+  const room = closedRoom();
+  const decor = await decorateInterior(room, { type_batiment: 'manoir', style: 'medieval' }, { client });
+  assert.strictEqual(captured.model, 'claude-haiku-4-5-20251001');
+  assert.ok(sysText(captured.system).includes('JSON strict'));
+  assert.ok(captured.messages[0].content.includes('manoir'));
+  assert.ok(captured.messages[0].content.includes('volée droite')); // almanach section 7
+  assert.ok(decor.some((b) => b.block === 'barrel'));
+  assert.ok(decor.some((b) => /red_bed\[facing=.*part=foot\]/.test(b.block)));
+  assert.ok(decor.some((b) => /red_bed\[facing=.*part=head\]/.test(b.block)));
+  const occ = new Set(room.map((b) => `${b.x},${b.y},${b.z}`));
+  for (const b of decor) assert.ok(!occ.has(`${b.x},${b.y},${b.z}`), 'collision structure');
 });
 
-test('échec API → aucun meuble, sans lever', async () => {
+test('panne API → repli générique déterministe (pas de pièce vide)', async () => {
   const client = { messages: { create: async () => { throw new Error('panne'); } } };
-  assert.deepStrictEqual(await decorateInterior(building, {}, { client, timeoutMs: 5000 }), []);
+  const decor = await decorateInterior(closedRoom(), {}, { client });
+  assert.ok(decor.length > 0);
+  assert.ok(decor.some((b) => /wall_torch\[facing=/.test(b.block)), 'éclairage mural attendu');
+  assert.ok(decor.some((b) => b.block === 'barrel'));
 });
 
-test('bâtiment sans plancher détecté → [] sans appel API', async () => {
+test('sans client → repli sans appel API', async () => {
+  const decor = await decorateInterior(closedRoom(), {}, {});
+  assert.ok(decor.length > 0);
+});
+
+test('meubles hors liste blanche intérieure → set de repli', async () => {
+  const sets = '[{"piece":0,"role":"mine","meubles":["diamond_ore","tnt"]}]';
+  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: sets }] }) } };
+  const decor = await decorateInterior(closedRoom(), {}, { client });
+  assert.ok(!decor.some((b) => /diamond_ore|tnt/.test(b.block)));
+  assert.ok(decor.some((b) => b.block === 'barrel')); // repli générique
+});
+
+test('bâtiment sans pièce → [] sans appel API', async () => {
   let called = false;
   const client = { messages: { create: async () => { called = true; return { content: [] }; } } };
-  const decor = await decorateInterior(wallsTo(5), {}, { client, timeoutMs: 5000 });
+  const decor = await decorateInterior(wallsTo(5), {}, { client });
   assert.deepStrictEqual(decor, []);
   assert.strictEqual(called, false);
 });
 
-test('réponse tronquée → [] sans lever', async () => {
-  const client = { messages: { create: async () => ({ stop_reason: 'max_tokens', content: [{ type: 'text', text: 'function generateStructure() { return [' }] }) } };
-  assert.deepStrictEqual(await decorateInterior(building, {}, { client, timeoutMs: 5000 }), []);
-});
-
-test('plafond de densité : le mobilier excédentaire est aminci déterministiquement', async () => {
-  const items = [];
-  for (let x = 1; x < 9; x++) for (let z = 1; z < 7; z++) items.push({ x, y: 1, z, block: 'bookshelf' });
-  const code = `function generateStructure() { return ${JSON.stringify(items)}; }\n// FIN_STRUCTURE`;
-  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
-  const a = await decorateInterior(building, {}, { client, timeoutMs: 5000 });
-  const b = await decorateInterior(building, {}, { client, timeoutMs: 5000 });
-  const cap = Math.ceil(10 * 8 * 2 * 0.10); // footprint 10×8 × 2 planchers × 10 %
-  assert.ok(a.length <= cap, `trop de mobilier : ${a.length} > ${cap}`);
+test('décoration déterministe et plafonnée en densité', async () => {
+  const sets = '[{"piece":0,"role":"grande salle","meubles":["bookshelf","barrel","chest","crafting_table","furnace","hay_block"]}]';
+  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: sets }] }) } };
+  const room = closedRoom(20, 16, 7);
+  const a = await decorateInterior(room, {}, { client });
+  const b = await decorateInterior(room, {}, { client });
+  assert.deepStrictEqual(a, b);
+  const cap = Math.ceil(20 * 16 * 2 * 0.10);
+  assert.ok(a.length <= cap);
   assert.ok(a.length > 0);
-  assert.deepStrictEqual(a, b); // amincissement déterministe
 });
-
-test('physique du décor : sous toit et attaché uniquement', async () => {
-  // pièce : dalle y0, plafond y4 (couvre x0-9,z0-7), mur x0 ; rampart x0-9,z10 SANS toit
-  const room = [...slabAt(0), ...slabAt(4)];
-  for (let y = 1; y < 4; y++) for (let z = 0; z < 8; z++) room.push({ x: 0, y, z, block: 'stone_bricks' });
-  for (let x = 0; x < 10; x++) room.push({ x, y: 2, z: 10, block: 'stone_bricks' });
-  const code = `function generateStructure() {
-    return [
-      { x: 3, y: 1, z: 3, block: 'bookshelf' },   // posé sur dalle, sous plafond → gardé
-      { x: 1, y: 2, z: 3, block: 'torch' },       // flottant (rien dessous, pas contre mur x0? x1 adjacent x0 mur) → adjacent structure → gardé
-      { x: 5, y: 2, z: 5, block: 'torch' },       // en l'air au milieu → supprimé
-      { x: 5, y: 3, z: 10, block: 'lantern' }     // au-dessus du rampart sans toit → supprimé
-    ];
-  }\n// FIN_STRUCTURE`;
-  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
-  const decor = await decorateInterior(room, {}, { client, timeoutMs: 5000 });
-  const names = decor.map((b) => `${b.block}@${b.x},${b.y},${b.z}`).sort();
-  // la torche contre le mur x0 devient une wall_torch orientée vers l'est (mur à l'ouest)
-  assert.deepStrictEqual(names, ['bookshelf@3,1,3', 'wall_torch[facing=east]@1,2,3']);
-});
-
-const { fixAttachments } = require('../src/decorator');
 
 test('torche : sur sol → debout, contre mur → wall_torch orientée, flottante → supprimée', () => {
   const solid = new Set(['5,0,5', '9,1,5']);
@@ -143,85 +145,6 @@ test('une torche ne sert pas de support à une autre torche', () => {
   assert.strictEqual(out.length, 0);
 });
 
-test('le décorateur reçoit la carte des murs de chaque plancher', async () => {
-  const room = [...slabAt(0), ...wallsTo(4)];
-  let captured = null;
-  const code = 'function generateStructure() { return []; }\n// FIN_STRUCTURE';
-  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
-  await decorateInterior(room, {}, { client, timeoutMs: 5000 });
-  const msg = captured.messages[0].content;
-  assert.ok(msg.includes('carte'), 'le message doit annoncer une carte');
-  // plancher y=0 : rangée z=0 pleine de murs (#), intérieur libre (.)
-  const lines = msg.split('\n');
-  const wallRow = lines.find((l) => /^#{10}$/.test(l));
-  assert.ok(wallRow, `rangée de mur attendue (##########) dans :\n${msg}`);
-  assert.ok(lines.some((l) => /^\.{10}$/.test(l)), 'rangée intérieure .......... (sol libre) attendue');
-  assert.ok(/[#]\s*=\s*mur/.test(msg) || msg.includes('# mur'), 'légende # = mur attendue');
-});
-
-// ---- Itération 10 : prompt contexte + circulation, sentinelle, états, lits ----
-test('prompt décorateur : sentinelle, circulation, contexte bâtiment transmis', async () => {
-  let captured = null;
-  const code = 'function generateStructure() { return []; }\n// FIN_STRUCTURE';
-  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
-  await decorateInterior(building, { type_batiment: 'manoir', style: 'medieval' }, { client, timeoutMs: 5000 });
-  assert.ok(sysText(captured.system).includes('FIN_STRUCTURE'));
-  assert.ok(sysText(captured.system).includes('Circulation'));
-  assert.ok(sysText(captured.system).includes('part=foot'));
-  assert.ok(captured.messages[0].content.includes('Bâtiment : manoir, style medieval.'));
-});
-
-test('sentinelle décorateur : réponse sans FIN_STRUCTURE → décoration ignorée', async () => {
-  const code = 'function generateStructure() { return [{ x: 3, y: 1, z: 3, block: "bookshelf" }]; }';
-  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
-  assert.deepStrictEqual(await decorateInterior(building, {}, { client, timeoutMs: 5000 }), []);
-});
-
-test('fixAttachments : wall_torch avec état est réorientée selon le mur réel', () => {
-  const solid = new Set(['4,1,5']);
-  const isSolid = (x, y, z) => solid.has(`${x},${y},${z}`);
-  const out = fixAttachments([{ x: 5, y: 1, z: 5, block: 'wall_torch[facing=south]' }], isSolid);
-  assert.strictEqual(out.length, 1);
-  assert.strictEqual(out[0].block, 'wall_torch[facing=east]');
-});
-
-test('lits : moitié tête complétée dans la direction du facing, lit flottant supprimé', () => {
-  const solid = new Set(['2,0,5', '2,0,4']);
-  const isSolid = (x, y, z) => solid.has(`${x},${y},${z}`);
-  const out = fixAttachments([
-    { x: 2, y: 1, z: 5, block: 'red_bed[facing=north,part=foot]' },
-    { x: 9, y: 4, z: 9, block: 'red_bed[facing=north,part=foot]' }
-  ], isSolid);
-  const head = out.find((b) => b.block === 'red_bed[facing=north,part=head]');
-  assert.ok(head, 'tête de lit attendue');
-  assert.deepStrictEqual([head.x, head.y, head.z], [2, 1, 4]);
-  assert.ok(!out.some((b) => b.x === 9), 'lit flottant supprimé');
-});
-
-test('réglages API décorateur : temperature 0.3 et cache_control', async () => {
-  let captured = null;
-  const code = 'function generateStructure() { return []; }\n// FIN_STRUCTURE';
-  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
-  await decorateInterior(building, {}, { client, timeoutMs: 5000 });
-  assert.strictEqual(captured.temperature, 0.3);
-  assert.ok(Array.isArray(captured.system));
-  assert.deepStrictEqual(captured.system[0].cache_control, { type: 'ephemeral' });
-});
-
-test('le décorateur reçoit la section intérieurs de l\'almanach', async () => {
-  let captured = null;
-  const code = 'function generateStructure() { return []; }\n// FIN_STRUCTURE';
-  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
-  await decorateInterior(building, {}, { client, timeoutMs: 5000 });
-  assert.ok(captured.messages[0].content.includes('volée droite'));
-});
-
-test('portes du décorateur : moitié haute complétée', async () => {
-  const code = 'function generateStructure() { return [{ x: 3, y: 1, z: 3, block: "oak_door[facing=south,half=lower]" }]; }\n// FIN_STRUCTURE';
-  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
-  const decor = await decorateInterior(building, {}, { client, timeoutMs: 5000 });
-  assert.ok(decor.some((b) => b.block === 'oak_door[facing=south,half=upper]' && b.y === 2), JSON.stringify(decor));
-});
 
 test('lit dont la tête tomberait dans un mur → supprimé entièrement', () => {
   const solid = new Set(['2,0,5', '2,1,4']); // sol sous le pied + MUR à la place de la tête (facing=north → z-1)
@@ -229,3 +152,4 @@ test('lit dont la tête tomberait dans un mur → supprimé entièrement', () =>
   const out = fixAttachments([{ x: 2, y: 1, z: 5, block: 'red_bed[facing=north,part=foot]' }], isSolid);
   assert.deepStrictEqual(out, []);
 });
+

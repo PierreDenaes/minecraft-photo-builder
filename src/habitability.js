@@ -1,4 +1,4 @@
-const { detectFloors } = require('./decorator');
+const { detectFloors } = require('./rooms');
 
 // comparaison sur le nom de base : « oak_stairs[facing=north] » compte aussi
 const STAIR_OR_LADDER = /_stairs(\[|$)|^ladder(\[|$)/;

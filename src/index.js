@@ -29,6 +29,7 @@ const { plantVegetation } = require('./vegetation');
 const { decorateInterior } = require('./decorator');
 const { portraitBlocks } = require('./portrait');
 const { auditHabitability } = require('./habitability');
+const { carveStaircase } = require('./staircase');
 
 const validBlocks = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../data/valid_blocks.json'), 'utf8')
@@ -239,7 +240,9 @@ function createBot(cfg) {
       const support = enforceSupport(generated);
       if (support.removed > 0) console.log(`[modele] gravité : ${support.removed} blocs flottants supprimés`);
       if (support.guard) bot.chat('⚠ Structure majoritairement flottante conservée — sortie IA à revoir.');
-      const building = support.blocks;
+      const cage = carveStaircase(support.blocks);
+      if (cage.carved > 0) console.log(`[modele] ${cage.carved} cage(s) d'escalier taillée(s)`);
+      const building = cage.blocks;
       const decor = await decorateInterior(building, buildingDesc, { client: apiClient, timeoutMs: cfg.limits.sandbox_timeout_ms });
       if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
       const furnished = building.concat(decor);
@@ -338,6 +341,9 @@ function createBot(cfg) {
     } catch (err) {
       console.warn('[photo] passe de correction ignorée :', err.message);
     }
+    const cage = carveStaircase(blocks);
+    if (cage.carved > 0) console.log(`[photo] ${cage.carved} cage(s) d'escalier taillée(s)`);
+    blocks = cage.blocks;
     const restants = auditHabitability(blocks, description);
     if (restants.length > 0) bot.chat(`⚠ Défauts restants : ${restants.join(' ; ')}`.slice(0, 250));
     bot.chat('Étape 4/4 : décoration intérieure...');
