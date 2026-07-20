@@ -4,6 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { analyzeImage } = require('../src/vision');
 
+const sysText = (s) => (typeof s === 'string' ? s : s.map((b) => b.text).join('\n'));
+
 const fixture = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'fixtures/description_maison.json'), 'utf8')
 );
@@ -44,32 +46,32 @@ test('injecte la liste des blocs autorisés dans le prompt système', async () =
   let captured;
   const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: JSON.stringify(fx) }] }; } } };
   await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64, validBlocks: ['stone', 'brick_slab'] });
-  assert.match(captured.system, /brick_slab/);
+  assert.match(sysText(captured.system), /brick_slab/);
 });
 
 test('le prompt système demande zone_batiment en pourcentages', async () => {
   let captured;
   const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: JSON.stringify(fixture) }] }; } } };
   await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
-  assert.match(captured.system, /zone_batiment/);
-  assert.match(captured.system, /pourcentage/i);
+  assert.match(sysText(captured.system), /zone_batiment/);
+  assert.match(sysText(captured.system), /pourcentage/i);
 });
 
 test('le prompt système demande la description de l\'environnement', async () => {
   let captured;
   const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: JSON.stringify(fixture) }] }; } } };
   await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
-  assert.match(captured.system, /environnement/);
-  assert.match(captured.system, /ambiance/);
-  assert.match(captured.system, /types_arbres/);
+  assert.match(sysText(captured.system), /environnement/);
+  assert.match(sysText(captured.system), /ambiance/);
+  assert.match(sysText(captured.system), /types_arbres/);
 });
 
 test('le prompt système demande le cadrage sujet_seul/scene_complete', async () => {
   let captured;
   const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: JSON.stringify(fixture) }] }; } } };
   await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
-  assert.match(captured.system, /cadrage/);
-  assert.match(captured.system, /sujet_seul/);
+  assert.match(sysText(captured.system), /cadrage/);
+  assert.match(sysText(captured.system), /sujet_seul/);
 });
 
 const { compareToPhoto } = require('../src/vision');
@@ -99,9 +101,9 @@ test('compareToPhoto : RAS (variantes) → null, catégories dans le prompt', as
   const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: '[TOIT] plat -> deux pans' }] }; } } };
   const critique = await compareToPhoto('a', 'image/png', 'b', { client });
   assert.strictEqual(critique, '[TOIT] plat -> deux pans');
-  assert.ok(captured.system.includes('[SILHOUETTE]'));
-  assert.ok(captured.system.includes('RAS'));
-  assert.ok(captured.system.includes('pixellisation'));
+  assert.ok(sysText(captured.system).includes('[SILHOUETTE]'));
+  assert.ok(sysText(captured.system).includes('RAS'));
+  assert.ok(sysText(captured.system).includes('pixellisation'));
 });
 
 const { STYLES, TOIT_FORMES } = require('../src/vision');
@@ -110,14 +112,14 @@ test('prompt vision : calibration d\'échelle et vocabulaires fermés', async ()
   let captured = null;
   const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: '{"type_batiment":"x"}' }] }; } } };
   await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 96, validBlocks: ['stone'] });
-  assert.ok(captured.system.includes('1 bloc Minecraft = 1 mètre'));
-  assert.ok(captured.system.includes('une porte ≈ 2 m'));
-  assert.ok(captured.system.includes('etages × 4'));
-  assert.ok(captured.system.includes('PLUSIEURS bâtiments'));
+  assert.ok(sysText(captured.system).includes('1 bloc Minecraft = 1 mètre'));
+  assert.ok(sysText(captured.system).includes('une porte ≈ 2 m'));
+  assert.ok(sysText(captured.system).includes('etages × 4'));
+  assert.ok(sysText(captured.system).includes('PLUSIEURS bâtiments'));
   for (const s of ['medieval', 'gothique', 'haussmannien', 'brutaliste', 'chateau_fort', 'autre']) {
-    assert.ok(captured.system.includes(s), `style ${s} attendu dans l'enum`);
+    assert.ok(sysText(captured.system).includes(s), `style ${s} attendu dans l'enum`);
   }
-  assert.ok(captured.system.includes('plate|monopente|deux_pans|quatre_pans|conique|mansarde|dome'));
+  assert.ok(sysText(captured.system).includes('plate|monopente|deux_pans|quatre_pans|conique|mansarde|dome'));
 });
 
 test('style et toit.forme hors vocabulaire → replis autre / deux_pans', async () => {
@@ -132,4 +134,18 @@ test('STYLES exporte les 22 styles de l\'almanach + autre', () => {
   assert.ok(STYLES.includes('asiatique_japonais'));
   assert.ok(STYLES.includes('desert_mediterraneen'));
   assert.ok(TOIT_FORMES.includes('mansarde'));
+});
+
+test('réglages API vision : temperature 0, cache_control, prefill JSON recomposé', async () => {
+  let captured = null;
+  // le modèle répond SANS l'accolade ouvrante (prefill assistant)
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: '"type_batiment":"grange"}' }] }; } } };
+  const r = await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
+  assert.strictEqual(r.type_batiment, 'grange');
+  assert.strictEqual(captured.temperature, 0);
+  assert.ok(Array.isArray(captured.system));
+  assert.deepStrictEqual(captured.system[0].cache_control, { type: 'ephemeral' });
+  const last = captured.messages[captured.messages.length - 1];
+  assert.strictEqual(last.role, 'assistant');
+  assert.strictEqual(last.content, '{');
 });

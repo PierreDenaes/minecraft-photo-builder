@@ -129,7 +129,8 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
       c.messages.create({
         model: MODEL,
         max_tokens: 16000,
-        system: SYSTEM_PROMPT,
+        temperature: 0.2,
+        system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
         messages
       })
     );

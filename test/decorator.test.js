@@ -2,6 +2,8 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const { detectFloors, decorateInterior } = require('../src/decorator');
 
+const sysText = (s) => (typeof s === 'string' ? s : s.map((b) => b.text).join('\n'));
+
 function slabAt(y, w = 10, d = 8) {
   const out = [];
   for (let x = 0; x < w; x++) for (let z = 0; z < d; z++) out.push({ x, y, z, block: 'oak_planks' });
@@ -163,9 +165,9 @@ test('prompt décorateur : sentinelle, circulation, contexte bâtiment transmis'
   const code = 'function generateStructure() { return []; }\n// FIN_STRUCTURE';
   const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
   await decorateInterior(building, { type_batiment: 'manoir', style: 'medieval' }, { client, timeoutMs: 5000 });
-  assert.ok(captured.system.includes('FIN_STRUCTURE'));
-  assert.ok(captured.system.includes('Circulation'));
-  assert.ok(captured.system.includes('part=foot'));
+  assert.ok(sysText(captured.system).includes('FIN_STRUCTURE'));
+  assert.ok(sysText(captured.system).includes('Circulation'));
+  assert.ok(sysText(captured.system).includes('part=foot'));
   assert.ok(captured.messages[0].content.includes('Bâtiment : manoir, style medieval.'));
 });
 
@@ -194,4 +196,14 @@ test('lits : moitié tête complétée dans la direction du facing, lit flottant
   assert.ok(head, 'tête de lit attendue');
   assert.deepStrictEqual([head.x, head.y, head.z], [2, 1, 4]);
   assert.ok(!out.some((b) => b.x === 9), 'lit flottant supprimé');
+});
+
+test('réglages API décorateur : temperature 0.3 et cache_control', async () => {
+  let captured = null;
+  const code = 'function generateStructure() { return []; }\n// FIN_STRUCTURE';
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
+  await decorateInterior(building, {}, { client, timeoutMs: 5000 });
+  assert.strictEqual(captured.temperature, 0.3);
+  assert.ok(Array.isArray(captured.system));
+  assert.deepStrictEqual(captured.system[0].cache_control, { type: 'ephemeral' });
 });

@@ -108,7 +108,8 @@ async function decorateInterior(building, description, { client, timeoutMs = 200
     const response = await withRetry(() => client.messages.create({
       model: MODEL,
       max_tokens: 16000,
-      system: `Tu es décorateur d'intérieur Minecraft (version 1.20). Écris une fonction JavaScript pure generateStructure() retournant [{x, y, z, block}].
+      temperature: 0.3,
+      system: [{ type: 'text', text: `Tu es décorateur d'intérieur Minecraft (version 1.20). Écris une fonction JavaScript pure generateStructure() retournant [{x, y, z, block}].
 Réponds UNIQUEMENT avec le code, sans texte autour, sans balises markdown. Termine par le commentaire exact : // FIN_STRUCTURE
 
 Placement :
@@ -130,7 +131,7 @@ Blocs et états :
 - Les blocs orientables portent leur état entre crochets : "wall_torch[facing=east]" (facing = direction OPPOSÉE au mur porteur), lit en DEUX blocs "red_bed[facing=north,part=foot]" puis "red_bed[facing=north,part=head]" dans la direction du facing
 - Les blocs posés au sol sans orientation (barrel, bookshelf, crafting_table, lantern, flower_pot...) s'écrivent sans crochets
 
-Code COMPACT : boucles et fonctions d'aide, jamais de longues listes de blocs un par un.`,
+Code COMPACT : boucles et fonctions d'aide, jamais de longues listes de blocs un par un.`, cache_control: { type: 'ephemeral' } }],
       messages: [{
         role: 'user',
         content: `Bâtiment : ${description.type_batiment || 'bâtiment'}, style ${description.style || 'non précisé'}.\nDimensions ${d.x}x${d.z}x${d.y} (x,z,y).\n\n${cartes}\n\nÉcris generateStructure().`

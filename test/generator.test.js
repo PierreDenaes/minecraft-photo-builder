@@ -2,6 +2,8 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const { runStructureCode, generateStructure } = require('../src/generator');
 
+const sysText = (s) => (typeof s === 'string' ? s : s.map((b) => b.text).join('\n'));
+
 test('exécute un code valide et retourne les blocs', () => {
   const code = `function generateStructure() {
     const blocks = [];
@@ -87,7 +89,7 @@ test('injecte le résumé structurel dans le prompt', async () => {
   await generateStructure({ type_batiment: 'château' }, { client, timeoutMs: 5000, structuralSummary });
   assert.match(captured.messages[0].content, /Résumé structurel/);
   assert.match(captured.messages[0].content, /"height":25/);
-  assert.match(captured.system, /architecte/i);
+  assert.match(sysText(captured.system), /architecte/i);
 });
 
 test('le prompt architecte explique la carte ASCII', async () => {
@@ -95,7 +97,7 @@ test('le prompt architecte explique la carte ASCII', async () => {
   let captured;
   const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
   await generateStructure({ type_batiment: 't' }, { client, timeoutMs: 5000, structuralSummary: { carte: ['90', '00'] } });
-  assert.match(captured.system, /vue de dessus ASCII/);
+  assert.match(sysText(captured.system), /vue de dessus ASCII/);
 });
 
 test('le prompt exige toits complets, planchers et escaliers', async () => {
@@ -103,10 +105,10 @@ test('le prompt exige toits complets, planchers et escaliers', async () => {
   let captured;
   const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
   await generateStructure({ type_batiment: 't' }, { client, timeoutMs: 5000 });
-  assert.match(captured.system, /toit.*COMPLET/i);
-  assert.match(captured.system, /plancher/i);
-  assert.match(captured.system, /escalier/i);
-  assert.ok(!/intérieurs sont creux/.test(captured.system), 'règle creux encore présente');
+  assert.match(sysText(captured.system), /toit.*COMPLET/i);
+  assert.match(sysText(captured.system), /plancher/i);
+  assert.match(sysText(captured.system), /escalier/i);
+  assert.ok(!/intérieurs sont creux/.test(sysText(captured.system)), 'règle creux encore présente');
 });
 
 test('le prompt interdit les toits en débord', async () => {
@@ -114,7 +116,7 @@ test('le prompt interdit les toits en débord', async () => {
   let captured;
   const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
   await generateStructure({ type_batiment: 't' }, { client, timeoutMs: 5000 });
-  assert.match(captured.system, /déborde/);
+  assert.match(sysText(captured.system), /déborde/);
 });
 
 test('l\'architecte reçoit la photo de référence quand elle est fournie', async () => {
@@ -201,4 +203,13 @@ test('portes : la moitié haute est complétée mécaniquement', async () => {
   assert.ok(upper, 'moitié haute attendue');
   assert.strictEqual(upper.x, 0);
   assert.strictEqual(upper.y, 1);
+});
+
+test('réglages API générateur : temperature 0.2 et cache_control sur le system', async () => {
+  let captured = null;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: OK_CODE }] }; } } };
+  await generateStructure({ type_batiment: 't' }, { client, timeoutMs: 5000 });
+  assert.strictEqual(captured.temperature, 0.2);
+  assert.ok(Array.isArray(captured.system));
+  assert.deepStrictEqual(captured.system[0].cache_control, { type: 'ephemeral' });
 });

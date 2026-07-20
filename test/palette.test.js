@@ -122,3 +122,13 @@ test('assignThemes : Haiku, contexte de scène dans le prompt et le message', as
   assert.ok(captured.system.includes('position verticale'));
   assert.ok(captured.messages[0].content.includes('Scène : manoir'));
 });
+
+test('réglages API thèmes : temperature 0 et prefill tableau recomposé', async () => {
+  let captured = null;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: '{"rgb":[10,10,10],"theme":"roche"}]' }] }; } } };
+  const colors = new Map([['stone', [10, 10, 10]]]);
+  const themes = await assignThemes([[10, 10, 10]], colors, { client, contexte: 'x' });
+  assert.deepStrictEqual(themes, ['roche']);
+  assert.strictEqual(captured.temperature, 0);
+  assert.strictEqual(captured.messages[captured.messages.length - 1].content, '[');
+});

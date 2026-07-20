@@ -81,15 +81,17 @@ async function assignThemes(centroids, allowedColors, { client, contexte } = {})
     const response = await withRetry(() => client.messages.create({
       model: MODEL_THEMES,
       max_tokens: 600,
+      temperature: 0,
       system: `Tu es un maître bâtisseur Minecraft. Pour chaque couleur dominante RGB d'une scène, identifie LA MATIÈRE représentée et choisis son thème : roche (falaises, pierre brute), terre (sols, chemins), vegetation (herbe, feuillages), bois (charpentes, troncs), maconnerie (murs bâtis, briques), sable, neige_glace, eau, couleurs_vives (enduits, toits colorés, objets peints), metal.
 Utilise le contexte de scène fourni pour lever les ambiguïtés : un brun peut être du bois, de la terre ou de la brique selon la scène ; la position verticale aide (le haut d'une image est plutôt toit/ciel/feuillage, le bas plutôt sol).
 Réponds UNIQUEMENT en JSON strict : [{"rgb":[r,g,b],"theme":"nom"}], dans le même ordre que les couleurs fournies.`,
       messages: [{
         role: 'user',
         content: `Contexte : ${contexte || 'scène extérieure'}\nThèmes possibles : ${Object.keys(THEME_BLOCKS).join(', ')}\nCouleurs dominantes : ${JSON.stringify(centroids)}`
-      }]
+      }, { role: 'assistant', content: '[' }]
     }), { retries: 1 });
-    const parsed = JSON.parse(stripCodeFences(response.content.find((b) => b.type === 'text').text));
+    const rawT = stripCodeFences(response.content.find((b) => b.type === 'text').text).trim();
+    const parsed = JSON.parse(rawT.startsWith('[') ? rawT : `[${rawT}`);
     const fb = fallback();
     return centroids.map((c, i) => (THEME_BLOCKS[parsed[i]?.theme] ? parsed[i].theme : fb[i]));
   } catch (err) {

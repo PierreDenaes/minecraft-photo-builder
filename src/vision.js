@@ -52,17 +52,20 @@ async function analyzeImage(imageBase64, mimeType, { client, maxSize = 64, valid
     c.messages.create({
       model: MODEL,
       max_tokens: 1500,
-      system: systemPrompt(maxSize, validBlocks),
+      temperature: 0,
+      system: [{ type: 'text', text: systemPrompt(maxSize, validBlocks), cache_control: { type: 'ephemeral' } }],
       messages: [{
         role: 'user',
         content: [
           { type: 'image', source: { type: 'base64', media_type: mimeType, data: imageBase64 } },
           { type: 'text', text: 'Analyse ce bâtiment et réponds avec le JSON demandé.' }
         ]
-      }]
+      }, { role: 'assistant', content: '{' }]
     })
   );
-  const text = stripCodeFences(response.content.find((b) => b.type === 'text').text);
+  // prefill : la réponse arrive sans l'accolade ouvrante ; recomposition tolérante
+  const rawText = stripCodeFences(response.content.find((b) => b.type === 'text').text).trim();
+  const text = rawText.startsWith('{') ? rawText : `{${rawText}`;
   let parsed;
   try {
     parsed = JSON.parse(text);
@@ -86,6 +89,7 @@ async function compareToPhoto(photoBase64, photoMime, renderBase64, { client } =
     const response = await withRetry(() => c.messages.create({
       model: MODEL,
       max_tokens: 600,
+      temperature: 0,
       system: `Tu compares une PHOTO de référence (première image) et le RENDU voxel Minecraft généré à partir d'elle (seconde image).
 
 Ignore les différences inhérentes au format Minecraft : pixellisation, textures des blocs, absence de courbes lisses, simplification des petits détails. Ne compare que ce qui est corrigeable à l'échelle du bloc.
