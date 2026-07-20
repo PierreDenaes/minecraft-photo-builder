@@ -1,5 +1,6 @@
 const vm = require('node:vm');
 const { createClient, withRetry, stripCodeFences } = require('./llm');
+const { getSections, getFicheStyle, getFicheToit } = require('./almanach');
 
 const MODEL = 'claude-sonnet-4-6';
 
@@ -111,9 +112,14 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
   const imageSection = image
     ? '\n\nLa photo jointe est LA référence : calque les proportions, le nombre et le rythme des ouvertures, la forme exacte du toit et les couleurs sur ce que tu VOIS, pas seulement sur la description.'
     : '';
+  const refIds = [4, 10];
+  const tourSource = `${JSON.stringify(description.elements || [])} ${JSON.stringify(structuralSummary || {})}`;
+  if (/tour/i.test(tourSource)) refIds.push(6);
+  if (description.cadrage === 'scene_complete') refIds.push(9);
+  const referentiel = `\n\nRéférentiel de construction (applique ces règles) :\n${getSections([1])}\n\nFiche toit :\n${getFicheToit(description.toit?.forme)}\n\nFiche style :\n${getFicheStyle(description.style)}\n\n${getSections(refIds)}`;
   const userText = correction
-    ? `Voici le code de la PREMIÈRE version générée :\n\n<code_v1>\n${correction.codeV1}\n</code_v1>\n\nCette version a été comparée à la photo de référence (jointe). Écarts et défauts constatés :\n\n${correction.critique || ''}\n${correction.defauts || ''}\n\nMODIFIE ce code pour corriger TOUS les écarts listés.\n- Conserve tout ce qui n'est pas critiqué : mêmes dimensions générales, même organisation intérieure, mêmes parties réussies\n- Ne repars pas de zéro\n- Chaque écart listé doit avoir une correction identifiable dans le code\nRéponds UNIQUEMENT avec le code complet corrigé, terminé par ${SENTINEL}.`
-    : `Description du bâtiment :\n${JSON.stringify(description, null, 2)}${summarySection}${blocksSection}${imageSection}\n\nÉcris generateStructure().`;
+    ? `Voici le code de la PREMIÈRE version générée :\n\n<code_v1>\n${correction.codeV1}\n</code_v1>\n\nCette version a été comparée à la photo de référence (jointe). Écarts et défauts constatés :\n\n${correction.critique || ''}\n${correction.defauts || ''}\n\nMODIFIE ce code pour corriger TOUS les écarts listés.\n- Conserve tout ce qui n'est pas critiqué : mêmes dimensions générales, même organisation intérieure, mêmes parties réussies\n- Ne repars pas de zéro\n- Chaque écart listé doit avoir une correction identifiable dans le code\nRéponds UNIQUEMENT avec le code complet corrigé, terminé par ${SENTINEL}.${referentiel}`
+    : `Description du bâtiment :\n${JSON.stringify(description, null, 2)}${summarySection}${blocksSection}${imageSection}${referentiel}\n\nÉcris generateStructure().`;
   const content = image
     ? [
       { type: 'image', source: { type: 'base64', media_type: image.mimeType, data: image.base64 } },
@@ -153,7 +159,7 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
       messages.push({ role: 'assistant', content: raw });
       messages.push({
         role: 'user',
-        content: `L'exécution du code a échoué : ${err.message}\nCorrige le code et renvoie-le COMPLET, terminé par ${SENTINEL}.`
+        content: `L'exécution du code a échoué : ${err.message}\nCorrige le code et renvoie-le COMPLET, terminé par ${SENTINEL}.${referentiel}`
       });
     }
   }

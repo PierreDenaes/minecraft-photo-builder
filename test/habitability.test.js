@@ -27,9 +27,9 @@ function box(w, h, d, { doorAt, floors = [], stairsAt } = {}) {
   return out;
 }
 
-test('hauteur libre correcte et entrée présente → aucun défaut', () => {
+test('hauteur libre correcte et entrée présente → aucun défaut (hors façades monochromes du décor de test)', () => {
   const b = box(10, 7, 8, { doorAt: 4 });
-  assert.deepStrictEqual(auditHabitability(b), []);
+  assert.deepStrictEqual(auditHabitability(b).filter((d) => !/façade/.test(d)), []);
 });
 
 test('boîte scellée → défaut « aucune entrée »', () => {
@@ -63,4 +63,30 @@ test('un escalier avec état [facing=...] compte comme accès entre étages', ()
   const avec = box(12, 10, 10, { doorAt: 4, floors: [4], stairsAt: { x: 5, z: 5 } })
     .map((b) => (b.block === 'oak_stairs' ? { ...b, block: 'oak_stairs[facing=north,half=bottom]' } : b));
   assert.deepStrictEqual(auditHabitability(avec).filter((d) => /escalier|accès/i.test(d)), []);
+});
+
+test('façade uniforme (1 seul matériau) → défaut ; façade variée → rien', () => {
+  const uni = box(14, 8, 10, { doorAt: 4 });
+  const defUni = auditHabitability(uni);
+  assert.ok(defUni.some((d) => /façade/.test(d)), defUni.join(' | '));
+  const varie = box(14, 8, 10, { doorAt: 4 }).map((b, i) => ({
+    ...b, block: b.z === 0 ? ['stone_bricks', 'oak_log', 'glass_pane'][i % 3] : b.block
+  }));
+  const defVar = auditHabitability(varie);
+  assert.ok(!defVar.some((d) => /façade z=0/.test(d)), defVar.join(' | '));
+});
+
+test('fenêtres désalignées entre étages → défaut ; alignées → rien', () => {
+  const withWin = (x1, x2) => {
+    const b = box(14, 12, 10, { doorAt: 4, floors: [5], stairsAt: { x: 6, z: 5 } });
+    for (const bb of b) {
+      if (bb.z === 0 && bb.y >= 2 && bb.y <= 3 && bb.x === x1) bb.block = 'glass_pane';
+      if (bb.z === 0 && bb.y >= 7 && bb.y <= 8 && bb.x === x2) bb.block = 'glass_pane';
+    }
+    return b;
+  };
+  const aligned = auditHabitability(withWin(8, 8));
+  assert.ok(!aligned.some((d) => /fenêtres/.test(d)), aligned.join(' | '));
+  const misaligned = auditHabitability(withWin(8, 11));
+  assert.ok(misaligned.some((d) => /fenêtres/.test(d)), misaligned.join(' | '));
 });

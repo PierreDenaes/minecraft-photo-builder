@@ -213,3 +213,27 @@ test('réglages API générateur : temperature 0.2 et cache_control sur le syste
   assert.ok(Array.isArray(captured.system));
   assert.deepStrictEqual(captured.system[0].cache_control, { type: 'ephemeral' });
 });
+
+test('référentiel almanach routé : échelle, fiches style/toit, façades, anti-patterns', async () => {
+  let captured = null;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: OK_CODE }] }; } } };
+  await generateStructure({ type_batiment: 'manoir', style: 'medieval', toit: { forme: 'conique' }, elements: ['tour d\'angle'], cadrage: 'scene_complete' }, { client, timeoutMs: 5000 });
+  const txt = captured.messages[0].content;
+  assert.ok(txt.includes('Référentiel de construction'));
+  assert.ok(txt.includes('1 bloc = 1 mètre'));           // section 1
+  assert.ok(txt.includes('colombages'));                  // fiche medieval
+  assert.ok(txt.includes('anneaux'));                     // fiche toit conique
+  assert.ok(txt.includes('règle de la profondeur'));      // section 4
+  assert.ok(txt.includes('Anti-patterns'));               // section 10
+  assert.ok(txt.includes('Cercle par test de distance')); // section 6 (tour détectée)
+  assert.ok(txt.includes('Terrain et abords'));           // section 9 (scene_complete)
+});
+
+test('référentiel minimal sans tour ni scène : pas de sections 6 et 9', async () => {
+  let captured = null;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: OK_CODE }] }; } } };
+  await generateStructure({ type_batiment: 'grange', style: 'rustique' }, { client, timeoutMs: 5000 });
+  const txt = captured.messages[0].content;
+  assert.ok(!txt.includes('Cercle par test de distance'));
+  assert.ok(!txt.includes('Terrain et abords'));
+});

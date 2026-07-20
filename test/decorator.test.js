@@ -207,3 +207,11 @@ test('réglages API décorateur : temperature 0.3 et cache_control', async () =>
   assert.ok(Array.isArray(captured.system));
   assert.deepStrictEqual(captured.system[0].cache_control, { type: 'ephemeral' });
 });
+
+test('le décorateur reçoit la section intérieurs de l\'almanach', async () => {
+  let captured = null;
+  const code = 'function generateStructure() { return []; }\n// FIN_STRUCTURE';
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
+  await decorateInterior(building, {}, { client, timeoutMs: 5000 });
+  assert.ok(captured.messages[0].content.includes('volée droite'));
+});

@@ -235,5 +235,14 @@
   "deepslate_diamond_ore",
   "deepslate_emerald_ore",
   "red_bed",
-  "white_bed"
+  "white_bed",
+  "chiseled_sandstone",
+  "gold_block",
+  "redstone_lamp",
+  "blue_glazed_terracotta",
+  "coarse_dirt",
+  "rooted_dirt",
+  "dirt_path",
+  "white_concrete_powder",
+  "oak_pressure_plate"
 ]

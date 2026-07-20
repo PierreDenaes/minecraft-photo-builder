@@ -132,3 +132,10 @@ test('réglages API thèmes : temperature 0 et prefill tableau recomposé', asyn
   assert.strictEqual(captured.temperature, 0);
   assert.strictEqual(captured.messages[captured.messages.length - 1].content, '[');
 });
+
+test('assignThemes reçoit la section palettes par thème de l\'almanach', async () => {
+  let captured = null;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: '{"rgb":[10,10,10],"theme":"roche"}]' }] }; } } };
+  await assignThemes([[10, 10, 10]], new Map([['stone', [10, 10, 10]]]), { client, contexte: 'x' });
+  assert.ok(captured.messages[0].content.includes('nuançage'));
+});

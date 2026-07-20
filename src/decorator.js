@@ -1,6 +1,7 @@
 const { withRetry, stripCodeFences } = require('./llm');
 const { runStructureCode } = require('./generator');
 const { INTERIOR_BLOCKS } = require('./blockcolors');
+const { getSections } = require('./almanach');
 
 const MODEL = 'claude-sonnet-4-6';
 
@@ -134,7 +135,7 @@ Blocs et états :
 Code COMPACT : boucles et fonctions d'aide, jamais de longues listes de blocs un par un.`, cache_control: { type: 'ephemeral' } }],
       messages: [{
         role: 'user',
-        content: `Bâtiment : ${description.type_batiment || 'bâtiment'}, style ${description.style || 'non précisé'}.\nDimensions ${d.x}x${d.z}x${d.y} (x,z,y).\n\n${cartes}\n\nÉcris generateStructure().`
+        content: `Bâtiment : ${description.type_batiment || 'bâtiment'}, style ${description.style || 'non précisé'}.\nDimensions ${d.x}x${d.z}x${d.y} (x,z,y).\n\n${cartes}\n\nRéférentiel (applique ces règles) :\n${getSections([7])}\n\nÉcris generateStructure().`
       }]
     }), { retries: 1 });
     if (response.stop_reason === 'max_tokens') {
