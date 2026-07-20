@@ -58,3 +58,9 @@ test('un puits intérieur ne compte pas comme entrée (bande périmétrique)', (
   const defects = auditHabitability(b);
   assert.ok(defects.some((d) => /entrée/i.test(d)), `entrée manquante attendue : ${defects.join(' | ')}`);
 });
+
+test('un escalier avec état [facing=...] compte comme accès entre étages', () => {
+  const avec = box(12, 10, 10, { doorAt: 4, floors: [4], stairsAt: { x: 5, z: 5 } })
+    .map((b) => (b.block === 'oak_stairs' ? { ...b, block: 'oak_stairs[facing=north,half=bottom]' } : b));
+  assert.deepStrictEqual(auditHabitability(avec).filter((d) => /escalier|accès/i.test(d)), []);
+});

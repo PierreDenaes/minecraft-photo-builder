@@ -154,7 +154,7 @@ function createBot(cfg) {
         ...description,
         dimensions_estimees: { largeur: bWidth, profondeur: Math.min(bWidth, dio.size_z), hauteur: bHeight }
       };
-      const building = await generateStructure(buildingDesc, {
+      const { blocks: building } = await generateStructure(buildingDesc, {
         timeoutMs: cfg.limits.sandbox_timeout_ms, validBlocks: realisticMaterials(materiaux, buildingDesc)
       });
       blocks = composite(blocks, building, { x1, x2, zAnchor });
@@ -228,7 +228,7 @@ function createBot(cfg) {
       const buildingDesc = sceneDesc.erreur
         ? { type_batiment: `reconstruction du modèle 3D (${ext})` }
         : sceneDesc;
-      const generated = await generateStructure(buildingDesc, {
+      const { blocks: generated } = await generateStructure(buildingDesc, {
         timeoutMs: cfg.limits.sandbox_timeout_ms, validBlocks: realisticMaterials(materiaux, buildingDesc), structuralSummary: summary
       });
       const support = enforceSupport(generated);
@@ -312,19 +312,21 @@ function createBot(cfg) {
       validBlocks: realisticMaterials(materiaux, description),
       image: { base64, mimeType }
     };
-    let blocks = await generateStructure(description, genOpts);
+    let { blocks, code } = await generateStructure(description, genOpts);
     bot.chat('Étape 3/4 : comparaison du résultat à la photo, puis correction (~1 min)...');
     try {
       const render = await renderVoxels(blocks, blockColors);
       const critique = await compareToPhoto(base64, mimeType, render.toString('base64'), { client: apiClient });
       const defauts = auditHabitability(blocks);
-      const corrections = [
-        critique,
-        defauts.length > 0
-          ? `Défauts structurels MESURÉS sur la première version — corrige-les impérativement :\n- ${defauts.join('\n- ')}`
-          : null
-      ].filter(Boolean).join('\n\n');
-      if (corrections) blocks = await generateStructure(description, { ...genOpts, critique: corrections });
+      const defautsText = defauts.length > 0
+        ? `Défauts structurels MESURÉS sur la première version — corrige-les impérativement :\n- ${defauts.join('\n- ')}`
+        : '';
+      if (critique || defautsText) {
+        ({ blocks } = await generateStructure(description, {
+          ...genOpts,
+          correction: { codeV1: code, critique: critique || '', defauts: defautsText }
+        }));
+      }
     } catch (err) {
       console.warn('[photo] passe de correction ignorée :', err.message);
     }

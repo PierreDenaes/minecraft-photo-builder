@@ -1,6 +1,7 @@
 const { detectFloors } = require('./decorator');
 
-const STAIR_OR_LADDER = /_stairs$|^ladder$/;
+// comparaison sur le nom de base : « oak_stairs[facing=north] » compte aussi
+const STAIR_OR_LADDER = /_stairs(\[|$)|^ladder(\[|$)/;
 const MIN_CLEARANCE = 3;
 
 // Audit mécanique d'habitabilité : mesures sur les blocs, pas d'IA.

@@ -71,3 +71,11 @@ test('états de bloc malformés ou dangereux rejetés (surface d\'injection chat
   assert.strictEqual(bad('wall_torch['), false);
   assert.strictEqual(bad('wall_torch[facing=east]'), true);
 });
+
+test('états multiples nom[a=b,c=d] acceptés, crochet orphelin rejeté', () => {
+  const opts = { maxSize: 8, maxBlocks: 10, validBlocks: ['oak_stairs'] };
+  const ok = (name) => validateStructure([{ x: 0, y: 0, z: 0, block: name }], opts).ok;
+  assert.strictEqual(ok('oak_stairs[facing=north,half=bottom]'), true);
+  assert.strictEqual(ok('oak_stairs]'), false);
+  assert.strictEqual(ok('oak_stairs[facing=north'), false);
+});
