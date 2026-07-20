@@ -111,3 +111,14 @@ test('matériaux réalistes : style cartoon conserve tout', () => {
   const mats = ['stone_bricks', 'black_concrete', 'red_wool'];
   assert.deepStrictEqual(realisticMaterials(mats, { style: 'cartoon jeu vidéo coloré' }), mats);
 });
+
+test('assignThemes : Haiku, contexte de scène dans le prompt et le message', async () => {
+  let captured = null;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: '[{"rgb":[100,80,60],"theme":"bois"}]' }] }; } } };
+  const colors = new Map([['oak_planks', [100, 80, 60]], ['stone', [128, 128, 128]]]);
+  await assignThemes([[100, 80, 60]], colors, { client, contexte: 'Scène : manoir, sol herbe, végétation dense, ambiance rurale.' });
+  assert.strictEqual(captured.model, 'claude-haiku-4-5-20251001');
+  assert.ok(captured.system.includes('contexte de scène'));
+  assert.ok(captured.system.includes('position verticale'));
+  assert.ok(captured.messages[0].content.includes('Scène : manoir'));
+});

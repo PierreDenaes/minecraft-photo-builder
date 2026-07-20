@@ -127,8 +127,12 @@ function createBot(cfg) {
     const pixelSamples = [];
     const stride = Math.max(3, Math.floor((data.length / 3 / 4000)) * 3);
     for (let i = 0; i + 2 < data.length; i += stride) pixelSamples.push([data[i], data[i + 1], data[i + 2]]);
+    const envP = (!description.erreur && description.environnement) || {};
     const paletteScene = await deliberatePalette(
-      pixelSamples, colorsNature, description.erreur ? 'paysage extérieur' : `paysage autour de : ${description.type_batiment}`
+      pixelSamples, colorsNature,
+      description.erreur
+        ? 'Scène : paysage extérieur, contexte inconnu.'
+        : `Scène : ${description.type_batiment}, sol ${envP.sol || 'inconnu'}, végétation ${envP.vegetation || 'inconnue'}, ambiance ${envP.ambiance || 'inconnue'}.`
     );
     const seed = Math.floor(Math.random() * 2 ** 31);
     console.log(`[diorama] graine sous-sol : ${seed}`);
@@ -206,7 +210,7 @@ function createBot(cfg) {
       const step = Math.max(1, Math.floor(colored.length / 4000));
       const samples = [];
       for (let i = 0; i < colored.length; i += step) samples.push(colored[i].color);
-      colors = await deliberatePalette(samples, colorsSolides, `modèle 3D scanné (${ext})`);
+      colors = await deliberatePalette(samples, colorsSolides, `Scène : modèle 3D scanné (${ext}), contexte inconnu.`);
     }
     const inspire = (cfg.reconstruction || 'inspire') === 'inspire';
     // mode inspire : la référence analysée est la coquille seule (les strates
