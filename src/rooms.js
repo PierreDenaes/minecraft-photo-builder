@@ -1,15 +1,59 @@
 
+
+// Masque du BÂTIMENT PRINCIPAL : plus grande composante connexe des colonnes
+// « hautes » (un bloc à y >= 4). Piscines, terrasses et dallages n'en font pas
+// partie — tous les raisonnements d'habitabilité s'appuient sur ce masque.
+function mainBuilding(blocks, minHeight = 4) {
+  const d = dimsOf(blocks);
+  const tall = new Set();
+  for (const b of blocks) if (b.y >= minHeight) tall.add(`${b.x},${b.z}`);
+  const allCols = new Set(blocks.map((b) => `${b.x},${b.z}`));
+  if (tall.size < 20) {
+    // petit bâtiment bas : le masque est l'emprise entière
+    let box = { x1: 0, x2: d.x - 1, z1: 0, z2: d.z - 1 };
+    return { columns: allCols, box };
+  }
+  const seen = new Set();
+  let best = [];
+  for (const start of tall) {
+    if (seen.has(start)) continue;
+    const comp = [];
+    const queue = [start];
+    seen.add(start);
+    while (queue.length > 0) {
+      const cur = queue.pop();
+      comp.push(cur);
+      const [cx, cz] = cur.split(',').map(Number);
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nk = `${cx + dx},${cz + dz}`;
+        if (!seen.has(nk) && tall.has(nk)) { seen.add(nk); queue.push(nk); }
+      }
+    }
+    if (comp.length > best.length) best = comp;
+  }
+  const columns = new Set(best);
+  const box = { x1: Infinity, x2: -Infinity, z1: Infinity, z2: -Infinity };
+  for (const k of columns) {
+    const [x, z] = k.split(',').map(Number);
+    box.x1 = Math.min(box.x1, x); box.x2 = Math.max(box.x2, x);
+    box.z1 = Math.min(box.z1, z); box.z2 = Math.max(box.z2, z);
+  }
+  return { columns, box };
+}
+
 function detectFloors(building) {
   if (building.length === 0) return [];
   const d = dimsOf(building);
   const occ = new Set(building.map((b) => `${b.x},${b.y},${b.z}`));
+  const mask = mainBuilding(building);
   const perY = new Map();
   for (const b of building) {
+    if (!mask.columns.has(`${b.x},${b.z}`)) continue; // hors bâtiment principal
     // un plancher est une surface de MARCHE : bloc avec de l'air au-dessus
     if (occ.has(`${b.x},${b.y + 1},${b.z}`)) continue;
     perY.set(b.y, (perY.get(b.y) || 0) + 1);
   }
-  const footprint = d.x * d.z;
+  const footprint = mask.columns.size;
   const floors = [];
   for (let y = 0; y < d.y; y++) {
     if ((perY.get(y) || 0) >= footprint * 0.3) {
@@ -48,6 +92,7 @@ function isPassage(occ, x, fy, z) {
 function detectRooms(building) {
   const d = dimsOf(building);
   const occ = new Set(building.map((b) => `${b.x},${b.y},${b.z}`));
+  const mask = mainBuilding(building);
   const rooms = [];
   for (const fy of detectFloors(building)) {
     if (fy + 2 >= d.y) continue; // toit-terrasse
@@ -55,7 +100,7 @@ function detectRooms(building) {
     for (let x = 0; x < d.x; x++) {
       for (let z = 0; z < d.z; z++) {
         const k = `${x},${z}`;
-        if (seen.has(k) || !isRoomCell(occ, x, fy, z) || isPassage(occ, x, fy, z)) continue;
+        if (seen.has(k) || !mask.columns.has(k) || !isRoomCell(occ, x, fy, z) || isPassage(occ, x, fy, z)) continue;
         const cells = [];
         const queue = [[x, z]];
         seen.add(k);
@@ -67,7 +112,7 @@ function detectRooms(building) {
             const nz = cz + dz;
             const nk = `${nx},${nz}`;
             if (nx < 0 || nz < 0 || nx >= d.x || nz >= d.z || seen.has(nk)) continue;
-            if (!isRoomCell(occ, nx, fy, nz) || isPassage(occ, nx, fy, nz)) continue;
+            if (!mask.columns.has(nk) || !isRoomCell(occ, nx, fy, nz) || isPassage(occ, nx, fy, nz)) continue;
             seen.add(nk);
             queue.push([nx, nz]);
           }
@@ -147,4 +192,4 @@ function furnishRooms(building, rooms, sets) {
   return decor;
 }
 
-module.exports = { detectFloors, detectRooms, furnishRooms, dimsOf };
+module.exports = { detectFloors, detectRooms, furnishRooms, dimsOf, mainBuilding };

@@ -52,3 +52,20 @@ test('bâtiment sans étage → inchangé', () => {
   assert.strictEqual(carved, 0);
   assert.strictEqual(blocks.length, plain.length);
 });
+
+test('scène avec piscine : la cage est taillée DANS la maison', () => {
+  const out = [];
+  const put = (x, y, z, block = 'white_concrete') => out.push({ x, y, z, block });
+  for (let x = 0; x < 14; x++) for (let z = 0; z < 10; z++) {
+    put(x, 0, z, 'oak_planks'); put(x, 4, z, 'oak_planks'); put(x, 8, z, 'stone_bricks');
+  }
+  for (let y = 1; y < 8; y++) {
+    for (let x = 0; x < 14; x++) { put(x, y, 0); put(x, y, 9); }
+    for (let z = 0; z < 10; z++) { put(0, y, z); put(13, y, z); }
+  }
+  for (let x = 16; x < 45; x++) for (let z = 0; z < 25; z++) put(x, 0, z, 'smooth_stone');
+  const { blocks, carved } = carveStaircase(out);
+  assert.ok(carved > 0, 'cage attendue malgré la piscine');
+  const stairs = blocks.filter((b) => /oak_stairs\[facing=/.test(b.block));
+  assert.ok(stairs.every((b) => b.x < 14), 'marches dans la maison uniquement');
+});

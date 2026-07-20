@@ -109,3 +109,37 @@ test('vision a vu des baies mais aucune vitre posée → défaut fenêtres absen
   const sans = auditHabitability(opaque, { elements: ['cheminee'] });
   assert.ok(!sans.some((d) => /fenêtre|vitre/i.test(d)));
 });
+
+// ---- masque bâtiment (scènes avec piscine/terrasse) ----
+function scenePool(withDoor = true) {
+  const out = [];
+  const put = (x, y, z, block = 'white_concrete') => out.push({ x, y, z, block });
+  for (let x = 0; x < 12; x++) for (let z = 0; z < 9; z++) {
+    put(x, 0, z, 'smooth_stone'); put(x, 4, z, 'oak_planks'); put(x, 8, z, 'light_gray_concrete');
+  }
+  for (let y = 1; y < 8; y++) {
+    for (let x = 0; x < 12; x++) { put(x, y, 0); put(x, y, 8); }
+    for (let z = 0; z < 9; z++) { put(0, y, z); put(11, y, z); }
+  }
+  for (let x = 14; x < 40; x++) for (let z = 0; z < 23; z++) put(x, 0, z, 'smooth_stone');
+  return withDoor ? out.filter((b) => !(b.z === 0 && b.x === 5 && (b.y === 1 || b.y === 2))) : out;
+}
+
+test('scène avec piscine : la porte de la MAISON est reconnue (frontière du masque, pas bord de bbox)', () => {
+  const avec = auditHabitability(scenePool(true));
+  assert.ok(!avec.some((d) => /entrée/.test(d)), avec.join(' | '));
+  const sans = auditHabitability(scenePool(false));
+  assert.ok(sans.some((d) => /entrée/.test(d)));
+});
+
+test('scène : l\'accès entre étages de la maison est audité malgré la piscine', () => {
+  const defects = auditHabitability(scenePool(true));
+  assert.ok(defects.some((d) => /escalier/.test(d)), defects.join(' | '));
+});
+
+test('baies promises : des vitres de balcon éparses ne suffisent pas', () => {
+  const scene = scenePool(true);
+  scene.push({ x: 3, y: 5, z: 0, block: 'glass_pane' }); // 1 seule vitre
+  const defects = auditHabitability(scene, { elements: ['grandes_baies_vitrees'], etages: 2 });
+  assert.ok(defects.some((d) => /vitre|baie/i.test(d)), defects.join(' | '));
+});

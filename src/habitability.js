@@ -1,4 +1,4 @@
-const { detectFloors } = require('./rooms');
+const { detectFloors, mainBuilding } = require('./rooms');
 
 // comparaison sur le nom de base : « oak_stairs[facing=north] » compte aussi
 const STAIR_OR_LADDER = /_stairs(\[|$)|^ladder(\[|$)/;
@@ -17,7 +17,12 @@ function auditHabitability(blocks, description = {}) {
     d.y = Math.max(d.y, b.y + 1);
     d.z = Math.max(d.z, b.z + 1);
   }
+  // dédoublonnage par position (les générations peuvent superposer des blocs)
+  blocks = [...new Map(blocks.map((b) => [`${b.x},${b.y},${b.z}`, b])).values()];
   const defects = [];
+  const mask = mainBuilding(blocks);
+  const isBoundary = (x, z) => mask.columns.has(`${x},${z}`)
+    && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dz]) => !mask.columns.has(`${x + dx},${z + dz}`));
   const floors = detectFloors(blocks);
 
   // 1. Hauteur libre par plancher (médiane des cellules sous plafond ;
@@ -28,6 +33,7 @@ function auditHabitability(blocks, description = {}) {
     let cells = 0;
     for (const b of blocks) {
       if (b.y !== fy) continue;
+      if (!mask.columns.has(`${b.x},${b.z}`)) continue; // hors bâtiment principal
       cells++;
       let h = 0;
       let ceiling = false;
@@ -52,7 +58,7 @@ function auditHabitability(blocks, description = {}) {
   let entrance = false;
   for (let x = 0; x < d.x && !entrance; x++) {
     for (let z = 0; z < d.z && !entrance; z++) {
-      if (Math.min(x, d.x - 1 - x, z, d.z - 1 - z) > 2) continue;
+      if (!isBoundary(x, z)) continue; // la porte est dans un mur du bâtiment principal
       if (!occ.has(`${x},${ground + 1},${z}`) && !occ.has(`${x},${ground + 2},${z}`)
         && occ.has(`${x},${ground + 3},${z}`)) entrance = true;
     }
@@ -72,11 +78,12 @@ function auditHabitability(blocks, description = {}) {
 
   // 4. Façades trop uniformes (almanach, règle de la profondeur) : < 3 matériaux
   const baseOf = (n) => n.replace(/\[[^\]]*\]$/, '');
+  const inMask = (b) => mask.columns.has(`${b.x},${b.z}`);
   const facades = [
-    ['x=0', (b) => b.x === 0, (b) => b.z],
-    [`x=${d.x - 1}`, (b) => b.x === d.x - 1, (b) => b.z],
-    ['z=0', (b) => b.z === 0, (b) => b.x],
-    [`z=${d.z - 1}`, (b) => b.z === d.z - 1, (b) => b.x]
+    [`x=${mask.box.x1}`, (b) => b.x === mask.box.x1 && inMask(b), (b) => b.z],
+    [`x=${mask.box.x2}`, (b) => b.x === mask.box.x2 && inMask(b), (b) => b.z],
+    [`z=${mask.box.z1}`, (b) => b.z === mask.box.z1 && inMask(b), (b) => b.x],
+    [`z=${mask.box.z2}`, (b) => b.z === mask.box.z2 && inMask(b), (b) => b.x]
   ];
   for (const [name, pred] of facades) {
     const wall = blocks.filter(pred);
@@ -96,8 +103,12 @@ function auditHabitability(blocks, description = {}) {
 
   // 4ter. Fenêtres promises par la vision mais absentes du bâti
   const attendFenetres = /fenetre|fenêtre|baie|vitr/i.test(JSON.stringify(description.elements || []));
-  if (attendFenetres && !blocks.some((b) => /^glass(\[|$)|^glass_pane(\[|$)/.test(b.block))) {
-    defects.push('la photo montre des baies vitrées mais le bâti n\'a AUCUNE vitre — perce des fenêtres en glass_pane encadrées');
+  if (attendFenetres) {
+    const vitresMur = blocks.filter((b) => /^glass(\[|$)|^glass_pane(\[|$)/.test(b.block) && isBoundary(b.x, b.z)).length;
+    const minVitres = Math.max(4, (description.etages || 1) * 2);
+    if (vitresMur < minVitres) {
+      defects.push(`la photo montre des baies vitrées mais les murs n'ont que ${vitresMur} vitre(s) — perce de vraies fenêtres en glass_pane encadrées sur les façades`);
+    }
   }
 
   // 5. Alignement vertical des fenêtres entre niveaux consécutifs (par façade)

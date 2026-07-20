@@ -1,4 +1,4 @@
-const { detectFloors, dimsOf } = require('./rooms');
+const { detectFloors, dimsOf, mainBuilding } = require('./rooms');
 
 // L'escalier n'est plus confié au code du LLM : les volées enchevêtrées sont
 // retirées et UNE cage propre est taillée mécaniquement entre chaque paire
@@ -10,6 +10,7 @@ function carveStaircase(blocks) {
   const floors = detectFloors(blocks);
   if (floors.length < 2) return { blocks, carved: 0 };
   const d = dimsOf(blocks);
+  const mask = mainBuilding(blocks);
   const occ = new Map();
   for (const b of blocks) occ.set(`${b.x},${b.y},${b.z}`, b);
 
@@ -39,6 +40,7 @@ function carveStaircase(blocks) {
         let ok = true;
         for (let i = 0; i < gap && ok; i++) {
           const x = x0 + i;
+          if (!mask.columns.has(`${x},${z}`)) { ok = false; continue; } // dans le bâtiment principal
           if (!solidAt(x, f1, z)) ok = false; // sol requis
           for (let y = f1 + 1; y < f2 && ok; y++) {
             if (solidAt(x, y, z)) ok = false; // volume libre

@@ -49,3 +49,39 @@ test('furnishRooms : meubles contre les murs, jamais devant la porte, éclairage
   // parcimonie
   assert.ok(decor.length <= 40);
 });
+
+// ---- masque du bâtiment principal ----
+const { mainBuilding, detectFloors } = require('../src/rooms');
+
+// scène : maison 12x9 (murs y1-7, dalle y0+y4+toit y8) + piscine plate 20x14 accolée
+function houseWithPool() {
+  const out = [];
+  const put = (x, y, z, block = 'white_concrete') => out.push({ x, y, z, block });
+  for (let x = 0; x < 12; x++) for (let z = 0; z < 9; z++) {
+    put(x, 0, z, 'smooth_stone'); put(x, 4, z, 'oak_planks'); put(x, 8, z, 'light_gray_concrete');
+  }
+  for (let y = 1; y < 8; y++) {
+    for (let x = 0; x < 12; x++) { put(x, y, 0); put(x, y, 8); }
+    for (let z = 0; z < 9; z++) { put(0, y, z); put(11, y, z); }
+  }
+  // piscine et terrasse basses (y0-1) qui étendent la bbox jusqu'à x=39, z=22
+  for (let x = 14; x < 40; x++) for (let z = 0; z < 23; z++) {
+    put(x, 0, z, 'smooth_stone');
+    if (x > 20 && x < 34 && z > 4 && z < 16) put(x, 1, z, 'water');
+  }
+  return out.filter((b) => !(b.z === 0 && b.x === 5 && (b.y === 1 || b.y === 2))); // porte
+}
+
+test('mainBuilding isole la maison, pas la piscine', () => {
+  const scene = houseWithPool();
+  const mask = mainBuilding(scene);
+  assert.ok(mask.columns.has('5,4'), 'colonne intérieure maison');
+  assert.ok(!mask.columns.has('25,10'), 'colonne piscine exclue');
+  assert.ok(mask.box.x2 <= 12);
+});
+
+test('detectFloors voit l\'étage de la maison malgré la piscine qui dilue l\'emprise', () => {
+  const floors = detectFloors(houseWithPool());
+  assert.ok(floors.includes(0));
+  assert.ok(floors.includes(4), `étage y=4 attendu : ${floors}`);
+});
