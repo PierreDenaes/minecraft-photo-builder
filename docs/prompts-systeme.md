@@ -1,5 +1,7 @@
 # Prompts système du bot
 
+> ⚠ OBSOLÈTE : ces prompts sont ceux d AVANT la refonte de l itération 10 (2026-07-20, mission docs/suggestion-correction/). Les prompts actuels sont dans le code (vision.js, generator.js, palette.js, decorator.js) et le référentiel dans data/almanach-construction.md.
+
 Copie exacte des 6 prompts système envoyés à l'API (`claude-sonnet-4-6` partout). Les `${...}` sont interpolés à l'exécution — leur contenu est décrit sous chaque prompt. Extraction du 2026-07-20, `main` c0db609.
 
 ---
