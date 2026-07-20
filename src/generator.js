@@ -150,6 +150,18 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
     }
     try {
       const blocks = completeDoors(runStructureCode(code, timeoutMs));
+      // Blocs inventés (ex : smooth_stone_wall n'existe pas) : réinjectés dans la
+      // boucle pour que le modèle les corrige lui-même
+      if (validBlocks) {
+        const valid = new Set(validBlocks);
+        const alwaysOk = new Set(['air', 'glass_pane', 'oak_door', 'ladder', 'lantern', 'torch', 'wall_torch']);
+        const unknown = [...new Set(blocks
+          .map((b) => String(b.block).replace(/\[[^\]]*\]$/, ''))
+          .filter((n) => !valid.has(n) && !alwaysOk.has(n)))];
+        if (unknown.length > 0) {
+          throw new Error(`blocs inexistants dans Minecraft 1.20 ou hors liste autorisée : ${unknown.join(', ')} — remplace-les par des blocs de la liste (attention : toutes les familles n'ont pas de variante wall/stairs, smooth_stone n'a qu'une slab)`);
+        }
+      }
       console.log('[generator] code généré :\n', code);
       return { blocks, code };
     } catch (err) {

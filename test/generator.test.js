@@ -249,3 +249,17 @@ test('référentiel minimal sans tour ni scène : pas de sections 6 et 9', async
   assert.ok(!txt.includes('Cercle par test de distance'));
   assert.ok(!txt.includes('Terrain et abords'));
 });
+
+test('bloc hors liste blanche → réinjecté dans la boucle, corrigé à la 2e tentative', async () => {
+  const bad = 'function generateStructure() { return [{ x: 0, y: 0, z: 0, block: "smooth_stone_wall" }]; }\n// FIN_STRUCTURE';
+  const good = 'function generateStructure() { return [{ x: 0, y: 0, z: 0, block: "smooth_stone_slab[type=bottom]" }]; }\n// FIN_STRUCTURE';
+  const reqs = [];
+  let call = 0;
+  const client = { messages: { create: async (req) => { reqs.push(req); call++; return { content: [{ type: 'text', text: call === 1 ? bad : good }] }; } } };
+  const out = await generateStructure({ type_batiment: 't' }, {
+    client, timeoutMs: 5000, validBlocks: ['smooth_stone', 'smooth_stone_slab']
+  });
+  assert.strictEqual(out.blocks[0].block, 'smooth_stone_slab[type=bottom]');
+  assert.strictEqual(reqs.length, 2);
+  assert.ok(JSON.stringify(reqs[1].messages).includes('smooth_stone_wall'));
+});
