@@ -89,3 +89,17 @@ test('compareToPhoto : panne API → null sans lever', async () => {
   const client = { messages: { create: async () => { throw new Error('panne'); } } };
   assert.strictEqual(await compareToPhoto('a', 'image/png', 'b', { client }), null);
 });
+
+test('compareToPhoto : RAS (variantes) → null, catégories dans le prompt', async () => {
+  for (const ras of ['RAS', ' ras. ', 'RAS.', 'Ras']) {
+    const client = { messages: { create: async () => ({ content: [{ type: 'text', text: ras }] }) } };
+    assert.strictEqual(await compareToPhoto('a', 'image/png', 'b', { client }), null, `«${ras}» doit donner null`);
+  }
+  let captured = null;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: '[TOIT] plat -> deux pans' }] }; } } };
+  const critique = await compareToPhoto('a', 'image/png', 'b', { client });
+  assert.strictEqual(critique, '[TOIT] plat -> deux pans');
+  assert.ok(captured.system.includes('[SILHOUETTE]'));
+  assert.ok(captured.system.includes('RAS'));
+  assert.ok(captured.system.includes('pixellisation'));
+});

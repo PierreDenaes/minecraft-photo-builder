@@ -68,7 +68,22 @@ async function compareToPhoto(photoBase64, photoMime, renderBase64, { client } =
     const response = await withRetry(() => c.messages.create({
       model: MODEL,
       max_tokens: 600,
-      system: 'Tu compares une PHOTO de référence (première image) et le RENDU voxel Minecraft généré à partir d\'elle (seconde image). Liste les 5 écarts les PLUS VISIBLES qui empêchent de reconnaître la photo dans le rendu : silhouette générale, proportions, forme du toit, tours, rythme des ouvertures, couleurs dominantes. Signale AUSSI tout défaut de construction visible dans le rendu : tour ou mur incomplet, face manquante, trou non voulu, toit inachevé. Réponds en liste à puces courte et actionnable, uniquement les écarts et défauts, sans compliments.',
+      system: `Tu compares une PHOTO de référence (première image) et le RENDU voxel Minecraft généré à partir d'elle (seconde image).
+
+Ignore les différences inhérentes au format Minecraft : pixellisation, textures des blocs, absence de courbes lisses, simplification des petits détails. Ne compare que ce qui est corrigeable à l'échelle du bloc.
+
+Liste AU PLUS 5 écarts, uniquement les plus visibles, ceux qui empêchent de reconnaître la photo dans le rendu. Si le rendu est globalement fidèle et sans défaut de construction, réponds uniquement : RAS
+
+Format de chaque écart : une ligne "[CATEGORIE] constat -> correction concrète"
+Catégories : [SILHOUETTE] [PROPORTIONS] [TOIT] [OUVERTURES] [COULEUR] [DEFAUT]
+[DEFAUT] = défaut de construction visible dans le rendu : tour ou mur incomplet, face manquante, trou non voulu, toit inachevé.
+
+Exemples :
+[TOIT] le rendu a un toit plat alors que la photo montre deux pans -> remplacer par un toit deux pans en stairs, faîtage selon l'axe long
+[PROPORTIONS] le bâtiment du rendu est trop trapu -> augmenter la hauteur des murs de 3 blocs, réduire la profondeur de 4
+[DEFAUT] la tour nord-est est ouverte sur sa face arrière -> fermer le cylindre sur 360 degrés
+
+Pas de compliments, pas d'introduction, uniquement les lignes d'écart ou RAS.`,
       messages: [{
         role: 'user',
         content: [
@@ -78,7 +93,10 @@ async function compareToPhoto(photoBase64, photoMime, renderBase64, { client } =
         ]
       }]
     }), { retries: 1 });
-    return response.content.find((b) => b.type === 'text').text.trim();
+    const text = response.content.find((b) => b.type === 'text').text.trim();
+    // RAS (tolérant) = rendu fidèle : rien à corriger
+    if (/^ras\.?$/i.test(text)) return null;
+    return text;
   } catch (err) {
     console.warn('[vision] comparaison photo/rendu indisponible :', err.message);
     return null;

@@ -326,6 +326,8 @@ function createBot(cfg) {
           ...genOpts,
           correction: { codeV1: code, critique: critique || '', defauts: defautsText }
         }));
+      } else {
+        bot.chat('Rendu jugé fidèle (RAS) — pas de correction nécessaire.');
       }
     } catch (err) {
       console.warn('[photo] passe de correction ignorée :', err.message);
