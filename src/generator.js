@@ -145,10 +145,10 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
     }
     const raw = response.content.find((b) => b.type === 'text').text;
     const code = stripCodeFences(raw);
+    if (!code.includes(SENTINEL)) {
+      throw new Error(`génération tronquée (sentinelle ${SENTINEL} absente)`);
+    }
     try {
-      if (!code.includes(SENTINEL)) {
-        throw new Error(`génération tronquée (sentinelle ${SENTINEL} absente)`);
-      }
       const blocks = completeDoors(runStructureCode(code, timeoutMs));
       console.log('[generator] code généré :\n', code);
       return { blocks, code };
@@ -159,7 +159,7 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
       messages.push({ role: 'assistant', content: raw });
       messages.push({
         role: 'user',
-        content: `L'exécution du code a échoué : ${err.message}\nCorrige le code et renvoie-le COMPLET, terminé par ${SENTINEL}.${referentiel}`
+        content: `L'exécution du code a échoué : ${err.message}\nCorrige le code et renvoie-le COMPLET, terminé par ${SENTINEL}.`
       });
     }
   }

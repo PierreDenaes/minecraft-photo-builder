@@ -145,9 +145,21 @@ test('sans photo, le contenu reste une chaîne simple (compat)', async () => {
 // ---- Itération 10 : états, sentinelle, correction v1, boucle erreur ----
 const OK_CODE = 'function generateStructure() { return [{ x: 0, y: 0, z: 0, block: "stone" }]; }\n// FIN_STRUCTURE';
 
-test('sentinelle : réponse sans // FIN_STRUCTURE rejetée comme tronquée', async () => {
-  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: 'function generateStructure() { return [{ x: 0, y: 0, z: 0, block: "stone" }]; }' }] }) } };
+test('sentinelle : réponse sans // FIN_STRUCTURE rejetée comme tronquée, SANS retentative', async () => {
+  let calls = 0;
+  const client = { messages: { create: async () => { calls++; return { content: [{ type: 'text', text: 'function generateStructure() { return [{ x: 0, y: 0, z: 0, block: "stone" }]; }' }] }; } } };
   await assert.rejects(() => generateStructure({ type_batiment: 't' }, { client, timeoutMs: 5000 }), /tronqu/);
+  assert.strictEqual(calls, 1);
+});
+
+test('le message de retry ne duplique pas le référentiel almanach', async () => {
+  const bad = 'function generateStructure() { throw new Error("x"); }\n// FIN_STRUCTURE';
+  const reqs = [];
+  let call = 0;
+  const client = { messages: { create: async (req) => { reqs.push(req); call++; return { content: [{ type: 'text', text: call === 1 ? bad : OK_CODE }] }; } } };
+  await generateStructure({ type_batiment: 't' }, { client, timeoutMs: 5000 });
+  const retryMsg = reqs[1].messages[reqs[1].messages.length - 1].content;
+  assert.ok(!retryMsg.includes('Référentiel de construction'), retryMsg.slice(0, 200));
 });
 
 test('generateStructure retourne { blocks, code }', async () => {

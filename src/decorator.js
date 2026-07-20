@@ -1,5 +1,5 @@
 const { withRetry, stripCodeFences } = require('./llm');
-const { runStructureCode } = require('./generator');
+const { runStructureCode, completeDoors } = require('./generator');
 const { INTERIOR_BLOCKS } = require('./blockcolors');
 const { getSections } = require('./almanach');
 
@@ -67,6 +67,7 @@ function fixAttachments(items, isSolid) {
       if (!below) continue;
       const facing = (/facing=(north|south|east|west)/.exec(b.block) || [, 'north'])[1];
       const [dx, dz] = BED_HEAD[facing];
+      if (solidAt(b.x + dx, b.y, b.z + dz)) continue; // la tête percuterait un mur
       kept.push({ x: b.x, y: b.y, z: b.z, block: `${base}[facing=${facing},part=foot]` });
       kept.push({ x: b.x + dx, y: b.y, z: b.z + dz, block: `${base}[facing=${facing},part=head]` });
       continue;
@@ -147,7 +148,7 @@ Code COMPACT : boucles et fonctions d'aide, jamais de longues listes de blocs un
       console.warn('[decorateur] sentinelle absente (réponse tronquée ?) — décoration ignorée');
       return [];
     }
-    const raw = runStructureCode(code, timeoutMs);
+    const raw = completeDoors(runStructureCode(code, timeoutMs));
     const filtered = raw.filter((b) => b && typeof b === 'object'
       && typeof b.block === 'string' && INTERIOR_BLOCKS.has(baseOf(b.block))
       && Number.isInteger(b.x) && Number.isInteger(b.y) && Number.isInteger(b.z)

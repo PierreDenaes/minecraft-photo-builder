@@ -215,3 +215,17 @@ test('le décorateur reçoit la section intérieurs de l\'almanach', async () =>
   await decorateInterior(building, {}, { client, timeoutMs: 5000 });
   assert.ok(captured.messages[0].content.includes('volée droite'));
 });
+
+test('portes du décorateur : moitié haute complétée', async () => {
+  const code = 'function generateStructure() { return [{ x: 3, y: 1, z: 3, block: "oak_door[facing=south,half=lower]" }]; }\n// FIN_STRUCTURE';
+  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
+  const decor = await decorateInterior(building, {}, { client, timeoutMs: 5000 });
+  assert.ok(decor.some((b) => b.block === 'oak_door[facing=south,half=upper]' && b.y === 2), JSON.stringify(decor));
+});
+
+test('lit dont la tête tomberait dans un mur → supprimé entièrement', () => {
+  const solid = new Set(['2,0,5', '2,1,4']); // sol sous le pied + MUR à la place de la tête (facing=north → z-1)
+  const isSolid = (x, y, z) => solid.has(`${x},${y},${z}`);
+  const out = fixAttachments([{ x: 2, y: 1, z: 5, block: 'red_bed[facing=north,part=foot]' }], isSolid);
+  assert.deepStrictEqual(out, []);
+});
