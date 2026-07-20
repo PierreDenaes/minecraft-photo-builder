@@ -84,7 +84,8 @@ function createBot(cfg) {
   const colorsBati = filterColors(blockColors, new Set([...NATURAL_BLOCKS, ...CONSTRUCTION_BLOCKS]));
   // Modèles 3D : structures verticales — un fluide y coulerait hors du mur
   const colorsSolides = new Map([...colorsBati].filter(([b]) => !FLUID_BLOCKS.has(b)));
-  const materiaux = validBlocks.filter((b) => CONSTRUCTION_BLOCKS.has(b) || b === 'air');
+  // eau autorisée pour l'architecte : piscines/bassins (contenus — garde-fou d'audit)
+  const materiaux = validBlocks.filter((b) => CONSTRUCTION_BLOCKS.has(b) || b === 'air' || b === 'water');
   const dio = cfg.limits.diorama;
   let apiClient = null;
   try { apiClient = createClient(); } catch { /* pas de clé : repli plus-proche-voisin */ }
@@ -322,7 +323,7 @@ function createBot(cfg) {
     try {
       const render = await renderVoxels(blocks, blockColors);
       const critique = await compareToPhoto(base64, mimeType, render.toString('base64'), { client: apiClient });
-      const defauts = auditHabitability(blocks);
+      const defauts = auditHabitability(blocks, description);
       const defautsText = defauts.length > 0
         ? `Défauts structurels MESURÉS sur la première version — corrige-les impérativement :\n- ${defauts.join('\n- ')}`
         : '';
@@ -337,7 +338,7 @@ function createBot(cfg) {
     } catch (err) {
       console.warn('[photo] passe de correction ignorée :', err.message);
     }
-    const restants = auditHabitability(blocks);
+    const restants = auditHabitability(blocks, description);
     if (restants.length > 0) bot.chat(`⚠ Défauts restants : ${restants.join(' ; ')}`.slice(0, 250));
     bot.chat('Étape 4/4 : décoration intérieure...');
     const decor = await decorateInterior(blocks, description, { client: apiClient, timeoutMs: cfg.limits.sandbox_timeout_ms });

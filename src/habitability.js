@@ -6,7 +6,8 @@ const MIN_CLEARANCE = 3;
 
 // Audit mécanique d'habitabilité : mesures sur les blocs, pas d'IA.
 // Retourne une liste de défauts précis, injectés dans la passe de correction.
-function auditHabitability(blocks) {
+// description (optionnelle) : la sortie vision, pour les attentes déclarées (baies...)
+function auditHabitability(blocks, description = {}) {
   if (!Array.isArray(blocks) || blocks.length === 0) return [];
   const occ = new Set();
   const d = { x: 0, y: 0, z: 0 };
@@ -84,6 +85,19 @@ function auditHabitability(blocks) {
     if (mats.size < 3) {
       defects.push(`façade ${name} : ${mats.size} matériau(x) seulement — varie (3 à 5, stairs/slabs/walls de la palette compris)`);
     }
+  }
+
+  // 4bis. Eau : chaque bloc d'eau doit avoir un fond (bloc plein directement dessous)
+  const eauLibre = blocks.filter((b) => baseOf(b.block) === 'water'
+    && !occ.has(`${b.x},${b.y - 1},${b.z}`));
+  if (eauLibre.length > 0) {
+    defects.push(`eau non contenue : ${eauLibre.length} bloc(s) d'eau sans fond — creuse un bassin étanche (fond + parois)`);
+  }
+
+  // 4ter. Fenêtres promises par la vision mais absentes du bâti
+  const attendFenetres = /fenetre|fenêtre|baie|vitr/i.test(JSON.stringify(description.elements || []));
+  if (attendFenetres && !blocks.some((b) => /^glass(\[|$)|^glass_pane(\[|$)/.test(b.block))) {
+    defects.push('la photo montre des baies vitrées mais le bâti n\'a AUCUNE vitre — perce des fenêtres en glass_pane encadrées');
   }
 
   // 5. Alignement vertical des fenêtres entre niveaux consécutifs (par façade)

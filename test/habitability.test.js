@@ -90,3 +90,22 @@ test('fenêtres désalignées entre étages → défaut ; alignées → rien', (
   const misaligned = auditHabitability(withWin(8, 11));
   assert.ok(misaligned.some((d) => /fenêtres/.test(d)), misaligned.join(' | '));
 });
+
+// ---- Itération 11 ----
+test('eau non contenue (sans fond) → défaut ; bassin correct → rien', () => {
+  const base = box(14, 8, 10, { doorAt: 4 });
+  const bassin = [...base];
+  for (let x = 3; x <= 5; x++) for (let z = 3; z <= 5; z++) bassin.push({ x, y: 1, z, block: 'water' });
+  // le fond y=0 existe (dalle de la boîte) → contenu
+  assert.ok(!auditHabitability(bassin).some((d) => /eau/.test(d)));
+  const flottante = [...base, { x: 6, y: 4, z: 6, block: 'water' }];
+  assert.ok(auditHabitability(flottante).some((d) => /eau/.test(d)));
+});
+
+test('vision a vu des baies mais aucune vitre posée → défaut fenêtres absentes', () => {
+  const opaque = box(14, 8, 10, { doorAt: 4 });
+  const defects = auditHabitability(opaque, { elements: ['baies_vitrees_coulissantes', 'piscine'] });
+  assert.ok(defects.some((d) => /fenêtre|vitre/i.test(d)), defects.join(' | '));
+  const sans = auditHabitability(opaque, { elements: ['cheminee'] });
+  assert.ok(!sans.some((d) => /fenêtre|vitre/i.test(d)));
+});
