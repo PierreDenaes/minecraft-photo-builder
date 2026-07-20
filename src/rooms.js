@@ -134,8 +134,10 @@ function furnishRooms(building, rooms, sets) {
       let block = meuble;
       if (/_bed$/.test(meuble)) {
         const w = wallDir(c);
+        const headKey = `${c.x - w[0]},${fy + 1},${c.z - w[1]}`;
+        if (placed.has(headKey)) continue; // la tête chevaucherait un meuble
         block = `${meuble}[facing=${FACING_AWAY[`${w[0]},${w[1]}`]},part=foot]`;
-        // tête au mur : le pied s'écarte d'une case si possible (fixAttachments complète)
+        placed.add(headKey); // la tête (complétée par fixAttachments) occupe sa case
       }
       decor.push({ x: c.x, y: fy + 1, z: c.z, block });
       placed.add(key);

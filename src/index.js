@@ -322,6 +322,7 @@ function createBot(cfg) {
       image: { base64, mimeType }
     };
     let { blocks, code } = await generateStructure(description, genOpts);
+    blocks = carveStaircase(blocks).blocks;
     bot.chat('Étape 3/4 : comparaison du résultat à la photo, puis correction (~1 min)...');
     try {
       const render = await renderVoxels(blocks, blockColors);

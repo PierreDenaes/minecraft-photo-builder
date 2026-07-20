@@ -29,8 +29,9 @@ function carveStaircase(blocks) {
     if (gap < 2 || gap > 8) continue;
     // on ne monte que vers un VRAI étage : un niveau sans rien au-dessus est un toit
     if (!kept.some((b) => b.y > f2)) continue;
-    const has = (x, y, z) => kept.some((b) => b.x === x && b.y === y && b.z === z);
-    const solidAt = (x, y, z) => kept.some((b) => b.x === x && b.y === y && b.z === z && b.block !== 'air');
+    const solid = new Set(kept.map((b) => `${b.x},${b.y},${b.z}`));
+    const has = (x, y, z) => solid.has(`${x},${y},${z}`);
+    const solidAt = has;
     // 2. Chercher une bande de `gap` cases en +x, sur plancher f1, dégagée jusqu'à f2
     let strip = null;
     for (let z = 1; z < d.z - 1 && !strip; z++) {
@@ -42,6 +43,8 @@ function carveStaircase(blocks) {
           for (let y = f1 + 1; y < f2 && ok; y++) {
             if (solidAt(x, y, z)) ok = false; // volume libre
           }
+          // dégagement de tête à l'arrivée (au-dessus de la trémie)
+          if (i >= 1 && solidAt(x, f2 + 1, z)) ok = false;
         }
         if (ok) strip = { x0, z };
       }
