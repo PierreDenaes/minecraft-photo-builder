@@ -276,3 +276,35 @@ test('les variantes hors palette mais existantes passent ; les blocs inventés s
   assert.strictEqual(out.blocks[0].block, 'oak_stairs[facing=north]');
   assert.strictEqual(calls, 1, 'aucune retentative attendue pour un bloc existant');
 });
+
+// ---- Itération 12 : sandbox contrôlé aux primitives ----
+const SENT = '\n// FIN_STRUCTURE';
+
+test('le sandbox expose les 8 primitives et Math, rien d\'autre', async () => {
+  const code = `function generateStructure() { return boite({ x1: 0, z1: 0, x2: 3, z2: 3, y0: 0, y1: 3, murs: 'stone_bricks', fondation: 'cobblestone' }); }${SENT}`;
+  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
+  const out = await generateStructure({ type_batiment: 't' }, { client, timeoutMs: 5000, mode: 'primitives' });
+  assert.ok(out.blocks.length > 0);
+  assert.ok(out.blocks.some((b) => b.block === 'stone_bricks'));
+});
+
+test('appel à place() → erreur claire réinjectée dans la boucle', async () => {
+  const bad = `function generateStructure() { return [place(0, 0, 0, 'stone')]; }${SENT}`;
+  const good = `function generateStructure() { return boite({ x1: 0, z1: 0, x2: 2, z2: 2, y0: 0, y1: 2, murs: 'stone' }); }${SENT}`;
+  const reqs = [];
+  let call = 0;
+  const client = { messages: { create: async (req) => { reqs.push(req); call++; return { content: [{ type: 'text', text: call === 1 ? bad : good }] }; } } };
+  const out = await generateStructure({ type_batiment: 't' }, { client, timeoutMs: 5000, mode: 'primitives' });
+  assert.strictEqual(reqs.length, 2);
+  assert.ok(JSON.stringify(reqs[1].messages).includes('place'));
+  assert.ok(out.blocks.length > 0);
+});
+
+test('require refusé', async () => {
+  const bad = `function generateStructure() { return require('fs').readdirSync('/'); }${SENT}`;
+  const good = `function generateStructure() { return boite({ x1: 0, z1: 0, x2: 2, z2: 2, y0: 0, y1: 2, murs: 'stone' }); }${SENT}`;
+  let call = 0;
+  const client = { messages: { create: async () => { call++; return { content: [{ type: 'text', text: call === 1 ? bad : good }] }; } } };
+  const out = await generateStructure({ type_batiment: 't' }, { client, timeoutMs: 5000, mode: 'primitives' });
+  assert.ok(out.blocks.length > 0);
+});

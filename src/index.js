@@ -319,10 +319,10 @@ function createBot(cfg) {
       timeoutMs: cfg.limits.sandbox_timeout_ms,
       validBlocks: realisticMaterials(materiaux, description),
       existingBlocks: validBlocks,
-      image: { base64, mimeType }
+      image: { base64, mimeType },
+      mode: 'primitives'
     };
     let { blocks, code } = await generateStructure(description, genOpts);
-    blocks = carveStaircase(blocks).blocks;
     bot.chat('Étape 3/4 : comparaison du résultat à la photo, puis correction (~1 min)...');
     try {
       const render = await renderVoxels(blocks, blockColors);
@@ -342,9 +342,6 @@ function createBot(cfg) {
     } catch (err) {
       console.warn('[photo] passe de correction ignorée :', err.message);
     }
-    const cage = carveStaircase(blocks);
-    if (cage.carved > 0) console.log(`[photo] ${cage.carved} cage(s) d'escalier taillée(s)`);
-    blocks = cage.blocks;
     const restants = auditHabitability(blocks, description);
     if (restants.length > 0) bot.chat(`⚠ Défauts restants : ${restants.join(' ; ')}`.slice(0, 250));
     bot.chat('Étape 4/4 : décoration intérieure...');

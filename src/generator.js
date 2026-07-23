@@ -1,6 +1,62 @@
 const vm = require('node:vm');
 const { createClient, withRetry, stripCodeFences } = require('./llm');
 const { getSections, getFicheStyle, getFicheToit } = require('./almanach');
+const primitives = require('./primitives');
+
+const PRIMITIVES_SANDBOX = { ...primitives, Math };
+const PRIMITIVES_PROMPT = `Tu écris du code JavaScript pur pour composer une structure Minecraft en appelant UNIQUEMENT les primitives fournies.
+Réponds UNIQUEMENT avec le code, sans texte autour, sans balises markdown.
+Termine ton code par le commentaire exact : // FIN_STRUCTURE
+
+## Contrat
+- Définis une fonction generateStructure() qui retourne un tableau [{x, y, z, block}] — concatène simplement les résultats des primitives que tu appelles.
+- Coordonnées entières >= 0 ; x = largeur, y = hauteur (0 = sol), z = profondeur ; budget spatial 96×64×96 MAXIMUM.
+- INTERDICTION FORMELLE : tu ne poses AUCUN bloc directement. Pas de push({x,y,z,block:...}). Pas de fonction \`place\`. Aucun nom de bloc hors des paramètres materiau/murs/fondation/etc. passés aux primitives.
+- Le sandbox n'expose QUE : les 8 primitives ci-dessous + Math. Toute autre référence (require, place, fs...) lève une ReferenceError.
+
+## Primitives disponibles
+- boite({ x1, z1, x2, z2, y0, y1, murs, fondation?, plancher? }) — 4 murs pleins + dalle basse (fondation ou murs) + dalle haute (plancher, facultative)
+- porte({ facade: 'nord'|'sud'|'est'|'ouest', x, z, y0, hauteur=2, materiau }) — perce une ouverture 1×hauteur dans le mur de la façade, linteau du materiau, porte battante orientée vers l'intérieur
+- baie({ facade, x1, z1, x2, z2, y1, y2, encadrement }) — glass_pane sur la rangée, encadrement autour
+- toitPlat({ x1, z1, x2, z2, y, materiau, acrotere=true, debord=1 })
+- toitDeuxPans({ x1, z1, x2, z2, y_base, faitage: 'x'|'z', materiau, debord=1 }) — materiau = préfixe bois ("oak", "dark_oak", "spruce"...) qui donne stairs et planks
+- toitQuatrePans({ x1, z1, x2, z2, y_base, materiau, debord=1 })
+- escalier({ x, z, y_bas, y_haut, facing: 'east'|'west'|'north'|'south', materiau, tremie=true, largeur=1 })
+- piscine({ x1, z1, x2, z2, y_surface, profondeur=2, bordure })
+
+## Règles de composition
+- Une porte doit être dans un mur existant (même x/z que la façade de la boite).
+- Une baie doit être dans un mur existant.
+- Un escalier doit partir du plancher de la boite (y_bas) et arriver au plancher haut (y_haut = y1 de la boite).
+- Un toit doit couvrir l'emprise de la boite (mêmes x1/x2/z1/z2).
+- Une piscine est HORS de la boite (à côté), pas dedans.
+
+## Exemple 1 — maison simple 8×6 à un étage
+function generateStructure() {
+  const b1 = boite({ x1: 0, z1: 0, x2: 7, z2: 5, y0: 0, y1: 4, murs: 'stone_bricks', fondation: 'cobblestone', plancher: 'oak_planks' });
+  const p = porte({ facade: 'sud', x: 3, z: 0, y0: 0, materiau: 'stone_bricks' });
+  const w1 = baie({ facade: 'sud', x1: 5, x2: 6, z1: 0, z2: 0, y1: 2, y2: 3, encadrement: 'oak_log' });
+  const w2 = baie({ facade: 'est', x1: 7, x2: 7, z1: 2, z2: 3, y1: 2, y2: 3, encadrement: 'oak_log' });
+  const t = toitDeuxPans({ x1: 0, z1: 0, x2: 7, z2: 5, y_base: 4, faitage: 'x', materiau: 'dark_oak' });
+  return [...b1, ...p, ...w1, ...w2, ...t];
+  // FIN_STRUCTURE
+}
+
+## Exemple 2 — villa contemporaine avec piscine
+function generateStructure() {
+  const b1 = boite({ x1: 0, z1: 0, x2: 11, z2: 8, y0: 0, y1: 4, murs: 'white_concrete', fondation: 'smooth_stone', plancher: 'oak_planks' });
+  const b2 = boite({ x1: 0, z1: 0, x2: 11, z2: 8, y0: 4, y1: 8, murs: 'white_concrete', plancher: 'light_gray_concrete' });
+  const p = porte({ facade: 'sud', x: 5, z: 0, y0: 0, materiau: 'dark_oak_log' });
+  const w1 = baie({ facade: 'sud', x1: 1, x2: 3, z1: 0, z2: 0, y1: 2, y2: 3, encadrement: 'dark_oak_log' });
+  const w2 = baie({ facade: 'sud', x1: 7, x2: 10, z1: 0, z2: 0, y1: 2, y2: 3, encadrement: 'dark_oak_log' });
+  const w3 = baie({ facade: 'sud', x1: 1, x2: 10, z1: 0, z2: 0, y1: 6, y2: 7, encadrement: 'dark_oak_log' });
+  const e = escalier({ x: 8, z: 5, y_bas: 0, y_haut: 4, facing: 'east', materiau: 'oak' });
+  const t = toitPlat({ x1: 0, z1: 0, x2: 11, z2: 8, y: 8, materiau: 'light_gray_concrete' });
+  const pool = piscine({ x1: 15, z1: 2, x2: 25, z2: 6, y_surface: 1, profondeur: 2, bordure: 'smooth_stone' });
+  return [...b1, ...b2, ...p, ...w1, ...w2, ...w3, ...e, ...t, ...pool];
+  // FIN_STRUCTURE
+}`;
+
 
 const MODEL = 'claude-sonnet-4-6';
 
@@ -47,8 +103,8 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 - La "carte" est une vue de dessus ASCII (0 = vide, 9 = point culminant) : reproduis ses masses et son agencement
 - Reconstruis PROPREMENT en vocabulaire Minecraft : murs droits, créneaux, arches, fenêtres alignées, toits cohérents ; jamais le bruit du scan`;
 
-function runStructureCode(code, timeoutMs) {
-  const context = vm.createContext(Object.create(null));
+function runStructureCode(code, timeoutMs, sandbox = {}) {
+  const context = vm.createContext({ ...sandbox });
   const script = new vm.Script(`${code}\ngenerateStructure();`);
   const result = script.runInContext(context, { timeout: timeoutMs });
   if (!Array.isArray(result)) {
@@ -101,9 +157,13 @@ function completeDoors(blocks) {
   return blocks.concat(added);
 }
 
-async function generateStructure(description, { client, timeoutMs = 5000, validBlocks, existingBlocks, structuralSummary, image, correction } = {}) {
+async function generateStructure(description, { client, timeoutMs = 5000, validBlocks, existingBlocks, structuralSummary, image, correction, mode } = {}) {
+  const usingPrimitives = mode === 'primitives';
+  const activePrompt = usingPrimitives ? PRIMITIVES_PROMPT : SYSTEM_PROMPT;
+  const sandbox = usingPrimitives ? PRIMITIVES_SANDBOX : {};
   const c = client || createClient();
-  const blocksSection = validBlocks
+  // en mode primitives, le LLM ne cite plus de blocs individuels — juste des materiau
+  const blocksSection = validBlocks && !usingPrimitives
     ? `\n\nBlocs autorisés — n'utilise QUE ces noms, aucun autre :\n${validBlocks.join(', ')}`
     : '';
   const summarySection = structuralSummary
@@ -136,7 +196,7 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
         model: MODEL,
         max_tokens: 16000,
         temperature: 0.2,
-        system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+        system: [{ type: 'text', text: activePrompt, cache_control: { type: 'ephemeral' } }],
         messages
       })
     );
@@ -149,7 +209,7 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
       throw new Error(`génération tronquée (sentinelle ${SENTINEL} absente)`);
     }
     try {
-      const blocks = completeDoors(runStructureCode(code, timeoutMs));
+      const blocks = completeDoors(runStructureCode(code, timeoutMs, sandbox));
       // Blocs inventés (ex : smooth_stone_wall n'existe pas) : réinjectés dans la
       // boucle pour que le modèle les corrige lui-même
       // existence contre la liste blanche COMPLÈTE : la palette (validBlocks)
