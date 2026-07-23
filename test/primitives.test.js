@@ -1,0 +1,153 @@
+const { test } = require('node:test');
+const assert = require('node:assert');
+const {
+  boite, porte, baie, toitPlat, toitDeuxPans, toitQuatrePans, escalier, piscine
+} = require('../src/primitives');
+
+const at = (blocks, x, y, z) => blocks.find((b) => b.x === x && b.y === y && b.z === z);
+const only = (blocks) => new Set(blocks.map((b) => b.block));
+
+// ---- boite ----
+test('boite : dalle + 4 murs + plancher supérieur, intérieur creux', () => {
+  const b = boite({ x1: 0, z1: 0, x2: 5, z2: 4, y0: 0, y1: 4, murs: 'stone_bricks', fondation: 'cobblestone', plancher: 'oak_planks' });
+  // dalle basse pleine 6x5
+  for (let x = 0; x <= 5; x++) for (let z = 0; z <= 4; z++) assert.strictEqual(at(b, x, 0, z)?.block, 'cobblestone');
+  // murs pleins 4 côtés y=1..3
+  for (let y = 1; y <= 3; y++) {
+    for (let x = 0; x <= 5; x++) { assert.strictEqual(at(b, x, y, 0)?.block, 'stone_bricks'); assert.strictEqual(at(b, x, y, 4)?.block, 'stone_bricks'); }
+    for (let z = 0; z <= 4; z++) { assert.strictEqual(at(b, 0, y, z)?.block, 'stone_bricks'); assert.strictEqual(at(b, 5, y, z)?.block, 'stone_bricks'); }
+  }
+  // intérieur creux à y=2
+  assert.strictEqual(at(b, 2, 2, 2), undefined);
+  // plancher haut plein
+  for (let x = 0; x <= 5; x++) for (let z = 0; z <= 4; z++) assert.strictEqual(at(b, x, 4, z)?.block, 'oak_planks');
+});
+
+test('boite : dimensions invalides → erreur claire', () => {
+  assert.throws(() => boite({ x1: 5, z1: 0, x2: 2, z2: 4, y0: 0, y1: 3, murs: 'stone' }), /dimensions/i);
+  assert.throws(() => boite({ x1: 0, z1: 0, x2: 5, z2: 4, y0: 3, y1: 0, murs: 'stone' }), /dimensions/i);
+});
+
+// ---- porte ----
+test('porte : ouverture 1×2 dans le mur sud, linteau, oak_door orientée', () => {
+  const murs = boite({ x1: 0, z1: 0, x2: 6, z2: 4, y0: 0, y1: 4, murs: 'stone_bricks', fondation: 'stone' });
+  const p = porte({ facade: 'sud', x: 3, z: 0, y0: 0, hauteur: 2, materiau: 'oak_log' });
+  // sud = z minimum du bâtiment (z=0)
+  assert.strictEqual(at(p, 3, 1, 0)?.block, 'air');
+  assert.strictEqual(at(p, 3, 2, 0)?.block, 'air');
+  assert.strictEqual(at(p, 3, 3, 0)?.block, 'oak_log'); // linteau
+  // porte battante orientée vers l'intérieur (sud → facing=north pour ouvrir vers +z)
+  const door = p.filter((b) => /oak_door/.test(b.block));
+  assert.strictEqual(door.length, 2);
+  assert.ok(door.some((b) => /half=lower/.test(b.block)));
+  assert.ok(door.some((b) => /half=upper/.test(b.block)));
+  assert.ok(door.every((b) => /facing=north/.test(b.block)));
+});
+
+test('porte : les 4 façades produisent un facing opposé', () => {
+  const sud = porte({ facade: 'sud', x: 3, z: 0, y0: 0, materiau: 'stone' });
+  const nord = porte({ facade: 'nord', x: 3, z: 8, y0: 0, materiau: 'stone' });
+  const est = porte({ facade: 'est', x: 8, z: 3, y0: 0, materiau: 'stone' });
+  const ouest = porte({ facade: 'ouest', x: 0, z: 3, y0: 0, materiau: 'stone' });
+  assert.ok(sud.some((b) => /facing=north/.test(b.block)));
+  assert.ok(nord.some((b) => /facing=south/.test(b.block)));
+  assert.ok(est.some((b) => /facing=west/.test(b.block)));
+  assert.ok(ouest.some((b) => /facing=east/.test(b.block)));
+});
+
+// ---- baie ----
+test('baie : glass_pane sur la rangée, encadrement complet', () => {
+  const b = baie({ facade: 'sud', x1: 2, x2: 5, z1: 0, z2: 0, y1: 2, y2: 3, encadrement: 'oak_log' });
+  for (let x = 2; x <= 5; x++) for (let y = 2; y <= 3; y++) assert.strictEqual(at(b, x, y, 0)?.block, 'glass_pane');
+  // encadrement : appui (y=1), linteau (y=4), jambages (x=1 et x=6)
+  for (let x = 1; x <= 6; x++) assert.strictEqual(at(b, x, 1, 0)?.block, 'oak_log');
+  for (let x = 1; x <= 6; x++) assert.strictEqual(at(b, x, 4, 0)?.block, 'oak_log');
+  for (let y = 2; y <= 3; y++) { assert.strictEqual(at(b, 1, y, 0)?.block, 'oak_log'); assert.strictEqual(at(b, 6, y, 0)?.block, 'oak_log'); }
+});
+
+// ---- toitPlat ----
+test('toitPlat : dalle horizontale + acrotère en wall', () => {
+  const t = toitPlat({ x1: 0, z1: 0, x2: 5, z2: 4, y: 5, materiau: 'light_gray_concrete', acrotere: true, debord: 1 });
+  // dalle sur emprise + débord 1
+  for (let x = -1; x <= 6; x++) for (let z = -1; z <= 5; z++) assert.strictEqual(at(t, x, 5, z)?.block, 'light_gray_concrete');
+  // acrotère sur le pourtour (y=6)
+  for (let x = -1; x <= 6; x++) {
+    assert.ok(/wall/.test(at(t, x, 6, -1).block));
+    assert.ok(/wall/.test(at(t, x, 6, 5).block));
+  }
+});
+
+test('toitPlat : sans acrotère, sans débord', () => {
+  const t = toitPlat({ x1: 0, z1: 0, x2: 3, z2: 3, y: 5, materiau: 'stone', acrotere: false, debord: 0 });
+  assert.strictEqual(at(t, -1, 5, 0), undefined);
+  assert.strictEqual(at(t, 0, 6, 0), undefined);
+});
+
+// ---- toitDeuxPans ----
+test('toitDeuxPans : versants en stairs orientées, pignons remplis, débord 1', () => {
+  const t = toitDeuxPans({ x1: 0, z1: 0, x2: 6, z2: 6, y_base: 4, faitage: 'x', materiau: 'dark_oak', debord: 1 });
+  // faitage sur x → versants nord (z=0) et sud (z=6), montent vers z=3
+  // stairs facing=south sur le versant nord (montée regarde vers +z)
+  const stairs = t.filter((b) => /_stairs\[facing=/.test(b.block));
+  assert.ok(stairs.length > 0);
+  assert.ok(stairs.some((b) => /facing=south/.test(b.block)));
+  assert.ok(stairs.some((b) => /facing=north/.test(b.block)));
+  // pignons remplis (x=0 et x=6) : mur triangulaire
+  const pignonX0 = t.filter((b) => b.x === 0 && b.block === 'dark_oak_planks');
+  assert.ok(pignonX0.length > 0);
+  // faîtage à z=3, y = y_base + 3 (pente 1:1 sur 3)
+  assert.ok(t.some((b) => b.z === 3 && b.y === 7));
+});
+
+// ---- toitQuatrePans ----
+test('toitQuatrePans : rangées rétrécissant de 1 sur 4 côtés, pointe centrée', () => {
+  const t = toitQuatrePans({ x1: 0, z1: 0, x2: 6, z2: 6, y_base: 4, materiau: 'dark_oak', debord: 1 });
+  // premier niveau (y_base) déborde de 1
+  assert.ok(t.some((b) => b.y === 4 && b.x === -1));
+  // pointe centrée : x=3, z=3, y = y_base + rayon
+  const top = t.filter((b) => b.y === Math.max(...t.map((c) => c.y)));
+  assert.ok(top.every((b) => b.x >= 2 && b.x <= 4 && b.z >= 2 && b.z <= 4));
+});
+
+// ---- escalier ----
+test('escalier : marches ascendantes facing correct, masse de soutien, trémie percée', () => {
+  const e = escalier({ x: 2, z: 3, y_bas: 0, y_haut: 4, facing: 'east', materiau: 'oak', tremie: true, largeur: 1 });
+  // 4 marches en +x
+  const stairs = e.filter((b) => /oak_stairs\[facing=east/.test(b.block));
+  assert.strictEqual(stairs.length, 4);
+  const ys = stairs.map((b) => b.y).sort((a, b) => a - b);
+  assert.deepStrictEqual(ys, [1, 2, 3, 4]);
+  assert.deepStrictEqual([...new Set(stairs.map((b) => b.x))].sort(), [2, 3, 4, 5]);
+  // masse de soutien pleine sous chaque marche
+  for (let i = 1; i <= 3; i++) {
+    for (let yy = 1; yy < 1 + i; yy++) assert.ok(e.some((b) => b.x === 2 + i && b.y === yy && b.z === 3 && b.block === 'oak_planks'), `soutien x=${2 + i} y=${yy} manquant`);
+  }
+  // trémie : cases air à y_haut, au-dessus des marches hautes
+  assert.ok(e.some((b) => b.y === 4 && b.block === 'air'));
+});
+
+test('escalier : les 4 facings couvrent les 4 directions', () => {
+  for (const facing of ['east', 'west', 'north', 'south']) {
+    const e = escalier({ x: 10, z: 10, y_bas: 0, y_haut: 4, facing, materiau: 'stone_brick' });
+    assert.ok(e.some((b) => new RegExp(`stairs\\[facing=${facing}`).test(b.block)));
+  }
+});
+
+// ---- piscine ----
+test('piscine : bassin étanche, eau en surface, fond et parois pleins', () => {
+  const p = piscine({ x1: 5, z1: 5, x2: 10, z2: 8, y_surface: 2, profondeur: 2, bordure: 'smooth_stone' });
+  // eau à y=2 sur l'intérieur du bassin
+  for (let x = 6; x <= 9; x++) for (let z = 6; z <= 7; z++) assert.strictEqual(at(p, x, 2, z)?.block, 'water');
+  // fond plein à y = y_surface - profondeur = 0
+  for (let x = 5; x <= 10; x++) for (let z = 5; z <= 8; z++) assert.strictEqual(at(p, x, 0, z)?.block, 'smooth_stone');
+  // parois pleines
+  for (let y = 1; y <= 2; y++) {
+    for (let x = 5; x <= 10; x++) { assert.strictEqual(at(p, x, y, 5)?.block, 'smooth_stone'); assert.strictEqual(at(p, x, y, 8)?.block, 'smooth_stone'); }
+    for (let z = 5; z <= 8; z++) { assert.strictEqual(at(p, 5, y, z)?.block, 'smooth_stone'); assert.strictEqual(at(p, 10, y, z)?.block, 'smooth_stone'); }
+  }
+});
+
+test('piscine : profondeur par défaut = 2', () => {
+  const p = piscine({ x1: 0, z1: 0, x2: 3, z2: 3, y_surface: 5, bordure: 'stone' });
+  assert.ok(p.some((b) => b.y === 3 && b.block === 'stone')); // fond à y_surface - 2
+});
