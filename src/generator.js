@@ -105,7 +105,8 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 - Reconstruis PROPREMENT en vocabulaire Minecraft : murs droits, créneaux, arches, fenêtres alignées, toits cohérents ; jamais le bruit du scan`;
 
 function runStructureCode(code, timeoutMs, sandbox = {}) {
-  const context = vm.createContext({ ...sandbox });
+  // Base null-prototype pour interdire l'évasion via this.constructor.constructor
+  const context = vm.createContext(Object.assign(Object.create(null), sandbox));
   const script = new vm.Script(`${code}\ngenerateStructure();`);
   const result = script.runInContext(context, { timeout: timeoutMs });
   if (!Array.isArray(result)) {
@@ -173,11 +174,17 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
   const imageSection = image
     ? '\n\nLa photo jointe est LA référence : calque les proportions, le nombre et le rythme des ouvertures, la forme exacte du toit et les couleurs sur ce que tu VOIS, pas seulement sur la description.'
     : '';
-  const refIds = [4, 10];
-  const tourSource = `${JSON.stringify(description.elements || [])} ${JSON.stringify(structuralSummary || {})}`;
-  if (/tour/i.test(tourSource)) refIds.push(6);
-  if (description.cadrage === 'scene_complete') refIds.push(9);
-  const referentiel = `\n\nRéférentiel de construction (applique ces règles) :\n${getSections([1])}\n\nFiche toit :\n${getFicheToit(description.toit?.forme)}\n\nFiche style :\n${getFicheStyle(description.style)}\n\n${getSections(refIds)}`;
+  // En mode primitives, l'almanach parle de blocs et de détails (colombages, trapdoors...)
+  // que les 8 primitives ne peuvent pas exprimer : la fiche de style seule suffit
+  const referentiel = usingPrimitives
+    ? `\n\nStyle de la photo (inspiration pour choisir les materiau des primitives) :\n${getFicheStyle(description.style)}`
+    : (() => {
+        const refIds = [4, 10];
+        const tourSource = `${JSON.stringify(description.elements || [])} ${JSON.stringify(structuralSummary || {})}`;
+        if (/tour/i.test(tourSource)) refIds.push(6);
+        if (description.cadrage === 'scene_complete') refIds.push(9);
+        return `\n\nRéférentiel de construction (applique ces règles) :\n${getSections([1])}\n\nFiche toit :\n${getFicheToit(description.toit?.forme)}\n\nFiche style :\n${getFicheStyle(description.style)}\n\n${getSections(refIds)}`;
+      })();
   const userText = correction
     ? `Voici le code de la PREMIÈRE version générée :\n\n<code_v1>\n${correction.codeV1}\n</code_v1>\n\nCette version a été comparée à la photo de référence (jointe). Écarts et défauts constatés :\n\n${correction.critique || ''}\n${correction.defauts || ''}\n\nMODIFIE ce code pour corriger TOUS les écarts listés.\n- Conserve tout ce qui n'est pas critiqué : mêmes dimensions générales, même organisation intérieure, mêmes parties réussies\n- Ne repars pas de zéro\n- Chaque écart listé doit avoir une correction identifiable dans le code\nRéponds UNIQUEMENT avec le code complet corrigé, terminé par ${SENTINEL}.${referentiel}`
     : `Description du bâtiment :\n${JSON.stringify(description, null, 2)}${summarySection}${blocksSection}${imageSection}${referentiel}\n\nÉcris generateStructure().`;
@@ -222,7 +229,9 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
           .map((b) => String(b.block).replace(/\[[^\]]*\]$/, ''))
           .filter((n) => !valid.has(n) && !alwaysOk.has(n)))];
         if (unknown.length > 0) {
-          throw new Error(`blocs inexistants dans Minecraft 1.20 ou hors liste autorisée : ${unknown.join(', ')} — remplace-les par des blocs de la liste (attention : toutes les familles n'ont pas de variante wall/stairs, smooth_stone n'a qu'une slab)`);
+          throw new Error(usingPrimitives
+            ? `blocs inexistants dans Minecraft 1.20 : ${unknown.join(', ')} — vérifie les arguments materiau/murs/fondation/plancher/encadrement/bordure passés aux primitives. Attention : pour toitDeuxPans/toitQuatrePans, materiau est un préfixe bois (par ex. "oak", "dark_oak") qui donne stairs et planks ; smooth_stone n'a qu'une slab.`
+            : `blocs inexistants dans Minecraft 1.20 ou hors liste autorisée : ${unknown.join(', ')} — remplace-les par des blocs de la liste (attention : toutes les familles n'ont pas de variante wall/stairs, smooth_stone n'a qu'une slab)`);
         }
       }
       console.log('[generator] code généré :\n', code);

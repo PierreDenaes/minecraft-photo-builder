@@ -308,3 +308,13 @@ test('require refusé', async () => {
   const out = await generateStructure({ type_batiment: 't' }, { client, timeoutMs: 5000, mode: 'primitives' });
   assert.ok(out.blocks.length > 0);
 });
+
+test('sandbox : constructor.constructor bloqué (isolation)', async () => {
+  const evil = `function generateStructure() { const P = this.constructor.constructor('return process')(); return [{x:0,y:0,z:0,block: typeof P}]; }\n// FIN_STRUCTURE`;
+  const good = `function generateStructure() { return boite({ x1: 0, z1: 0, x2: 2, z2: 2, y0: 0, y1: 2, murs: 'stone' }); }\n// FIN_STRUCTURE`;
+  let call = 0;
+  const client = { messages: { create: async () => { call++; return { content: [{ type: 'text', text: call === 1 ? evil : good }] }; } } };
+  const out = await generateStructure({ type_batiment: 't' }, { client, timeoutMs: 5000, mode: 'primitives' });
+  // le premier code lève (isolation) → retry → deuxième code réussit
+  assert.ok(out.blocks.some((b) => b.block === 'stone'));
+});

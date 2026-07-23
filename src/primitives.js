@@ -154,6 +154,13 @@ function toitDeuxPans({ x1, z1, x2, z2, y_base, faitage, materiau, debord = 1 })
         out.push({ x: xNord, y, z, block: `${stairs}[facing=east,half=bottom]` });
         if (xSud !== xNord) out.push({ x: xSud, y, z, block: `${stairs}[facing=west,half=bottom]` });
       }
+      // pignons remplis sous les versants aux extrémités z=z1 et z=z2
+      for (const z of [z1, z2]) {
+        for (let yy = y_base; yy < y; yy++) {
+          if (!out.some((b) => b.x === xNord && b.y === yy && b.z === z)) out.push({ x: xNord, y: yy, z, block: planks });
+          if (xSud !== xNord && !out.some((b) => b.x === xSud && b.y === yy && b.z === z)) out.push({ x: xSud, y: yy, z, block: planks });
+        }
+      }
     }
     if ((x2 - x1) % 2 === 0) {
       const xM = x1 + halfX;
@@ -223,9 +230,10 @@ function escalier({ x, z, y_bas, y_haut, facing, materiau, tremie = true, largeu
       for (let yy = y_bas + 1; yy < cy; yy++) out.push({ x: wx, y: yy, z: wz, block: planks });
     }
   }
-  // trémie : cases air au niveau y_haut au-dessus des marches
+  // trémie : cases air au niveau y_haut au-dessus des marches, SAUF au sommet
+  // (la marche du sommet est elle-même à y_haut — on ne l'écrase pas avec air)
   if (tremie) {
-    for (let i = 1; i <= gap; i++) {
+    for (let i = 1; i < gap; i++) {
       const cx = x + dx * (i - 1);
       const cz = z + dz * (i - 1);
       for (let w = 0; w < largeur; w++) {

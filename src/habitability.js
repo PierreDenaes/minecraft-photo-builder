@@ -9,16 +9,23 @@ const MIN_CLEARANCE = 3;
 // description (optionnelle) : la sortie vision, pour les attentes déclarées (baies...)
 function auditHabitability(blocks, description = {}) {
   if (!Array.isArray(blocks) || blocks.length === 0) return [];
+  // dédoublonnage par position : l'air (ouverture) prime sur tout bloc superposé
+  const dedup = new Map();
+  for (const b of blocks) {
+    const k = `${b.x},${b.y},${b.z}`;
+    const prev = dedup.get(k);
+    if (!prev || (b.block === 'air' && prev.block !== 'air')) dedup.set(k, b);
+  }
+  blocks = [...dedup.values()];
   const occ = new Set();
   const d = { x: 0, y: 0, z: 0 };
   for (const b of blocks) {
-    occ.add(`${b.x},${b.y},${b.z}`);
+    // une porte battante ne bouche pas l'entrée — l'audit la considère comme traversable
+    if (!/_door(\[|$)/.test(b.block) && b.block !== 'air') occ.add(`${b.x},${b.y},${b.z}`);
     d.x = Math.max(d.x, b.x + 1);
     d.y = Math.max(d.y, b.y + 1);
     d.z = Math.max(d.z, b.z + 1);
   }
-  // dédoublonnage par position (les générations peuvent superposer des blocs)
-  blocks = [...new Map(blocks.map((b) => [`${b.x},${b.y},${b.z}`, b])).values()];
   const defects = [];
   const mask = mainBuilding(blocks);
   const isBoundary = (x, z) => mask.columns.has(`${x},${z}`)

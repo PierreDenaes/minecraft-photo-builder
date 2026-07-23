@@ -162,3 +162,20 @@ test('piscine : y_surface = profondeur exactement → fond à y=0, OK', () => {
   assert.ok(p.some((b) => b.y === 0 && b.block === 'stone'));
   assert.ok(!p.some((b) => b.y < 0));
 });
+
+test('escalier : la marche du sommet SURVIT à la trémie', () => {
+  const e = escalier({ x: 2, z: 3, y_bas: 0, y_haut: 4, facing: 'east', materiau: 'oak' });
+  // au sommet la marche est à x=5, y=4 : elle doit rester présente
+  const sommet = e.filter((b) => b.x === 5 && b.y === 4 && b.z === 3);
+  assert.ok(sommet.some((b) => /oak_stairs\[facing=east/.test(b.block)), `marche du sommet perdue : ${JSON.stringify(sommet)}`);
+  // et l'air de trémie ne recouvre pas la marche du sommet
+  assert.ok(!sommet.some((b) => b.block === 'air'));
+});
+
+test('toitDeuxPans : faitage z produit autant de bloc-pignon que faitage x (symétrie)', () => {
+  const tx = toitDeuxPans({ x1: 0, z1: 0, x2: 6, z2: 6, y_base: 4, faitage: 'x', materiau: 'dark_oak' });
+  const tz = toitDeuxPans({ x1: 0, z1: 0, x2: 6, z2: 6, y_base: 4, faitage: 'z', materiau: 'dark_oak' });
+  const planksX = tx.filter((b) => b.block === 'dark_oak_planks').length;
+  const planksZ = tz.filter((b) => b.block === 'dark_oak_planks').length;
+  assert.strictEqual(planksZ, planksX, `symétrie brisée : x=${planksX}, z=${planksZ}`);
+});

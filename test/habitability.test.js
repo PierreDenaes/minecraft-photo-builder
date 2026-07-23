@@ -157,3 +157,11 @@ test('porte 1x3 (haute) reconnue comme entrée', () => {
   const defects = auditHabitability(withDoor);
   assert.ok(!defects.some((d) => /entrée/.test(d)), defects.join(' | '));
 });
+
+test('audit + porte primitive : maison boite+porte reconnue comme habitable', () => {
+  const { boite, porte } = require('../src/primitives');
+  const b1 = boite({ x1: 0, z1: 0, x2: 7, z2: 5, y0: 0, y1: 4, murs: 'stone_bricks', fondation: 'cobblestone', plancher: 'oak_planks' });
+  const p = porte({ facade: 'sud', x: 3, z: 0, y0: 0, hauteur: 2, materiau: 'stone_bricks' });
+  const defects = auditHabitability([...b1, ...p]);
+  assert.ok(!defects.some((d) => /entrée/.test(d)), `porte primitive non reconnue : ${defects.join(' | ')}`);
+});
