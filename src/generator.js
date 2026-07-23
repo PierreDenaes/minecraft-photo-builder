@@ -26,10 +26,11 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 
 ## Règles de composition
 - Une porte doit être dans un mur existant (même x/z que la façade de la boite).
+- CHAQUE bâtiment habitable a AU MOINS UNE porte en façade — le bâtiment principal en premier.
 - Une baie doit être dans un mur existant.
 - Un escalier doit partir du plancher de la boite (y_bas) et arriver au plancher haut (y_haut = y1 de la boite).
 - Un toit doit couvrir l'emprise de la boite (mêmes x1/x2/z1/z2).
-- Une piscine est HORS de la boite (à côté), pas dedans.
+- Une piscine est HORS de la boite (à côté), pas dedans, et **s'enterre** : si la maison est au sol y=0, la surface de la piscine doit être à y=profondeur (par ex. y_surface=2 pour profondeur=2), le fond restant à y=0. Ne pose JAMAIS y_surface<profondeur, sinon le fond passerait sous y=0 et toute la scène flotterait.
 
 ## Exemple 1 — maison simple 8×6 à un étage
 function generateStructure() {

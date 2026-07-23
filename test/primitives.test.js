@@ -151,3 +151,14 @@ test('piscine : profondeur par défaut = 2', () => {
   const p = piscine({ x1: 0, z1: 0, x2: 3, z2: 3, y_surface: 5, bordure: 'stone' });
   assert.ok(p.some((b) => b.y === 3 && b.block === 'stone')); // fond à y_surface - 2
 });
+
+test('piscine : y_surface trop bas → erreur (le fond passerait sous y=0)', () => {
+  assert.throws(() => piscine({ x1: 0, z1: 0, x2: 3, z2: 3, y_surface: 1, profondeur: 2, bordure: 'stone' }),
+    /profondeur|y_surface|creus/i);
+});
+
+test('piscine : y_surface = profondeur exactement → fond à y=0, OK', () => {
+  const p = piscine({ x1: 0, z1: 0, x2: 3, z2: 3, y_surface: 2, profondeur: 2, bordure: 'stone' });
+  assert.ok(p.some((b) => b.y === 0 && b.block === 'stone'));
+  assert.ok(!p.some((b) => b.y < 0));
+});

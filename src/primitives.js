@@ -241,8 +241,9 @@ function escalier({ x, z, y_bas, y_haut, facing, materiau, tremie = true, largeu
 function piscine({ x1, z1, x2, z2, y_surface, profondeur = 2, bordure }) {
   checkPositiveBox(x1, x2, z1, z2, y_surface);
   if (!bordure) throw new Error('piscine : bordure manquante');
-  const out = [];
   const fond = y_surface - profondeur;
+  if (fond < 0) throw new Error(`piscine : y_surface=${y_surface} trop bas pour profondeur=${profondeur} — il faut y_surface>=profondeur pour que le fond soit à y>=0. Si la maison est au sol y=0, la piscine s'enterre : appelle avec y_surface=${profondeur} et laisse la maison à y0=0.`);
+  const out = [];
   // fond plein
   for (let x = x1; x <= x2; x++) for (let z = z1; z <= z2; z++) out.push({ x, y: fond, z, block: bordure });
   // parois pleines

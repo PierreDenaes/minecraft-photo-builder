@@ -143,3 +143,17 @@ test('baies promises : des vitres de balcon éparses ne suffisent pas', () => {
   const defects = auditHabitability(scene, { elements: ['grandes_baies_vitrees'], etages: 2 });
   assert.ok(defects.some((d) => /vitre|baie/i.test(d)), defects.join(' | '));
 });
+
+test('porte 1x3 (haute) reconnue comme entrée', () => {
+  const out = [];
+  const put = (x, y, z, block = 'stone') => out.push({ x, y, z, block });
+  for (let x = 0; x < 10; x++) for (let z = 0; z < 8; z++) { put(x, 0, z, 'oak_planks'); put(x, 6, z); put(x, 4, z, 'oak_planks'); }
+  for (let y = 1; y < 6; y++) {
+    for (let x = 0; x < 10; x++) { put(x, y, 0); put(x, y, 7); }
+    for (let z = 0; z < 8; z++) { put(0, y, z); put(9, y, z); }
+  }
+  // porte 1×3 : air à y=1,2,3, linteau à y=4
+  const withDoor = out.filter((b) => !(b.z === 0 && b.x === 4 && (b.y === 1 || b.y === 2 || b.y === 3)));
+  const defects = auditHabitability(withDoor);
+  assert.ok(!defects.some((d) => /entrée/.test(d)), defects.join(' | '));
+});

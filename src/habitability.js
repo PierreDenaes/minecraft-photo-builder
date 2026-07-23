@@ -59,8 +59,12 @@ function auditHabitability(blocks, description = {}) {
   for (let x = 0; x < d.x && !entrance; x++) {
     for (let z = 0; z < d.z && !entrance; z++) {
       if (!isBoundary(x, z)) continue; // la porte est dans un mur du bâtiment principal
-      if (!occ.has(`${x},${ground + 1},${z}`) && !occ.has(`${x},${ground + 2},${z}`)
-        && occ.has(`${x},${ground + 3},${z}`)) entrance = true;
+      // ouverture d'au moins 2 blocs consécutifs à partir de ground+1, avec linteau plein au-dessus
+      if (occ.has(`${x},${ground + 1},${z}`) || occ.has(`${x},${ground + 2},${z}`)) continue;
+      for (let h = 2; h <= 4 && !entrance; h++) {
+        if (h > 2 && occ.has(`${x},${ground + h},${z}`)) break;
+        if (occ.has(`${x},${ground + h + 1},${z}`)) entrance = true;
+      }
     }
   }
   if (!entrance) {
