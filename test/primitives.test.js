@@ -343,3 +343,34 @@ test('baie illumine=true : glowstone en second rang derrière les vitres (côté
   // glowstone derrière : z=1 (côté intérieur pour façade sud), même x/y que les vitres
   assert.ok(b.some((k) => k.z === 1 && k.block === 'glowstone' && k.x === 3 && k.y === 2), JSON.stringify(b.filter((k) => k.z === 1)));
 });
+
+// ---- Vague 3 : densité de façade ----
+const { colombages, lierre, avantCorps } = require('../src/primitives');
+
+test('colombages : logs verticaux en saillie sur la façade, espacés régulièrement', () => {
+  const c = colombages({ facade: 'sud', x1: 0, x2: 10, z: 0, y1: 1, y2: 3, materiau: 'dark_oak_log', espacement: 3 });
+  // logs en saillie devant la façade (z=-1 pour façade sud) tous les 3 blocs
+  const logs = c.filter((b) => b.block === 'dark_oak_log');
+  assert.ok(logs.length > 0);
+  const xs = [...new Set(logs.map((b) => b.x))].sort((a, b) => a - b);
+  // pas régulier
+  for (let i = 1; i < xs.length; i++) assert.strictEqual(xs[i] - xs[i - 1], 3);
+});
+
+test('lierre : rangées de vine sur un mur existant, dispersé', () => {
+  const l = lierre({ facade: 'ouest', x: 0, z1: 2, z2: 8, y1: 1, y2: 5, densite: 0.5 });
+  const vines = l.filter((b) => b.block === 'vine');
+  assert.ok(vines.length > 0, 'lierre attendu');
+  // moitié environ des cases occupées (tolérance)
+  const total = 7 * 5;
+  assert.ok(vines.length > total * 0.3 && vines.length < total * 0.7, `densité ~50% : ${vines.length}/${total}`);
+});
+
+test('avantCorps : boite en saillie de 1 devant une façade, plus étroite que celle-ci', () => {
+  const a = avantCorps({ facade: 'sud', x1: 3, x2: 8, z_facade: 0, y0: 0, y1: 4, murs: 'stone_bricks', fondation: 'cobblestone' });
+  // saillie de 1 vers le sud (z=-1)
+  assert.ok(a.some((b) => b.z === -1));
+  // murs latéraux au ras de la façade
+  assert.ok(a.some((b) => b.x === 3 && b.y === 2 && b.z === -1));
+  assert.ok(a.some((b) => b.x === 8 && b.y === 2 && b.z === -1));
+});

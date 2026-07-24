@@ -453,5 +453,63 @@ function gardeCorps({ x1, z1, x2, z2, y, materiau = 'iron_bars' }) {
   return out;
 }
 
+// -------- Vague 3 : densité de façade --------
+
+// Colombages : logs verticaux en SAILLIE devant la façade, espacés régulièrement.
+// Casse un mur plat, essentiel pour l'aspect « pierre + poutres » type manoir.
+function colombages({ facade, x1, x2, z, y1, y2, materiau = 'dark_oak_log', espacement = 3 }) {
+  if (!(facade in OPPOSITE)) throw new Error(`colombages : facade "${facade}" inconnue`);
+  if (x2 < x1 || y2 < y1) throw new Error('colombages : dimensions invalides');
+  const [dx, dz] = INSIDE_DIR[facade]; // vers l'intérieur
+  const out = [];
+  const onFacade = facade === 'nord' || facade === 'sud';
+  for (let i = x1; i <= x2; i += espacement) {
+    for (let y = y1; y <= y2; y++) {
+      const cx = onFacade ? i : z; // sur les façades est/ouest, x est fixe et on itère sur z
+      const cz = onFacade ? z : i;
+      // saillie de 1 vers l'EXTÉRIEUR (opposé de INSIDE_DIR)
+      out.push({ x: cx - dx, y, z: cz - dz, block: materiau });
+    }
+  }
+  return out;
+}
+
+// Lierre : cases de vine sur un mur, densité déterministe (hash x,y,z)
+function lierre({ facade, x, x1, x2, z, z1, z2, y1, y2, densite = 0.5 }) {
+  if (!(facade in OPPOSITE)) throw new Error(`lierre : facade "${facade}" inconnue`);
+  const onFacade = facade === 'nord' || facade === 'sud';
+  const cx1 = onFacade ? x1 : x;
+  const cx2 = onFacade ? x2 : x;
+  const cz1 = onFacade ? z : z1;
+  const cz2 = onFacade ? z : z2;
+  const [dx, dz] = INSIDE_DIR[facade];
+  const out = [];
+  for (let cx = cx1; cx <= cx2; cx++) for (let cz = cz1; cz <= cz2; cz++) for (let y = y1; y <= y2; y++) {
+    const h = ((cx * 73856093) ^ (cz * 19349663) ^ (y * 83492791)) >>> 0;
+    if ((h % 1000) / 1000 < densite) {
+      out.push({ x: cx - dx, y, z: cz - dz, block: 'vine' });
+    }
+  }
+  return out;
+}
+
+// Avant-corps : boite en SAILLIE de 1 devant une façade (avant-corps central,
+// caractéristique des manoirs et villas). x1/x2 = colonnes concernées, z_facade
+// = z de la façade principale de la boite.
+function avantCorps({ facade, x1, x2, z_facade, y0, y1, murs, fondation, plancher }) {
+  if (!(facade in OPPOSITE)) throw new Error(`avantCorps : facade "${facade}" inconnue`);
+  const [dx, dz] = INSIDE_DIR[facade];
+  // La saillie va d'un cran VERS L'EXTÉRIEUR de la façade
+  const zSaillie = z_facade - dz;
+  const xSaillie1 = facade === 'est' || facade === 'ouest' ? z_facade - dz : x1;
+  const xSaillie2 = facade === 'est' || facade === 'ouest' ? z_facade - dz : x2;
+  const onFacade = facade === 'nord' || facade === 'sud';
+  if (onFacade) {
+    return boite({ x1, z1: Math.min(z_facade, zSaillie), x2, z2: Math.max(z_facade, zSaillie), y0, y1, murs, fondation, plancher });
+  }
+  return boite({ x1: Math.min(z_facade, zSaillie), z1: x1, x2: Math.max(z_facade, zSaillie), z2: x2, y0, y1, murs, fondation, plancher });
+}
+
 module.exports = { boite, porte, baie, toitPlat, toitDeuxPans, toitQuatrePans, escalier, piscine, tour,
-  lampadaire, terrasse, pontonBois, haie, bordurePlantes, perron, gardeCorps };
+  lampadaire, terrasse, pontonBois, haie, bordurePlantes, perron, gardeCorps,
+  colombages, lierre, avantCorps };
