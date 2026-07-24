@@ -14,6 +14,27 @@ function checkPositiveBox(x1, x2, z1, z2, y0, y1) {
   if (y1 !== undefined && y1 < y0) throw new Error(`dimensions invalides : y1>=y0 requis (${y0}→${y1})`);
 }
 
+// Whitelist chargée en une fois : les primitives qui dérivent _stairs ou _planks
+// (toits, escaliers, perron) doivent valider le nom résultant contre les vrais
+// blocs Minecraft 1.20 (smooth_stone n'a PAS de stairs, packed_mud non plus).
+let VALID_BLOCKS = null;
+function loadValidBlocks() {
+  if (VALID_BLOCKS) return VALID_BLOCKS;
+  try {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    VALID_BLOCKS = new Set(JSON.parse(fs.readFileSync(path.join(__dirname, '../data/valid_blocks.json'), 'utf8')));
+  } catch { VALID_BLOCKS = new Set(); }
+  return VALID_BLOCKS;
+}
+function assertStairsExist(materiau, primitiveName) {
+  const name = `${materiau}_stairs`;
+  const v = loadValidBlocks();
+  if (v.size > 0 && !v.has(name)) {
+    throw new Error(`${primitiveName} : ${name} n'existe pas dans Minecraft 1.20 (smooth_stone/packed_mud/chiseled_* n'ont pas de stairs). Utilise un préfixe bois (oak, dark_oak, spruce, birch, jungle, acacia...) ou un matériau de maçonnerie qui a une variante stairs (stone, cobblestone, stone_brick, brick, sandstone, deepslate_brick, deepslate_tile...).`);
+  }
+}
+
 function boite({ x1, z1, x2, z2, y0, y1, murs, fondation, plancher }) {
   checkPositiveBox(x1, x2, z1, z2, y0, y1);
   if (!murs) throw new Error('boite : materiau des murs manquant');
@@ -115,6 +136,7 @@ function toitDeuxPans({ x1, z1, x2, z2, y_base, faitage, materiau, debord = 1 })
   checkPositiveBox(x1, x2, z1, z2, y_base);
   if (faitage !== 'x' && faitage !== 'z') throw new Error('toitDeuxPans : faitage doit être "x" ou "z"');
   if (!materiau) throw new Error('toitDeuxPans : materiau manquant');
+  assertStairsExist(materiau, 'toitDeuxPans');
   const stairs = `${materiau}_stairs`;
   const planks = `${materiau}_planks`;
   const out = [];
@@ -194,6 +216,7 @@ function toitDeuxPans({ x1, z1, x2, z2, y_base, faitage, materiau, debord = 1 })
 function toitQuatrePans({ x1, z1, x2, z2, y_base, materiau, debord = 1 }) {
   checkPositiveBox(x1, x2, z1, z2, y_base);
   if (!materiau) throw new Error('toitQuatrePans : materiau manquant');
+  assertStairsExist(materiau, 'toitQuatrePans');
   const stairs = `${materiau}_stairs`;
   const planks = `${materiau}_planks`;
   const out = [];
@@ -229,6 +252,7 @@ function escalier({ x, z, y_bas, y_haut, facing, materiau, tremie = true, largeu
   const gap = y_haut - y_bas;
   if (gap < 1) throw new Error(`escalier : y_haut>y_bas requis (${y_bas}→${y_haut})`);
   const [dx, dz] = STAIR_STEP[facing];
+  assertStairsExist(materiau, 'escalier');
   const stairs = `${materiau}_stairs`;
   const planks = `${materiau}_planks`;
   const out = [];
@@ -430,6 +454,7 @@ function perron({ x, z, y0 = 0, largeur = 3, marches = 2, materiau, facing }) {
   if (!materiau) throw new Error('perron : materiau manquant');
   if (!(facing in STAIR_STEP)) throw new Error(`perron : facing "${facing}" inconnu`);
   if (largeur % 2 === 0) throw new Error(`perron : largeur impaire requise pour rester centré sur la porte (${largeur})`);
+  if (!/_stairs$/.test(materiau)) assertStairsExist(materiau, 'perron');
   const stairs = /_stairs$/.test(materiau) ? materiau : `${materiau}_stairs`;
   const [dxDir, dzDir] = STAIR_STEP[facing];
   const out = [];

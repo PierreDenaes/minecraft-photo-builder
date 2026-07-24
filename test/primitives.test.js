@@ -415,3 +415,16 @@ test('baie illumine=true : PAS de bloc directement derrière la vitre (visible d
   const glow = b.find((k) => k.block === 'glowstone');
   assert.ok(glow, 'source lumineuse attendue');
 });
+
+test('primitives dérivant _stairs : erreur claire si smooth_stone (pas de stairs)', () => {
+  const msg = /smooth_stone.*n'a pas.*stairs|_stairs.*n'existe/i;
+  assert.throws(() => escalier({ x: 0, z: 0, y_bas: 0, y_haut: 4, facing: 'east', materiau: 'smooth_stone' }), msg);
+  assert.throws(() => perron({ x: 0, z: 0, y0: 0, largeur: 3, marches: 2, materiau: 'smooth_stone', facing: 'north' }), msg);
+  assert.throws(() => toitDeuxPans({ x1: 0, z1: 0, x2: 5, z2: 5, y_base: 0, faitage: 'x', materiau: 'smooth_stone' }), msg);
+  assert.throws(() => toitQuatrePans({ x1: 0, z1: 0, x2: 5, z2: 5, y_base: 0, materiau: 'smooth_stone' }), msg);
+});
+
+test('primitives dérivant _stairs : materiau bois valide passe (oak → oak_stairs)', () => {
+  const e = escalier({ x: 0, z: 0, y_bas: 0, y_haut: 4, facing: 'east', materiau: 'oak' });
+  assert.ok(e.some((b) => /oak_stairs/.test(b.block)));
+});
