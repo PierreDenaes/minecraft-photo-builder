@@ -31,3 +31,24 @@ test('insère le bâtiment posé à y=1, face avant sur zAnchor, centré', () =>
   assert.ok(out.some((b) => b.x === 4 && b.y === 1 && b.z === 6 && b.block === 'oak_planks'));
   assert.ok(out.some((b) => b.x === 3 && b.y === 2 && b.z === 5 && b.block === 'glass_pane'));
 });
+
+test('composite : offZ négatif clampé (zAnchor trop petit) sans blocs négatifs', () => {
+  const scene = [{ x: 5, y: 0, z: 5, block: 'grass_block' }];
+  const building = [{ x: 0, y: 0, z: 0, block: 'stone' }, { x: 2, y: 0, z: 2, block: 'stone' }];
+  const out = composite(scene, building, { x1: 0, x2: 10, zAnchor: 1 });
+  for (const b of out) {
+    assert.ok(b.x >= 0 && b.y >= 0 && b.z >= 0, `bloc négatif : ${JSON.stringify(b)}`);
+  }
+});
+
+test('composite : blocs à y<0 du bâtiment filtrés (jamais négatifs en sortie)', () => {
+  const scene = [];
+  const building = [
+    { x: 0, y: -1, z: 0, block: 'stone' },
+    { x: 0, y: 0, z: 0, block: 'stone' },
+    { x: 0, y: 5, z: 0, block: 'wool' }
+  ];
+  const out = composite(scene, building, { x1: 0, x2: 5, zAnchor: 3 });
+  for (const b of out) assert.ok(b.y >= 0, `y<0 : ${JSON.stringify(b)}`);
+  assert.ok(out.some((b) => b.block === 'wool'));
+});

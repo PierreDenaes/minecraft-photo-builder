@@ -179,3 +179,48 @@ test('toitDeuxPans : faitage z produit autant de bloc-pignon que faitage x (sym�
   const planksZ = tz.filter((b) => b.block === 'dark_oak_planks').length;
   assert.strictEqual(planksZ, planksX, `symétrie brisée : x=${planksX}, z=${planksZ}`);
 });
+
+// ---- tour ----
+const { tour } = require('../src/primitives');
+
+test('tour : paroi cylindrique creuse, dalles pleines aux extrémités', () => {
+  const t = tour({ x: 10, z: 10, rayon: 3, y_bas: 0, y_haut: 6, materiau: 'stone_bricks', toit_conique: false });
+  // dalle basse : cercle plein à y_bas
+  assert.ok(at(t, 10, 0, 10)?.block === 'stone_bricks', 'centre de la dalle basse');
+  assert.ok(at(t, 13, 0, 10)?.block === 'stone_bricks', 'bord est de la dalle basse');
+  // paroi cylindrique : bloc au bord, air à l'intérieur (y intermédiaire)
+  assert.ok(at(t, 13, 3, 10)?.block === 'stone_bricks', 'paroi est');
+  assert.ok(at(t, 10, 3, 10) === undefined, 'centre creux');
+  // dalle haute pleine
+  assert.ok(at(t, 10, 6, 10)?.block === 'stone_bricks');
+});
+
+test('tour : materiau préfixe bois → planks pour les dalles, log pour la paroi', () => {
+  const t = tour({ x: 5, z: 5, rayon: 2, y_bas: 0, y_haut: 4, materiau: 'oak', toit_conique: false });
+  assert.ok(t.some((b) => b.block === 'oak_planks'), 'dalles en oak_planks');
+  assert.ok(t.some((b) => b.block === 'oak_log'), 'paroi en oak_log');
+});
+
+test('tour : toit conique = anneaux rétrécissants au-dessus de y_haut', () => {
+  const t = tour({ x: 20, z: 20, rayon: 3, y_bas: 0, y_haut: 6, materiau: 'stone_bricks', toit_conique: true });
+  const maxY = Math.max(...t.map((b) => b.y));
+  assert.ok(maxY > 6, `toit au-dessus de y_haut : maxY=${maxY}`);
+  // anneau au niveau y_haut+1 : rayon plus petit
+  const anneau = t.filter((b) => b.y === 7);
+  assert.ok(anneau.length > 0 && anneau.length < 40, `anneau intermédiaire : ${anneau.length} blocs`);
+});
+
+test('tour : créneaux alternés au sommet quand demandé', () => {
+  const t = tour({ x: 30, z: 30, rayon: 3, y_bas: 0, y_haut: 8, materiau: 'stone_bricks', toit_conique: false, creneaux: true });
+  const sommet = t.filter((b) => b.y === 9);
+  assert.ok(sommet.length > 0, 'merlons présents');
+  assert.ok(sommet.length < 20, `merlons alternés : ${sommet.length}`);
+});
+
+test('tour : rayon nul → erreur', () => {
+  assert.throws(() => tour({ x: 0, z: 0, rayon: 0, y_bas: 0, y_haut: 4, materiau: 'stone_bricks' }), /rayon/i);
+});
+
+test('tour : y_haut<=y_bas → erreur', () => {
+  assert.throws(() => tour({ x: 0, z: 0, rayon: 3, y_bas: 5, y_haut: 5, materiau: 'stone_bricks' }), /hauteur/i);
+});

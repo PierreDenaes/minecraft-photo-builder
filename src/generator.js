@@ -23,6 +23,7 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 - toitQuatrePans({ x1, z1, x2, z2, y_base, materiau, debord=1 })
 - escalier({ x, z, y_bas, y_haut, facing: 'east'|'west'|'north'|'south', materiau, tremie=true, largeur=1 })
 - piscine({ x1, z1, x2, z2, y_surface, profondeur=2, bordure })
+- tour({ x, z, rayon, y_bas, y_haut, materiau, toit_conique=true, creneaux=false }) — cylindre creux centré sur (x,z), dalles pleines aux extrémités, paroi d'1 bloc, toit conique et/ou créneaux au sommet ; materiau peut être un préfixe bois ("oak"...) ou un bloc plein ("stone_bricks")
 
 ## Règles de composition
 - Une porte doit être dans un mur existant (même x/z que la façade de la boite).
@@ -55,6 +56,20 @@ function generateStructure() {
   const t = toitPlat({ x1: 0, z1: 0, x2: 11, z2: 8, y: 8, materiau: 'light_gray_concrete' });
   const pool = piscine({ x1: 15, z1: 2, x2: 25, z2: 6, y_surface: 1, profondeur: 2, bordure: 'smooth_stone' });
   return [...b1, ...b2, ...p, ...w1, ...w2, ...w3, ...e, ...t, ...pool];
+  // FIN_STRUCTURE
+}
+
+## Exemple 3 — château médiéval avec 4 tours d'angle (mode diorama / modèle 3D scanné)
+function generateStructure() {
+  const corps = boite({ x1: 6, z1: 6, x2: 21, z2: 21, y0: 0, y1: 6, murs: 'cobblestone', fondation: 'stone_bricks', plancher: 'oak_planks' });
+  const porte1 = porte({ facade: 'sud', x: 13, z: 6, y0: 0, hauteur: 3, materiau: 'dark_oak_log' });
+  const t1 = tour({ x: 3, z: 3, rayon: 3, y_bas: 0, y_haut: 10, materiau: 'cobblestone', creneaux: true, toit_conique: false });
+  const t2 = tour({ x: 24, z: 3, rayon: 3, y_bas: 0, y_haut: 10, materiau: 'cobblestone', creneaux: true, toit_conique: false });
+  const t3 = tour({ x: 3, z: 24, rayon: 3, y_bas: 0, y_haut: 10, materiau: 'cobblestone', creneaux: true, toit_conique: false });
+  const t4 = tour({ x: 24, z: 24, rayon: 3, y_bas: 0, y_haut: 10, materiau: 'cobblestone', creneaux: true, toit_conique: false });
+  const esc = escalier({ x: 18, z: 15, y_bas: 0, y_haut: 6, facing: 'east', materiau: 'oak' });
+  const toit = toitQuatrePans({ x1: 6, z1: 6, x2: 21, z2: 21, y_base: 6, materiau: 'dark_oak' });
+  return [...corps, ...porte1, ...t1, ...t2, ...t3, ...t4, ...esc, ...toit];
   // FIN_STRUCTURE
 }`;
 

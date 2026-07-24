@@ -161,7 +161,7 @@ function createBot(cfg) {
         dimensions_estimees: { largeur: bWidth, profondeur: Math.min(bWidth, dio.size_z), hauteur: bHeight }
       };
       const { blocks: building } = await generateStructure(buildingDesc, {
-        timeoutMs: cfg.limits.sandbox_timeout_ms, validBlocks: realisticMaterials(materiaux, buildingDesc), existingBlocks: validBlocks
+        timeoutMs: cfg.limits.sandbox_timeout_ms, validBlocks: realisticMaterials(materiaux, buildingDesc), existingBlocks: validBlocks, mode: 'primitives'
       });
       blocks = composite(blocks, building, { x1, x2, zAnchor });
     }
@@ -235,7 +235,7 @@ function createBot(cfg) {
         ? { type_batiment: `reconstruction du modèle 3D (${ext})` }
         : sceneDesc;
       const { blocks: generated } = await generateStructure(buildingDesc, {
-        timeoutMs: cfg.limits.sandbox_timeout_ms, validBlocks: realisticMaterials(materiaux, buildingDesc), existingBlocks: validBlocks, structuralSummary: summary
+        timeoutMs: cfg.limits.sandbox_timeout_ms, validBlocks: realisticMaterials(materiaux, buildingDesc), existingBlocks: validBlocks, structuralSummary: summary, mode: 'primitives'
       });
       const support = enforceSupport(generated);
       if (support.removed > 0) console.log(`[modele] gravité : ${support.removed} blocs flottants supprimés`);

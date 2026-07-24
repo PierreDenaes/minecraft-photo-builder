@@ -266,4 +266,64 @@ function piscine({ x1, z1, x2, z2, y_surface, profondeur = 2, bordure }) {
   return out;
 }
 
-module.exports = { boite, porte, baie, toitPlat, toitDeuxPans, toitQuatrePans, escalier, piscine };
+// Préfixes bois connus : le materiau se décline en _planks (dalles) et _log (paroi)
+const WOOD_PREFIX = new Set(['oak', 'spruce', 'birch', 'jungle', 'acacia', 'dark_oak', 'mangrove', 'cherry', 'crimson', 'warped']);
+
+function tour({ x, z, rayon, y_bas, y_haut, materiau, toit_conique = true, creneaux = false }) {
+  if (!materiau) throw new Error('tour : materiau manquant');
+  if (rayon < 1) throw new Error(`tour : rayon>=1 requis (${rayon})`);
+  if (y_haut <= y_bas) throw new Error(`tour : hauteur y_haut>y_bas requise (${y_bas}→${y_haut})`);
+  const isWood = WOOD_PREFIX.has(materiau);
+  const dalle = isWood ? `${materiau}_planks` : materiau;
+  const paroi = isWood ? `${materiau}_log` : materiau;
+  const out = [];
+  const r2 = rayon * rayon;
+  const rInner2 = (rayon - 1) * (rayon - 1);
+  // dalle basse (cercle plein) et dalle haute
+  for (let dx = -rayon; dx <= rayon; dx++) for (let dz = -rayon; dz <= rayon; dz++) {
+    if (dx * dx + dz * dz <= r2) {
+      out.push({ x: x + dx, y: y_bas, z: z + dz, block: dalle });
+      out.push({ x: x + dx, y: y_haut, z: z + dz, block: dalle });
+    }
+  }
+  // paroi cylindrique creuse
+  for (let y = y_bas + 1; y < y_haut; y++) {
+    for (let dx = -rayon; dx <= rayon; dx++) for (let dz = -rayon; dz <= rayon; dz++) {
+      const d2 = dx * dx + dz * dz;
+      if (d2 <= r2 && d2 > rInner2) out.push({ x: x + dx, y, z: z + dz, block: paroi });
+    }
+  }
+  // créneaux : merlons alternés sur le pourtour à y_haut+1
+  if (creneaux) {
+    let toggle = 0;
+    for (let dx = -rayon; dx <= rayon; dx++) for (let dz = -rayon; dz <= rayon; dz++) {
+      const d2 = dx * dx + dz * dz;
+      if (d2 <= r2 && d2 > rInner2) {
+        if (toggle++ % 2 === 0) out.push({ x: x + dx, y: y_haut + 1, z: z + dz, block: dalle });
+      }
+    }
+  }
+  // toit conique : anneaux rétrécissants
+  if (toit_conique) {
+    const y0 = y_haut + (creneaux ? 2 : 1);
+    let r = rayon;
+    let level = 0;
+    while (r > 0) {
+      const rr2 = r * r;
+      const rrIn2 = (r - 1) * (r - 1);
+      for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
+        const d2 = dx * dx + dz * dz;
+        if (d2 <= rr2 && (r === 1 || d2 > rrIn2)) {
+          out.push({ x: x + dx, y: y0 + level, z: z + dz, block: dalle });
+        }
+      }
+      r--;
+      level++;
+    }
+    // pointe finale
+    out.push({ x, y: y0 + level, z, block: dalle });
+  }
+  return out;
+}
+
+module.exports = { boite, porte, baie, toitPlat, toitDeuxPans, toitQuatrePans, escalier, piscine, tour };
