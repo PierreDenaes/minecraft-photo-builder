@@ -48,7 +48,9 @@ function auditHabitability(blocks, description = {}) {
         if (occ.has(`${b.x},${y},${b.z}`)) { ceiling = true; break; }
         h++;
       }
-      if (ceiling) clearances.push(h);
+      // h===0 signifie qu'un bloc est POSÉ directement sur cette case (mur d'un
+      // étage supérieur, colonne...) — ce n'est pas une cellule de plancher habitable
+      if (ceiling && h > 0) clearances.push(h);
     }
     if (cells === 0 || clearances.length < cells * 0.5) continue; // toit / terrasse
     habitable.push(fy);

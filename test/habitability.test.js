@@ -204,3 +204,34 @@ test('auditChecks : un défaut de fenêtre ne fait PAS échouer le check "Murs c
   assert.strictEqual(habitable.passed, false, 'bâtiment habitable doit ÉCHOUER');
   assert.strictEqual(murs.passed, true, 'murs cohérents doit passer (le defect fenêtre ne matche pas ce check)');
 });
+
+test('audit : cellules dalle-sur-dalle (plancher+plafond superposés, sans air entre) sont ignorées', () => {
+  // situation : rdc + étage empilés SANS écart intermédiaire — le plancher du rdc
+  // et la fondation de l'étage occupent la même case, la case adjacente contient
+  // du mur d'étage → l'audit voyait "hauteur libre médiane 0", faux positif
+  const out = [];
+  const put = (x, y, z, block = 'white_concrete') => out.push({ x, y, z, block });
+  // rdc plein (y=0 à y=4) : dalle basse + plancher haut + murs
+  for (let x = 0; x < 10; x++) for (let z = 0; z < 8; z++) {
+    put(x, 0, z, 'stone'); put(x, 4, z, 'oak_planks');
+  }
+  for (let y = 1; y < 4; y++) {
+    for (let x = 0; x < 10; x++) { put(x, y, 0); put(x, y, 7); }
+    for (let z = 0; z < 8; z++) { put(0, y, z); put(9, y, z); }
+  }
+  // étage plein (y=4 à y=8) — DALLE À y=4 (superposée au plancher rdc) + plafond y=8
+  for (let x = 0; x < 10; x++) for (let z = 0; z < 8; z++) {
+    put(x, 4, z, 'white_concrete'); put(x, 8, z, 'light_gray_concrete');
+  }
+  for (let y = 5; y < 8; y++) {
+    for (let x = 0; x < 10; x++) { put(x, y, 0); put(x, y, 7); }
+    for (let z = 0; z < 8; z++) { put(0, y, z); put(9, y, z); }
+  }
+  // porte au sud
+  const withDoor = out.filter((b) => !(b.z === 0 && b.x === 5 && (b.y === 1 || b.y === 2)));
+  const defects = auditHabitability(withDoor);
+  // Le plancher y=4 est doublé (dalle rdc + fondation étage sur même case), mais
+  // au-dessus l'espace est bien libre 3 blocs jusqu'au plafond y=8. Ne PAS remonter
+  // "hauteur libre médiane 0".
+  assert.ok(!defects.some((d) => /médiane 0/.test(d)), defects.join(' | '));
+});

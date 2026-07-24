@@ -57,6 +57,8 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 - Une baie doit être dans un mur existant.
 - Un escalier doit partir du plancher de la boite (y_bas) et arriver au plancher haut (y_haut = y1 de la boite).
 - Un toit doit couvrir l'emprise de la boite (mêmes x1/x2/z1/z2).
+- EMPILEMENT DES ÉTAGES : quand tu poses 2 boites l'une sur l'autre (rdc + étage), la seconde a y0 = y1 de la première et AUCUNE fondation (omets le paramètre fondation). N'INTERCALE PAS de toitPlat ni de toitDeuxPans entre deux étages. La séparation entre étages = le plancher de la boite du bas. Le toit ne se pose qu'en TERMINAISON du bâtiment, jamais entre deux niveaux.
+- TRÉMIE D'ESCALIER : escalier avec y_haut qui débouche sur le plancher haut d'une boite fonctionne (la trémie perce le plancher). Si y_haut débouche sur un toitPlat, l'escalier arrive sous le toit sans issue. Ne pose PAS un toitPlat au-dessus de la sortie d'un escalier intérieur.
 - Une piscine est HORS de la boite (à côté), pas dedans, et **s'enterre** : si la maison est au sol y=0, la surface de la piscine doit être à y=profondeur (par ex. y_surface=2 pour profondeur=2), le fond restant à y=0. Ne pose JAMAIS y_surface<profondeur, sinon le fond passerait sous y=0 et toute la scène flotterait.
 - Si un **résumé structurel** (carte de hauteurs ASCII 0-9, tours détectées, dims) est fourni : n'essaie PAS de recopier la carte bloc-à-bloc. ABSTRAIS-la en 2 à 6 primitives : zones à valeur ≥7 → tour({rayon, y_haut=valeur}), masses centrales à valeur ≥3 → boite, faîtage détecté → toitDeuxPans. La carte guide les proportions, pas la géométrie fine.
 
