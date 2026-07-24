@@ -224,3 +224,39 @@ test('tour : rayon nul → erreur', () => {
 test('tour : y_haut<=y_bas → erreur', () => {
   assert.throws(() => tour({ x: 0, z: 0, rayon: 3, y_bas: 5, y_haut: 5, materiau: 'stone_bricks' }), /hauteur/i);
 });
+
+test('tour : la paroi est 4-connectée (pas de trous entre piliers)', () => {
+  const t = tour({ x: 20, z: 20, rayon: 3, y_bas: 0, y_haut: 6, materiau: 'stone_bricks', toit_conique: false });
+  // paroi au niveau intermédiaire y=3
+  const paroi = t.filter((b) => b.y === 3);
+  const set = new Set(paroi.map((b) => `${b.x},${b.z}`));
+  // chaque bloc de paroi doit avoir au moins 2 voisins 4-connectés dans le mur
+  // (les extrémités du cercle ont 2 voisins, jamais 1 : sinon il est isolé)
+  for (const b of paroi) {
+    const voisins = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+      .filter(([dx, dz]) => set.has(`${b.x + dx},${b.z + dz}`)).length;
+    assert.ok(voisins >= 2, `bloc paroi isolé à (${b.x},${b.z}) : ${voisins} voisin(s)`);
+  }
+});
+
+test('tour : rayon=4 aussi 4-connecté', () => {
+  const t = tour({ x: 30, z: 30, rayon: 4, y_bas: 0, y_haut: 6, materiau: 'stone_bricks', toit_conique: false });
+  const paroi = t.filter((b) => b.y === 3);
+  const set = new Set(paroi.map((b) => `${b.x},${b.z}`));
+  for (const b of paroi) {
+    const voisins = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+      .filter(([dx, dz]) => set.has(`${b.x + dx},${b.z + dz}`)).length;
+    assert.ok(voisins >= 2, `rayon=4 bloc paroi isolé à (${b.x},${b.z})`);
+  }
+});
+
+test('tour : créneaux jamais adjacents 4-connectés (vrai alternance)', () => {
+  const t = tour({ x: 40, z: 40, rayon: 4, y_bas: 0, y_haut: 8, materiau: 'stone_bricks', toit_conique: false, creneaux: true });
+  const merlons = t.filter((b) => b.y === 9);
+  const set = new Set(merlons.map((b) => `${b.x},${b.z}`));
+  for (const m of merlons) {
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      assert.ok(!set.has(`${m.x + dx},${m.z + dz}`), `merlons collés à (${m.x},${m.z}) et (${m.x + dx},${m.z + dz})`);
+    }
+  }
+});

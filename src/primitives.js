@@ -278,10 +278,27 @@ function tour({ x, z, rayon, y_bas, y_haut, materiau, toit_conique = true, crene
   const paroi = isWood ? `${materiau}_log` : materiau;
   const out = [];
   const r2 = rayon * rayon;
-  const rInner2 = (rayon - 1) * (rayon - 1);
+  const inDisk = (dx, dz) => dx * dx + dz * dz <= r2;
+  // Coquille 4-connectée par balayage angulaire : chaque pas d'angle échantillonne
+  // le cercle discret, on unique-ise les cellules obtenues (garantit la continuité)
+  const shellSet = new Set();
+  const steps = Math.max(32, rayon * 12);
+  for (let i = 0; i < steps; i++) {
+    const a = (i / steps) * Math.PI * 2;
+    const dx = Math.round(Math.cos(a) * rayon);
+    const dz = Math.round(Math.sin(a) * rayon);
+    shellSet.add(`${dx},${dz}`);
+  }
+  // les cellules manquantes pour connectivité 4 : combler par le prédicat classique
+  const isCard = (dx, dz) => !inDisk(dx, dz) ? false
+    : (!inDisk(dx + 1, dz) || !inDisk(dx - 1, dz) || !inDisk(dx, dz + 1) || !inDisk(dx, dz - 1));
+  for (let dx = -rayon; dx <= rayon; dx++) for (let dz = -rayon; dz <= rayon; dz++) {
+    if (isCard(dx, dz)) shellSet.add(`${dx},${dz}`);
+  }
+  const onShell = (dx, dz) => shellSet.has(`${dx},${dz}`);
   // dalle basse (cercle plein) et dalle haute
   for (let dx = -rayon; dx <= rayon; dx++) for (let dz = -rayon; dz <= rayon; dz++) {
-    if (dx * dx + dz * dz <= r2) {
+    if (inDisk(dx, dz)) {
       out.push({ x: x + dx, y: y_bas, z: z + dz, block: dalle });
       out.push({ x: x + dx, y: y_haut, z: z + dz, block: dalle });
     }
@@ -289,18 +306,30 @@ function tour({ x, z, rayon, y_bas, y_haut, materiau, toit_conique = true, crene
   // paroi cylindrique creuse
   for (let y = y_bas + 1; y < y_haut; y++) {
     for (let dx = -rayon; dx <= rayon; dx++) for (let dz = -rayon; dz <= rayon; dz++) {
-      const d2 = dx * dx + dz * dz;
-      if (d2 <= r2 && d2 > rInner2) out.push({ x: x + dx, y, z: z + dz, block: paroi });
+      if (onShell(dx, dz)) out.push({ x: x + dx, y, z: z + dz, block: paroi });
     }
   }
-  // créneaux : merlons alternés sur le pourtour à y_haut+1
+  // Créneaux alternés : angle discrétisé en secteurs de π/N → 1 sur 2 en merlon
   if (creneaux) {
-    let toggle = 0;
+    const shellCells = [];
     for (let dx = -rayon; dx <= rayon; dx++) for (let dz = -rayon; dz <= rayon; dz++) {
-      const d2 = dx * dx + dz * dz;
-      if (d2 <= r2 && d2 > rInner2) {
-        if (toggle++ % 2 === 0) out.push({ x: x + dx, y: y_haut + 1, z: z + dz, block: dalle });
+      if (onShell(dx, dz)) shellCells.push({ dx, dz, angle: Math.atan2(dz, dx) });
+    }
+    shellCells.sort((a, b) => a.angle - b.angle);
+    const placed = new Set();
+    // parcours angulaire : on pose un merlon si aucun voisin 4-connecté déjà posé
+    for (const c of shellCells) {
+      const key = `${c.dx},${c.dz}`;
+      const adj = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dz]) => placed.has(`${c.dx + dx},${c.dz + dz}`));
+      if (adj) continue;
+      // on saute aussi le voisin angulaire immédiat (pour aérer)
+      if (placed.size > 0) {
+        const last = [...placed].pop();
+        const [lx, lz] = last.split(',').map(Number);
+        if (Math.abs(c.dx - lx) + Math.abs(c.dz - lz) === 1) continue;
       }
+      placed.add(key);
+      out.push({ x: x + c.dx, y: y_haut + 1, z: z + c.dz, block: dalle });
     }
   }
   // toit conique : anneaux rétrécissants
@@ -310,10 +339,11 @@ function tour({ x, z, rayon, y_bas, y_haut, materiau, toit_conique = true, crene
     let level = 0;
     while (r > 0) {
       const rr2 = r * r;
-      const rrIn2 = (r - 1) * (r - 1);
+      const inR = (dx, dz) => dx * dx + dz * dz <= rr2;
+      const onR = (dx, dz) => inR(dx, dz) && !(inR(dx + 1, dz) && inR(dx - 1, dz) && inR(dx, dz + 1) && inR(dx, dz - 1));
       for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
-        const d2 = dx * dx + dz * dz;
-        if (d2 <= rr2 && (r === 1 || d2 > rrIn2)) {
+        // r=1 : anneau plein (le disque unité est déjà minimal)
+        if ((r === 1 && inR(dx, dz)) || (r > 1 && onR(dx, dz))) {
           out.push({ x: x + dx, y: y0 + level, z: z + dz, block: dalle });
         }
       }

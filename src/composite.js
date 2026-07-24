@@ -11,7 +11,10 @@ function composite(sceneBlocks, buildingBlocks, { x1, x2, zAnchor }) {
   const offX = x1 + Math.max(0, Math.floor((x2 - x1 + 1 - (maxBX + 1)) / 2));
   // Clamp de sécurité : zAnchor peut être négatif si le bâtiment détecté par la
   // vision est plus profond que la scène disponible
-  const offZ = Math.max(0, zAnchor - maxBZ);
+  const rawOffZ = zAnchor - maxBZ;
+  const offZ = Math.max(0, rawOffZ);
+  if (rawOffZ < 0) console.warn(`[composite] bâtiment plus profond (${maxBZ}) que zAnchor (${zAnchor}) — recalé au fond`);
+  if (offX + maxBX > x2) console.warn(`[composite] bâtiment déborde en X (offX=${offX}, maxBX=${maxBX}, x2=${x2})`);
   const placed = [];
   let dropped = 0;
   for (const b of buildingBlocks) {
