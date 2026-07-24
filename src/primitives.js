@@ -510,6 +510,42 @@ function avantCorps({ facade, x1, x2, z_facade, y0, y1, murs, fondation, planche
   return boite({ x1: Math.min(z_facade, zSaillie), z1: x1, x2: Math.max(z_facade, zSaillie), z2: x2, y0, y1, murs, fondation, plancher });
 }
 
+// -------- Vague 4 : intégration au terrain naturel --------
+
+// Berge : divise l'emprise en 2 zones — terre au-dessus du niveau d'eau, eau
+// au ras, avec une bande de sable/gravier au contact (rivage naturel).
+// cote = direction où se trouve l'eau (nord/sud/est/ouest par rapport à l'emprise)
+function berge({ x1, z1, x2, z2, y_sol, cote, profondeur_eau = 2, sable = 'sand', bande = 2 }) {
+  checkPositiveBox(x1, x2, z1, z2, y_sol);
+  if (!(cote in OPPOSITE)) throw new Error(`berge : cote "${cote}" inconnu`);
+  const out = [];
+  const isWater = (x, z) => {
+    if (cote === 'sud') return z < z1 + Math.floor((z2 - z1) / 2);
+    if (cote === 'nord') return z > z1 + Math.floor((z2 - z1) / 2);
+    if (cote === 'ouest') return x < x1 + Math.floor((x2 - x1) / 2);
+    return x > x1 + Math.floor((x2 - x1) / 2);
+  };
+  const isSand = (x, z) => {
+    // Bande de sable de largeur "bande" au contact eau/terre
+    const midZ = z1 + Math.floor((z2 - z1) / 2);
+    const midX = x1 + Math.floor((x2 - x1) / 2);
+    if (cote === 'sud' || cote === 'nord') return Math.abs(z - midZ) <= bande;
+    return Math.abs(x - midX) <= bande;
+  };
+  for (let x = x1; x <= x2; x++) for (let z = z1; z <= z2; z++) {
+    if (isWater(x, z)) {
+      // fond en sable, eau en surface
+      for (let dy = 1; dy <= profondeur_eau; dy++) out.push({ x, y: y_sol - dy, z, block: sable });
+      out.push({ x, y: y_sol, z, block: 'water' });
+    } else if (isSand(x, z)) {
+      out.push({ x, y: y_sol, z, block: sable });
+    } else {
+      out.push({ x, y: y_sol, z, block: 'grass_block' });
+    }
+  }
+  return out;
+}
+
 module.exports = { boite, porte, baie, toitPlat, toitDeuxPans, toitQuatrePans, escalier, piscine, tour,
   lampadaire, terrasse, pontonBois, haie, bordurePlantes, perron, gardeCorps,
-  colombages, lierre, avantCorps };
+  colombages, lierre, avantCorps, berge };

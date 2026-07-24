@@ -49,6 +49,7 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 - colombages({ facade, x1, x2, z, y1, y2, materiau='dark_oak_log', espacement=3 }) — logs verticaux EN SAILLIE devant une façade, régulièrement espacés ; casse le mur plat (essentiel pour manoirs, colombages, cottage)
 - lierre({ facade, x1, x2, z1, z2, y1, y2, densite=0.5 }) — cases de vine dispersées sur un mur (patine végétale, sur des façades exposées)
 - avantCorps({ facade, x1, x2, z_facade, y0, y1, murs, fondation, plancher }) — boite en saillie de 1 devant une façade, plus étroite que celle-ci (avant-corps central des manoirs et villas classiques)
+- berge({ x1, z1, x2, z2, y_sol, cote: 'nord'|'sud'|'est'|'ouest', profondeur_eau=2, sable='sand', bande=2 }) — divise l'emprise en 2 zones : terre au niveau y_sol + eau du côté indiqué, bande de sable au contact (rivage naturel, utilise si la photo montre le bâtiment au bord de l'eau)
 
 ## Règles de composition
 - Une porte doit être dans un mur existant (même x/z que la façade de la boite).

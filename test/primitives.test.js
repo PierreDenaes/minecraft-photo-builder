@@ -374,3 +374,16 @@ test('avantCorps : boite en saillie de 1 devant une façade, plus étroite que c
   assert.ok(a.some((b) => b.x === 3 && b.y === 2 && b.z === -1));
   assert.ok(a.some((b) => b.x === 8 && b.y === 2 && b.z === -1));
 });
+
+// ---- Vague 4 : intégration au terrain naturel ----
+const { berge } = require('../src/primitives');
+
+test('berge : sol en pente + eau à côté + une bande de sable/gravier au contact', () => {
+  const b = berge({ x1: 0, z1: 0, x2: 10, z2: 8, y_sol: 0, cote: 'sud', profondeur_eau: 2, sable: 'sand' });
+  // sol plat au dessus (y_sol) sur la partie NORD (loin de l'eau)
+  assert.ok(b.some((k) => k.z >= 4 && k.y === 0 && k.block === 'grass_block'), 'terre au nord');
+  // eau au sud (petites z)
+  assert.ok(b.some((k) => k.y === 0 && k.z === 0 && k.block === 'water'), 'eau au sud');
+  // bande de sable au contact eau/terre
+  assert.ok(b.some((k) => k.block === 'sand'), 'sable au contact');
+});

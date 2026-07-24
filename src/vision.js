@@ -45,7 +45,7 @@ Règles :
 - palette_blocs.menuiseries : matière des encadrements de baies et portes (souvent bois : dark_oak_log, spruce_log).
 - palette_blocs.exterieur : matière des terrasses, marches, pontons visibles autour du bâtiment (smooth_stone, oak_planks).
 - travees : COMPTE les fenêtres visibles par façade. facade_principale = la façade la plus visible sur la photo, autres_facades = moyenne des côtés visibles. Sois PRÉCIS : une villa à 3 grandes baies = travees.facade_principale = 3.
-- elements : mentionne aussi "balcon", "garde-corps", "marches_entree", "lampadaires", "terrasse_bois", "ponton" quand tu les vois.
+- elements : mentionne aussi "balcon", "garde-corps", "marches_entree", "lampadaires", "terrasse_bois", "ponton", "berge_eau" (bâtiment au bord de l'eau), "colombages", "lierre_vegetation_murale" quand tu les vois.
 - cadrage : "sujet_seul" si l'image montre UN sujet principal sans environnement significatif (bâtiment isolé, objet, personne), "scene_complete" si le décor fait partie du sujet (paysage, terrain, jardin)
 - environnement : décris TOUJOURS la végétation (densité d'arbres : aucun/epars/dense, essences parmi chene/sapin/bouleau/acacia), la nature du sol et l'ambiance générale de la scène
 - Si l'image ne contient aucun bâtiment identifiable, réponds : {"erreur": "raison courte"}${blocksRule}`;
