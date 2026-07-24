@@ -245,9 +245,14 @@ function toitQuatrePans({ x1, z1, x2, z2, y_base, materiau, debord = 1 }) {
 }
 
 const STAIR_STEP = { east: [1, 0], west: [-1, 0], south: [0, 1], north: [0, -1] };
+// Le LLM utilise parfois le vocabulaire français des façades pour l'orientation
+// des escaliers/perrons : on accepte les deux
+const FR_TO_EN_FACING = { nord: 'north', sud: 'south', est: 'east', ouest: 'west' };
+const normalizeFacing = (f) => FR_TO_EN_FACING[f] || f;
 
 function escalier({ x, z, y_bas, y_haut, facing, materiau, tremie = true, largeur = 1 }) {
-  if (!(facing in STAIR_STEP)) throw new Error(`escalier : facing "${facing}" inconnu`);
+  facing = normalizeFacing(facing);
+  if (!(facing in STAIR_STEP)) throw new Error(`escalier : facing "${facing}" inconnu (utilise east|west|north|south)`);
   if (!materiau) throw new Error('escalier : materiau manquant');
   const gap = y_haut - y_bas;
   if (gap < 1) throw new Error(`escalier : y_haut>y_bas requis (${y_bas}→${y_haut})`);
@@ -452,7 +457,8 @@ function bordurePlantes({ x1, z1, x2, z2, y, materiau = 'azalea_leaves' }) {
 // facing = direction où se trouve la PORTE (les marches montent vers elle)
 function perron({ x, z, y0 = 0, largeur = 3, marches = 2, materiau, facing }) {
   if (!materiau) throw new Error('perron : materiau manquant');
-  if (!(facing in STAIR_STEP)) throw new Error(`perron : facing "${facing}" inconnu`);
+  facing = normalizeFacing(facing);
+  if (!(facing in STAIR_STEP)) throw new Error(`perron : facing "${facing}" inconnu (utilise east|west|north|south)`);
   if (largeur % 2 === 0) throw new Error(`perron : largeur impaire requise pour rester centré sur la porte (${largeur})`);
   if (!/_stairs$/.test(materiau)) assertStairsExist(materiau, 'perron');
   const stairs = /_stairs$/.test(materiau) ? materiau : `${materiau}_stairs`;

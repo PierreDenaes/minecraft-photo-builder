@@ -428,3 +428,10 @@ test('primitives dérivant _stairs : materiau bois valide passe (oak → oak_sta
   const e = escalier({ x: 0, z: 0, y_bas: 0, y_haut: 4, facing: 'east', materiau: 'oak' });
   assert.ok(e.some((b) => /oak_stairs/.test(b.block)));
 });
+
+test('escalier / perron : acceptent le facing en français (nord/sud/est/ouest)', () => {
+  const e = escalier({ x: 0, z: 0, y_bas: 0, y_haut: 4, facing: 'nord', materiau: 'oak' });
+  assert.ok(e.some((b) => /oak_stairs\[facing=north/.test(b.block)));
+  const p = perron({ x: 0, z: 0, y0: 0, largeur: 3, marches: 2, materiau: 'oak', facing: 'sud' });
+  assert.ok(p.some((b) => /oak_stairs\[facing=south/.test(b.block)));
+});
