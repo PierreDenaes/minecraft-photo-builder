@@ -192,3 +192,15 @@ test('auditChecks : boîte scellée → check entrée à ✗', () => {
   const entree = checks.find((c) => /entrée|acc[eè]s/i.test(c.name));
   assert.strictEqual(entree.passed, false);
 });
+
+test('auditChecks : un défaut de fenêtre ne fait PAS échouer le check "Murs cohérents"', () => {
+  const { boite, porte } = require('../src/primitives');
+  const b1 = boite({ x1: 0, z1: 0, x2: 10, z2: 8, y0: 0, y1: 5, murs: 'stone_bricks', fondation: 'cobblestone', plancher: 'oak_planks' });
+  const p = porte({ facade: 'sud', x: 5, z: 0, y0: 0, hauteur: 2, materiau: 'stone_bricks' });
+  // description avec baie promise mais aucune vitre posée → defect fenêtre
+  const checks = auditChecks([...b1, ...p], { elements: ['grandes_baies_vitrees'] });
+  const habitable = checks.find((c) => /habitable/i.test(c.name));
+  const murs = checks.find((c) => /murs/i.test(c.name));
+  assert.strictEqual(habitable.passed, false, 'bâtiment habitable doit ÉCHOUER');
+  assert.strictEqual(murs.passed, true, 'murs cohérents doit passer (le defect fenêtre ne matche pas ce check)');
+});

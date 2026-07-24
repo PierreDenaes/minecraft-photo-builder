@@ -496,18 +496,21 @@ function lierre({ facade, x, x1, x2, z, z1, z2, y1, y2, densite = 0.5 }) {
 // Avant-corps : boite en SAILLIE de 1 devant une façade (avant-corps central,
 // caractéristique des manoirs et villas). x1/x2 = colonnes concernées, z_facade
 // = z de la façade principale de la boite.
+// x1/x2 = plage sur l'axe PARALLÈLE à la façade. z_facade = coordonnée sur
+// l'axe PERPENDICULAIRE à la façade (Z pour nord/sud, X pour est/ouest).
+// La saillie fait 1 bloc de profondeur vers l'EXTÉRIEUR.
 function avantCorps({ facade, x1, x2, z_facade, y0, y1, murs, fondation, plancher }) {
   if (!(facade in OPPOSITE)) throw new Error(`avantCorps : facade "${facade}" inconnue`);
   const [dx, dz] = INSIDE_DIR[facade];
-  // La saillie va d'un cran VERS L'EXTÉRIEUR de la façade
-  const zSaillie = z_facade - dz;
-  const xSaillie1 = facade === 'est' || facade === 'ouest' ? z_facade - dz : x1;
-  const xSaillie2 = facade === 'est' || facade === 'ouest' ? z_facade - dz : x2;
   const onFacade = facade === 'nord' || facade === 'sud';
   if (onFacade) {
+    const zSaillie = z_facade - dz;
     return boite({ x1, z1: Math.min(z_facade, zSaillie), x2, z2: Math.max(z_facade, zSaillie), y0, y1, murs, fondation, plancher });
   }
-  return boite({ x1: Math.min(z_facade, zSaillie), z1: x1, x2: Math.max(z_facade, zSaillie), z2: x2, y0, y1, murs, fondation, plancher });
+  // façades est/ouest : z_facade est en fait la COORDONNÉE X de la façade.
+  // La saillie va sur l'axe X, la plage x1/x2 sert de plage Z.
+  const xSaillie = z_facade - dx;
+  return boite({ x1: Math.min(z_facade, xSaillie), z1: x1, x2: Math.max(z_facade, xSaillie), z2: x2, y0, y1, murs, fondation, plancher });
 }
 
 // -------- Vague 4 : intégration au terrain naturel --------

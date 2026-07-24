@@ -151,7 +151,9 @@ function auditChecks(blocks, description = {}) {
     { name: 'Hauteur sous plafond', passed: !has(/hauteur libre/i) },
     { name: 'Portes & accès', passed: !has(/entrée/i) },
     { name: 'Escaliers praticables', passed: !has(/escalier|accès/i) },
-    { name: 'Murs cohérents', passed: !has(/façade/i) },
+    // regex ancré sur le préfixe des defects de façades uniformes (line 82 dans
+     // auditHabitability) — pas de faux positif sur "fenêtres désalignées sur la façade..."
+    { name: 'Murs cohérents', passed: !has(/^façade [xz]=/i) },
     { name: 'Bâtiment habitable', passed: !has(/fenêtre|vitre|eau/i) }
   ];
 }

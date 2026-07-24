@@ -387,3 +387,18 @@ test('berge : sol en pente + eau à côté + une bande de sable/gravier au conta
   // bande de sable au contact eau/terre
   assert.ok(b.some((k) => k.block === 'sand'), 'sable au contact');
 });
+
+test('avantCorps : saillie correcte pour façade ouest (bug de revue)', () => {
+  const a = avantCorps({ facade: 'ouest', x1: 3, x2: 8, z_facade: 5, y0: 0, y1: 4, murs: 'stone_bricks', fondation: 'cobblestone' });
+  // ouest = x plus petit ; saillie vers x < 5, donc x=4 (extérieur)
+  assert.ok(a.some((b) => b.x === 4 && b.y === 2), 'saillie x=4 attendue');
+  assert.ok(a.some((b) => b.x === 5 && b.z === 3), 'attaché x=5 (façade)');
+  // murs latéraux au z=3 et z=8 (les bords de la saillie)
+  assert.ok(a.some((b) => b.z === 3 && b.x === 4 && b.y === 2), 'mur lateral z=3');
+  assert.ok(a.some((b) => b.z === 8 && b.x === 4 && b.y === 2), 'mur lateral z=8');
+});
+
+test('avantCorps : saillie correcte pour façade est', () => {
+  const a = avantCorps({ facade: 'est', x1: 3, x2: 8, z_facade: 5, y0: 0, y1: 4, murs: 'stone_bricks', fondation: 'cobblestone' });
+  assert.ok(a.some((b) => b.x === 6 && b.y === 2), 'saillie x=6');
+});
