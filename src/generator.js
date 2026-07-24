@@ -1,7 +1,22 @@
 const vm = require('node:vm');
 const { createClient, withRetry, stripCodeFences } = require('./llm');
 const { getSections, getFicheStyle, getFicheToit } = require('./almanach');
+const fs = require('node:fs');
+const path = require('node:path');
 const primitives = require('./primitives');
+
+// Références issues des schemas Sponge (docs/schem/) : vocabulaire de vrais
+// bâtiments par style — sert à guider le choix des matériaux par le LLM
+let SCHEM_REFS = [];
+try { SCHEM_REFS = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/schem-refs.json'), 'utf8')); } catch { /* absent */ }
+function schemRefsFor(style) {
+  const priority = SCHEM_REFS.filter((r) => r.style === style);
+  const others = SCHEM_REFS.filter((r) => r.style !== style).slice(0, 2);
+  const chosen = priority.length > 0 ? priority.concat(others).slice(0, 3) : SCHEM_REFS.slice(0, 3);
+  if (chosen.length === 0) return '';
+  const lines = chosen.map((r) => `- ${r.style} (${r.dims.x}×${r.dims.y}×${r.dims.z}) : matériaux dominants ${r.top_materiaux.slice(0, 5).join(', ')} ; ratio stairs ${r.ratios.stairs}%, glass ${r.ratios.glass}%`);
+  return `\n\nRéférences de vrais bâtiments (vocabulaire de matériaux à imiter selon le style) :\n${lines.join('\n')}`;
+}
 
 const PRIMITIVES_SANDBOX = { ...primitives, Math };
 const PRIMITIVES_PROMPT = `Tu écris du code JavaScript pur pour composer une structure Minecraft en appelant UNIQUEMENT les primitives fournies.
@@ -24,6 +39,13 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 - escalier({ x, z, y_bas, y_haut, facing: 'east'|'west'|'north'|'south', materiau, tremie=true, largeur=1 })
 - piscine({ x1, z1, x2, z2, y_surface, profondeur=2, bordure })
 - tour({ x, z, rayon, y_bas, y_haut, materiau, toit_conique=true, creneaux=false }) — cylindre creux centré sur (x,z), dalles pleines aux extrémités, paroi d'1 bloc, toit conique et/ou créneaux au sommet ; materiau peut être un préfixe bois ("oak"...) ou un bloc plein ("stone_bricks")
+- lampadaire({ x, z, y0, hauteur=5, materiau='dark_oak_fence' }) — poteau vertical de fences + lanterne au sommet
+- terrasse({ x1, z1, x2, z2, y, materiau, bordure? }) — dalle horizontale au sol + bordure murée optionnelle sur le pourtour
+- pontonBois({ x1, z1, x2, z2, y, materiau='oak_planks', pilotis=true }) — planches surélevées + pilotis aux coins descendant jusqu'à y=0
+- haie({ x1, z1, x2, z2, y, essence='oak_leaves', hauteur=2 }) — rangée de feuilles persistantes
+- bordurePlantes({ x1, z1, x2, z2, y, materiau='azalea_leaves' }) — 1 rangée basse de plantes (bordure de terrasse/piscine)
+- perron({ x, z, y0=0, largeur=3, marches=2, materiau, facing }) — marches ascendantes devant une porte (facing = direction où se trouve la porte)
+- gardeCorps({ x1, z1, x2, z2, y, materiau='iron_bars' }) — rangée sur le pourtour d'une terrasse/balcon
 
 ## Règles de composition
 - Une porte doit être dans un mur existant (même x/z que la façade de la boite).
@@ -33,6 +55,19 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 - Un toit doit couvrir l'emprise de la boite (mêmes x1/x2/z1/z2).
 - Une piscine est HORS de la boite (à côté), pas dedans, et **s'enterre** : si la maison est au sol y=0, la surface de la piscine doit être à y=profondeur (par ex. y_surface=2 pour profondeur=2), le fond restant à y=0. Ne pose JAMAIS y_surface<profondeur, sinon le fond passerait sous y=0 et toute la scène flotterait.
 - Si un **résumé structurel** (carte de hauteurs ASCII 0-9, tours détectées, dims) est fourni : n'essaie PAS de recopier la carte bloc-à-bloc. ABSTRAIS-la en 2 à 6 primitives : zones à valeur ≥7 → tour({rayon, y_haut=valeur}), masses centrales à valeur ≥3 → boite, faîtage détecté → toitDeuxPans. La carte guide les proportions, pas la géométrie fine.
+
+## Palette par zone (utilise 3 à 5 matériaux différents, jamais un seul)
+- palette_blocs.murs = matière PRINCIPALE des façades (boite murs).
+- palette_blocs.accents = allèges, bandeaux, débords contrastants (souvent une variante sombre : deepslate_tiles, dark_oak_planks, black_concrete). Utilise pour toits plats, corniches, gardeCorps.
+- palette_blocs.menuiseries = encadrements de baies et portes (souvent bois : dark_oak_log, spruce_log).
+- palette_blocs.exterieur = terrasse, ponton, bordure (souvent smooth_stone, oak_planks).
+- palette_blocs.toit = matière du toit (préfixe bois pour toitDeuxPans/QuatrePans, bloc pour toitPlat).
+- Fallback : si un champ manque, réutilise murs ou toit. Mais 1 seul matériau sur tout = façade médiocre.
+
+## Fidélité aux travées et détails extérieurs
+- Si travees.facade_principale = N, appelle baie EXACTEMENT N fois sur cette façade, régulièrement espacées.
+- Si elements contient "balcon", "garde-corps", "marches", "lampadaires", "terrasse", "ponton" → utilise les primitives correspondantes (perron, gardeCorps, lampadaire, terrasse, pontonBois).
+- Une villa moderne = boite blanche + accents sombres en toitPlat + baies larges avec encadrement bois + perron + gardeCorps sur balcon + 2 à 4 lampadaires devant.
 
 ## Exemple 1 — maison simple 8×6 à un étage
 function generateStructure() {
@@ -193,7 +228,7 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
   // En mode primitives, l'almanach parle de blocs et de détails (colombages, trapdoors...)
   // que les 8 primitives ne peuvent pas exprimer : la fiche de style seule suffit
   const referentiel = usingPrimitives
-    ? `\n\nStyle de la photo (inspiration pour choisir les materiau des primitives) :\n${getFicheStyle(description.style)}`
+    ? `\n\nStyle de la photo (inspiration pour choisir les materiau des primitives) :\n${getFicheStyle(description.style)}${schemRefsFor(description.style)}`
     : (() => {
         const refIds = [4, 10];
         const tourSource = `${JSON.stringify(description.elements || [])} ${JSON.stringify(structuralSummary || {})}`;

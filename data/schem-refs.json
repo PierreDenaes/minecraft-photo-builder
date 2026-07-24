@@ -1,0 +1,102 @@
+[
+  {
+    "nom": "30732",
+    "dims": {
+      "x": 22,
+      "y": 16,
+      "z": 16
+    },
+    "total_blocs": 1347,
+    "top_materiaux": [
+      "white_concrete(13%)",
+      "deepslate_tile_slab(13%)",
+      "black_stained_glass_pane(11%)",
+      "spruce_planks(7%)",
+      "polished_diorite(6%)",
+      "spruce_slab(6%)",
+      "iron_trapdoor(6%)",
+      "gray_concrete(6%)"
+    ],
+    "ratios": {
+      "stairs": 0.8,
+      "glass": 11.4,
+      "torches": 0
+    },
+    "style": "moderne"
+  },
+  {
+    "nom": "30804",
+    "dims": {
+      "x": 35,
+      "y": 60,
+      "z": 29
+    },
+    "total_blocs": 31035,
+    "top_materiaux": [
+      "granite(13%)",
+      "brown_mushroom_block(11%)",
+      "jungle_planks(9%)",
+      "packed_mud(9%)",
+      "stripped_jungle_wood(9%)",
+      "cobblestone(8%)",
+      "stone(8%)",
+      "stripped_oak_wood(7%)"
+    ],
+    "ratios": {
+      "stairs": 1.8,
+      "glass": 0,
+      "torches": 0.06
+    },
+    "style": "rustique_organique"
+  },
+  {
+    "nom": "30808",
+    "dims": {
+      "x": 73,
+      "y": 122,
+      "z": 121
+    },
+    "total_blocs": 320979,
+    "top_materiaux": [
+      "packed_mud(13%)",
+      "oak_planks(13%)",
+      "grass_block(10%)",
+      "stripped_oak_wood(9%)",
+      "granite(9%)",
+      "stone_bricks(8%)",
+      "stripped_jungle_wood(6%)",
+      "brown_mushroom_block(6%)"
+    ],
+    "ratios": {
+      "stairs": 1,
+      "glass": 0,
+      "torches": 0.02
+    },
+    "style": "rustique_organique"
+  },
+  {
+    "nom": "30823",
+    "dims": {
+      "x": 21,
+      "y": 62,
+      "z": 30
+    },
+    "total_blocs": 10089,
+    "top_materiaux": [
+      "stone(10%)",
+      "stripped_jungle_wood(9%)",
+      "stripped_oak_wood(9%)",
+      "oak_planks(6%)",
+      "grass_block(6%)",
+      "calcite(6%)",
+      "stripped_dark_oak_wood(6%)",
+      "jungle_planks(6%)"
+    ],
+    "ratios": {
+      "stairs": 2.2,
+      "glass": 0,
+      "torches": 0.15
+    },
+    "style": "rustique_organique"
+  }
+]

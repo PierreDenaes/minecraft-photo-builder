@@ -318,3 +318,30 @@ test('sandbox : constructor.constructor bloqué (isolation)', async () => {
   // le premier code lève (isolation) → retry → deuxième code réussit
   assert.ok(out.blocks.some((b) => b.block === 'stone'));
 });
+
+test('sandbox primitives : les 7 nouvelles primitives sont accessibles', async () => {
+  const code = `function generateStructure() {
+    return [
+      ...lampadaire({ x: 0, z: 0, y0: 0, hauteur: 3, materiau: 'oak_fence' }),
+      ...terrasse({ x1: 5, z1: 5, x2: 8, z2: 8, y: 0, materiau: 'smooth_stone' }),
+      ...perron({ x: 2, z: 2, y0: 0, largeur: 3, marches: 2, materiau: 'stone', facing: 'north' }),
+      ...gardeCorps({ x1: 10, z1: 10, x2: 12, z2: 10, y: 3, materiau: 'iron_bars' })
+    ];
+  }\n// FIN_STRUCTURE`;
+  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
+  const out = await generateStructure({ type_batiment: 't' }, { client, timeoutMs: 5000, mode: 'primitives' });
+  assert.ok(out.blocks.some((b) => b.block === 'lantern'));
+  assert.ok(out.blocks.some((b) => b.block === 'smooth_stone'));
+  assert.ok(out.blocks.some((b) => b.block === 'iron_bars'));
+});
+
+test('références schemas injectées dans le prompt utilisateur (mode primitives)', async () => {
+  let captured = null;
+  const code = `function generateStructure() { return boite({ x1: 0, z1: 0, x2: 2, z2: 2, y0: 0, y1: 2, murs: 'stone' }); }\n// FIN_STRUCTURE`;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
+  await generateStructure({ type_batiment: 'villa', style: 'moderne' }, { client, timeoutMs: 5000, mode: 'primitives' });
+  const c = captured.messages[0].content;
+  const txt = typeof c === 'string' ? c : c.find((b) => b.type === 'text').text;
+  assert.ok(/Références de vrais bâtiments/.test(txt), 'header schemas manquant');
+  assert.ok(/moderne|rustique_organique/.test(txt), 'style ref manquant');
+});

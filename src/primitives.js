@@ -356,4 +356,90 @@ function tour({ x, z, rayon, y_bas, y_haut, materiau, toit_conique = true, crene
   return out;
 }
 
-module.exports = { boite, porte, baie, toitPlat, toitDeuxPans, toitQuatrePans, escalier, piscine, tour };
+// -------- Primitives d'extérieur et de détail --------
+
+function lampadaire({ x, z, y0, hauteur = 5, materiau = 'dark_oak_fence' }) {
+  if (hauteur < 1) throw new Error(`lampadaire : hauteur>=1 requise (${hauteur})`);
+  const out = [];
+  for (let dy = 0; dy < hauteur; dy++) out.push({ x, y: y0 + dy, z, block: materiau });
+  out.push({ x, y: y0 + hauteur, z, block: 'lantern' });
+  return out;
+}
+
+function terrasse({ x1, z1, x2, z2, y, materiau, bordure }) {
+  checkPositiveBox(x1, x2, z1, z2, y);
+  if (!materiau) throw new Error('terrasse : materiau manquant');
+  const out = [];
+  for (let x = x1; x <= x2; x++) for (let z = z1; z <= z2; z++) out.push({ x, y, z, block: materiau });
+  if (bordure) {
+    for (let x = x1; x <= x2; x++) { out.push({ x, y: y + 1, z: z1, block: bordure }); out.push({ x, y: y + 1, z: z2, block: bordure }); }
+    for (let z = z1 + 1; z < z2; z++) { out.push({ x: x1, y: y + 1, z, block: bordure }); out.push({ x: x2, y: y + 1, z, block: bordure }); }
+  }
+  return out;
+}
+
+function pontonBois({ x1, z1, x2, z2, y, materiau = 'oak_planks', pilotis = true }) {
+  checkPositiveBox(x1, x2, z1, z2, y);
+  const out = [];
+  for (let x = x1; x <= x2; x++) for (let z = z1; z <= z2; z++) out.push({ x, y, z, block: materiau });
+  if (pilotis && y > 0) {
+    for (const [px, pz] of [[x1, z1], [x2, z1], [x1, z2], [x2, z2]]) {
+      for (let yy = 0; yy < y; yy++) out.push({ x: px, y: yy, z: pz, block: 'oak_fence' });
+    }
+  }
+  return out;
+}
+
+// Feuilles persistent : sinon elles se décomposent sans tronc voisin
+const withPersist = (block) => (block.endsWith('_leaves') ? `${block}[persistent=true]` : block);
+
+function haie({ x1, z1, x2, z2, y, essence = 'oak_leaves', hauteur = 2 }) {
+  checkPositiveBox(x1, x2, z1, z2, y);
+  const block = withPersist(essence);
+  const out = [];
+  for (let x = x1; x <= x2; x++) for (let z = z1; z <= z2; z++) for (let dy = 0; dy < hauteur; dy++) {
+    out.push({ x, y: y + dy, z, block });
+  }
+  return out;
+}
+
+function bordurePlantes({ x1, z1, x2, z2, y, materiau = 'azalea_leaves' }) {
+  checkPositiveBox(x1, x2, z1, z2, y);
+  const block = withPersist(materiau);
+  const out = [];
+  for (let x = x1; x <= x2; x++) for (let z = z1; z <= z2; z++) out.push({ x, y, z, block });
+  return out;
+}
+
+// facing = direction où se trouve la PORTE (les marches montent vers elle)
+function perron({ x, z, y0 = 0, largeur = 3, marches = 2, materiau, facing }) {
+  if (!materiau) throw new Error('perron : materiau manquant');
+  if (!(facing in STAIR_STEP)) throw new Error(`perron : facing "${facing}" inconnu`);
+  const stairs = /_stairs$/.test(materiau) ? materiau : `${materiau}_stairs`;
+  const [dxDir, dzDir] = STAIR_STEP[facing];
+  const out = [];
+  const halfW = Math.floor((largeur - 1) / 2);
+  for (let i = 0; i < marches; i++) {
+    // les marches partent LOIN de la porte et s'en approchent en montant
+    const step = marches - 1 - i;
+    const bx = x - dxDir * step;
+    const bz = z - dzDir * step;
+    for (let w = -halfW; w <= halfW; w++) {
+      const wx = bx + (facing === 'east' || facing === 'west' ? 0 : w);
+      const wz = bz + (facing === 'north' || facing === 'south' ? 0 : w);
+      out.push({ x: wx, y: y0 + i, z: wz, block: `${stairs}[facing=${facing},half=bottom]` });
+    }
+  }
+  return out;
+}
+
+function gardeCorps({ x1, z1, x2, z2, y, materiau = 'iron_bars' }) {
+  checkPositiveBox(x1, x2, z1, z2, y);
+  const out = [];
+  for (let x = x1; x <= x2; x++) { out.push({ x, y, z: z1, block: materiau }); if (z2 !== z1) out.push({ x, y, z: z2, block: materiau }); }
+  for (let z = z1 + 1; z < z2; z++) { out.push({ x: x1, y, z, block: materiau }); if (x2 !== x1) out.push({ x: x2, y, z, block: materiau }); }
+  return out;
+}
+
+module.exports = { boite, porte, baie, toitPlat, toitDeuxPans, toitQuatrePans, escalier, piscine, tour,
+  lampadaire, terrasse, pontonBois, haie, bordurePlantes, perron, gardeCorps };

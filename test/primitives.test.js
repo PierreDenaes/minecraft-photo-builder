@@ -260,3 +260,74 @@ test('tour : créneaux jamais adjacents 4-connectés (vrai alternance)', () => {
     }
   }
 });
+
+// ---- Itération 14 : primitives d'extérieur et de détail ----
+const { lampadaire, terrasse, pontonBois, haie, bordurePlantes, perron, gardeCorps } = require('../src/primitives');
+
+test('lampadaire : poteau vertical de fences + lanterne au sommet', () => {
+  const l = lampadaire({ x: 5, z: 5, y0: 0, hauteur: 4, materiau: 'dark_oak_fence' });
+  for (let y = 0; y < 4; y++) assert.strictEqual(at(l, 5, y, 5)?.block, 'dark_oak_fence', `poteau y=${y} manquant`);
+  assert.strictEqual(at(l, 5, 4, 5)?.block, 'lantern');
+});
+
+test('lampadaire : hauteur=1 → juste poteau + lanterne', () => {
+  const l = lampadaire({ x: 0, z: 0, y0: 0, hauteur: 1, materiau: 'oak_fence' });
+  assert.strictEqual(at(l, 0, 0, 0)?.block, 'oak_fence');
+  assert.strictEqual(at(l, 0, 1, 0)?.block, 'lantern');
+});
+
+test('terrasse : dalle horizontale sur l\'emprise', () => {
+  const t = terrasse({ x1: 0, z1: 0, x2: 4, z2: 3, y: 0, materiau: 'smooth_stone' });
+  for (let x = 0; x <= 4; x++) for (let z = 0; z <= 3; z++) assert.strictEqual(at(t, x, 0, z)?.block, 'smooth_stone');
+});
+
+test('terrasse : bordure surélevée sur le pourtour', () => {
+  const t = terrasse({ x1: 0, z1: 0, x2: 4, z2: 3, y: 0, materiau: 'smooth_stone', bordure: 'stone_brick_wall' });
+  // dalle plate
+  assert.strictEqual(at(t, 2, 0, 2)?.block, 'smooth_stone');
+  // bordure au pourtour à y+1
+  assert.strictEqual(at(t, 0, 1, 0)?.block, 'stone_brick_wall');
+  assert.strictEqual(at(t, 4, 1, 3)?.block, 'stone_brick_wall');
+  assert.strictEqual(at(t, 2, 1, 2), undefined); // intérieur pas bordé
+});
+
+test('pontonBois : dalle + pilotis descendant jusqu\'à y=0', () => {
+  const p = pontonBois({ x1: 5, z1: 5, x2: 8, z2: 7, y: 3, materiau: 'oak_planks' });
+  // dalle du ponton
+  for (let x = 5; x <= 8; x++) for (let z = 5; z <= 7; z++) assert.strictEqual(at(p, x, 3, z)?.block, 'oak_planks');
+  // pilotis aux coins jusqu'à y=0
+  for (let y = 0; y < 3; y++) assert.strictEqual(at(p, 5, y, 5)?.block, 'oak_fence', `pilotis coin y=${y}`);
+});
+
+test('haie : rangée de feuilles persistent', () => {
+  const h = haie({ x1: 0, z1: 5, x2: 6, z2: 5, y: 1, essence: 'oak_leaves', hauteur: 2 });
+  for (let x = 0; x <= 6; x++) for (let y = 1; y <= 2; y++) {
+    const b = at(h, x, y, 5);
+    assert.strictEqual(b?.block, 'oak_leaves[persistent=true]', `haie x=${x} y=${y}`);
+  }
+});
+
+test('bordurePlantes : 1 rangée de feuilles', () => {
+  const b = bordurePlantes({ x1: 0, z1: 0, x2: 3, z2: 0, y: 1, materiau: 'azalea_leaves' });
+  for (let x = 0; x <= 3; x++) assert.strictEqual(at(b, x, 1, 0)?.block, 'azalea_leaves[persistent=true]');
+});
+
+test('perron : marches ascendantes devant la porte, facing correct', () => {
+  const p = perron({ x: 5, z: 3, y0: 0, largeur: 3, marches: 2, materiau: 'stone', facing: 'north' });
+  // facing=north : la porte est au nord (z plus petit), on monte vers z-, marches z=3,2,1 face au sud… inversé : les marches regardent LA PORTE
+  // pour facing=north (porte au nord) : marches en z décroissant, facing=north sur les stairs (montée regarde nord = vers la porte)
+  const stairs = p.filter((b) => /_stairs\[facing=north/.test(b.block));
+  assert.ok(stairs.length >= 3, `marches attendues : ${stairs.length}`);
+});
+
+test('gardeCorps : rangée d\'iron_bars sur le pourtour', () => {
+  const g = gardeCorps({ x1: 0, z1: 0, x2: 5, z2: 3, y: 5, materiau: 'iron_bars' });
+  // pourtour uniquement
+  for (let x = 0; x <= 5; x++) { assert.strictEqual(at(g, x, 5, 0)?.block, 'iron_bars'); assert.strictEqual(at(g, x, 5, 3)?.block, 'iron_bars'); }
+  for (let z = 1; z < 3; z++) { assert.strictEqual(at(g, 0, 5, z)?.block, 'iron_bars'); assert.strictEqual(at(g, 5, 5, z)?.block, 'iron_bars'); }
+  assert.strictEqual(at(g, 2, 5, 2), undefined); // intérieur libre
+});
+
+test('validation : lampadaire hauteur nulle → erreur', () => {
+  assert.throws(() => lampadaire({ x: 0, z: 0, y0: 0, hauteur: 0, materiau: 'oak_fence' }), /hauteur/i);
+});
