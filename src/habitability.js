@@ -142,4 +142,18 @@ function auditHabitability(blocks, description = {}) {
   return defects;
 }
 
-module.exports = { auditHabitability };
+// Retourne les 5 checks structurels sous forme [{name, passed}] pour affichage
+// (« Hauteur sous plafond ✓ / Portes & accès ✗ ... ») dans le chat
+function auditChecks(blocks, description = {}) {
+  const defects = auditHabitability(blocks, description);
+  const has = (re) => defects.some((d) => re.test(d));
+  return [
+    { name: 'Hauteur sous plafond', passed: !has(/hauteur libre/i) },
+    { name: 'Portes & accès', passed: !has(/entrée/i) },
+    { name: 'Escaliers praticables', passed: !has(/escalier|accès/i) },
+    { name: 'Murs cohérents', passed: !has(/façade/i) },
+    { name: 'Bâtiment habitable', passed: !has(/fenêtre|vitre|eau/i) }
+  ];
+}
+
+module.exports = { auditHabitability, auditChecks };

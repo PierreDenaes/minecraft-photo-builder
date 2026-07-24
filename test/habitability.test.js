@@ -165,3 +165,30 @@ test('audit + porte primitive : maison boite+porte reconnue comme habitable', ()
   const defects = auditHabitability([...b1, ...p]);
   assert.ok(!defects.some((d) => /entrée/.test(d)), `porte primitive non reconnue : ${defects.join(' | ')}`);
 });
+
+// ---- Itération 15 (vague 1) : liste des checks (passés + échoués) ----
+const { auditChecks } = require('../src/habitability');
+
+test('auditChecks : bâtiment habitable → tous les checks à ✓', () => {
+  const { boite, porte } = require('../src/primitives');
+  const b1 = boite({ x1: 0, z1: 0, x2: 8, z2: 6, y0: 0, y1: 5, murs: 'stone_bricks', fondation: 'cobblestone', plancher: 'oak_planks' });
+  const p = porte({ facade: 'sud', x: 4, z: 0, y0: 0, hauteur: 2, materiau: 'stone_bricks' });
+  const checks = auditChecks([...b1, ...p]);
+  assert.ok(Array.isArray(checks));
+  // 5 checks au minimum : hauteur, entrée, escaliers, façades, fenêtres/eau
+  assert.ok(checks.length >= 5);
+  const names = checks.map((c) => c.name);
+  assert.ok(names.some((n) => /hauteur/i.test(n)));
+  assert.ok(names.some((n) => /entrée|acc[eè]s/i.test(n)));
+  // hauteur et entrée doivent passer
+  assert.ok(checks.find((c) => /hauteur/i.test(c.name)).passed);
+  assert.ok(checks.find((c) => /entrée|acc[eè]s/i.test(c.name)).passed);
+});
+
+test('auditChecks : boîte scellée → check entrée à ✗', () => {
+  const { boite } = require('../src/primitives');
+  const b1 = boite({ x1: 0, z1: 0, x2: 8, z2: 6, y0: 0, y1: 5, murs: 'stone_bricks', fondation: 'stone' });
+  const checks = auditChecks(b1);
+  const entree = checks.find((c) => /entrée|acc[eè]s/i.test(c.name));
+  assert.strictEqual(entree.passed, false);
+});

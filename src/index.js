@@ -28,7 +28,7 @@ const { enforceSupport } = require('./support');
 const { plantVegetation } = require('./vegetation');
 const { decorateInterior } = require('./decorator');
 const { portraitBlocks } = require('./portrait');
-const { auditHabitability } = require('./habitability');
+const { auditHabitability, auditChecks } = require('./habitability');
 const { carveStaircase } = require('./staircase');
 
 const validBlocks = JSON.parse(
@@ -342,8 +342,15 @@ function createBot(cfg) {
     } catch (err) {
       console.warn('[photo] passe de correction ignorée :', err.message);
     }
-    const restants = auditHabitability(blocks, description);
-    if (restants.length > 0) bot.chat(`⚠ Défauts restants : ${restants.join(' ; ')}`.slice(0, 250));
+    const checks = auditChecks(blocks, description);
+    const line = checks.map((c) => `${c.name} ${c.passed ? '✓' : '✗'}`).join(' · ');
+    bot.chat(`Vérifications : ${line}`.slice(0, 250));
+    const allOk = checks.every((c) => c.passed);
+    if (allOk) bot.chat('VALIDÉ ✓');
+    else {
+      const restants = auditHabitability(blocks, description);
+      if (restants.length > 0) bot.chat(`⚠ Défauts restants : ${restants.join(' ; ')}`.slice(0, 250));
+    }
     bot.chat('Étape 4/4 : décoration intérieure...');
     const decor = await decorateInterior(blocks, description, { client: apiClient, timeoutMs: cfg.limits.sandbox_timeout_ms });
     if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
