@@ -49,7 +49,10 @@ function porte({ facade, x, z, y0 = 0, hauteur = 2, materiau }) {
 }
 
 // Baie vitrée : rangée de glass_pane à l'emplacement donné, encadrement autour
-function baie({ facade, x1, z1, x2, z2, y1, y2, encadrement }) {
+// Direction vers l'INTÉRIEUR du bâtiment depuis chaque façade (pour illumine)
+const INSIDE_DIR = { nord: [0, -1], sud: [0, 1], est: [-1, 0], ouest: [1, 0] };
+
+function baie({ facade, x1, z1, x2, z2, y1, y2, encadrement, illumine = false }) {
   if (!(facade in OPPOSITE)) throw new Error(`baie : facade "${facade}" inconnue`);
   if (!encadrement) throw new Error('baie : encadrement manquant');
   if (y2 < y1) throw new Error('baie : y2>=y1 requis');
@@ -58,6 +61,14 @@ function baie({ facade, x1, z1, x2, z2, y1, y2, encadrement }) {
   // ligne de vitres
   for (let x = x1; x <= x2; x++) for (let z = z1; z <= z2; z++) for (let y = y1; y <= y2; y++) {
     out.push({ x, y, z, block: 'glass_pane' });
+  }
+  // Illumination : glowstone à l'INTÉRIEUR (une case derrière chaque vitre)
+  // pour donner la lumière chaude "crépusculaire" du visuel de présentation
+  if (illumine) {
+    const [dx, dz] = INSIDE_DIR[facade];
+    for (let x = x1; x <= x2; x++) for (let z = z1; z <= z2; z++) for (let y = y1; y <= y2; y++) {
+      out.push({ x: x + dx, y, z: z + dz, block: 'glowstone' });
+    }
   }
   // encadrement : appui (y=y1-1), linteau (y=y2+1), jambages (aux extrémités)
   const xa = x1 - (onFacade ? 1 : 0);

@@ -335,3 +335,11 @@ test('validation : lampadaire hauteur nulle → erreur', () => {
 test('perron : largeur paire refusée (asymétrique impossible)', () => {
   assert.throws(() => perron({ x: 0, z: 0, y0: 0, largeur: 4, marches: 2, materiau: 'stone', facing: 'north' }), /largeur/i);
 });
+
+test('baie illumine=true : glowstone en second rang derrière les vitres (côté intérieur)', () => {
+  const b = baie({ facade: 'sud', x1: 2, x2: 4, z1: 0, z2: 0, y1: 2, y2: 3, encadrement: 'oak_log', illumine: true });
+  // les vitres restent à z=0
+  assert.ok(b.some((k) => k.z === 0 && k.block === 'glass_pane'));
+  // glowstone derrière : z=1 (côté intérieur pour façade sud), même x/y que les vitres
+  assert.ok(b.some((k) => k.z === 1 && k.block === 'glowstone' && k.x === 3 && k.y === 2), JSON.stringify(b.filter((k) => k.z === 1)));
+});

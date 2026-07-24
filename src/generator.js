@@ -32,7 +32,7 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 ## Primitives disponibles
 - boite({ x1, z1, x2, z2, y0, y1, murs, fondation?, plancher? }) — 4 murs pleins + dalle basse (fondation ou murs) + dalle haute (plancher, facultative)
 - porte({ facade: 'nord'|'sud'|'est'|'ouest', x, z, y0, hauteur=2, materiau }) — perce une ouverture 1×hauteur dans le mur de la façade, linteau du materiau, porte battante orientée vers l'intérieur
-- baie({ facade, x1, z1, x2, z2, y1, y2, encadrement }) — glass_pane sur la rangée, encadrement autour
+- baie({ facade, x1, z1, x2, z2, y1, y2, encadrement, illumine=false }) — glass_pane sur la rangée, encadrement autour ; illumine=true met du glowstone derrière (ambiance chaude, à activer si l'ambiance de la photo est crépusculaire/nocturne/lumières intérieures allumées)
 - toitPlat({ x1, z1, x2, z2, y, materiau, acrotere=true, debord=1 })
 - toitDeuxPans({ x1, z1, x2, z2, y_base, faitage: 'x'|'z', materiau, debord=1 }) — materiau = préfixe bois ("oak", "dark_oak", "spruce"...) qui donne stairs et planks
 - toitQuatrePans({ x1, z1, x2, z2, y_base, materiau, debord=1 })
