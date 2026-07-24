@@ -331,3 +331,7 @@ test('gardeCorps : rangée d\'iron_bars sur le pourtour', () => {
 test('validation : lampadaire hauteur nulle → erreur', () => {
   assert.throws(() => lampadaire({ x: 0, z: 0, y0: 0, hauteur: 0, materiau: 'oak_fence' }), /hauteur/i);
 });
+
+test('perron : largeur paire refusée (asymétrique impossible)', () => {
+  assert.throws(() => perron({ x: 0, z: 0, y0: 0, largeur: 4, marches: 2, materiau: 'stone', facing: 'north' }), /largeur/i);
+});

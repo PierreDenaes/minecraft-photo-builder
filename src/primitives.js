@@ -415,6 +415,7 @@ function bordurePlantes({ x1, z1, x2, z2, y, materiau = 'azalea_leaves' }) {
 function perron({ x, z, y0 = 0, largeur = 3, marches = 2, materiau, facing }) {
   if (!materiau) throw new Error('perron : materiau manquant');
   if (!(facing in STAIR_STEP)) throw new Error(`perron : facing "${facing}" inconnu`);
+  if (largeur % 2 === 0) throw new Error(`perron : largeur impaire requise pour rester centré sur la porte (${largeur})`);
   const stairs = /_stairs$/.test(materiau) ? materiau : `${materiau}_stairs`;
   const [dxDir, dzDir] = STAIR_STEP[facing];
   const out = [];

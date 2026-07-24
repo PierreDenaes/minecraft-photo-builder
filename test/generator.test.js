@@ -345,3 +345,15 @@ test('références schemas injectées dans le prompt utilisateur (mode primitive
   assert.ok(/Références de vrais bâtiments/.test(txt), 'header schemas manquant');
   assert.ok(/moderne|rustique_organique/.test(txt), 'style ref manquant');
 });
+
+test('schemRefsFor : si des refs correspondent au style, on n\'injecte QUE ces refs (pas de padding)', async () => {
+  let captured = null;
+  const code = `function generateStructure() { return boite({ x1: 0, z1: 0, x2: 2, z2: 2, y0: 0, y1: 2, murs: 'stone' }); }\n// FIN_STRUCTURE`;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: code }] }; } } };
+  await generateStructure({ type_batiment: 'villa', style: 'moderne' }, { client, timeoutMs: 5000, mode: 'primitives' });
+  const c = captured.messages[0].content;
+  const txt = typeof c === 'string' ? c : c.find((b) => b.type === 'text').text;
+  // ne doit PAS mentionner rustique_organique quand des refs modernes existent
+  assert.ok(!/rustique_organique/.test(txt), 'padding hors-style détecté');
+  assert.ok(/moderne/.test(txt), 'ref moderne attendue');
+});

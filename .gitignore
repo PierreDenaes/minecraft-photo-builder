@@ -5,3 +5,4 @@ models/
 .DS_Store
 docs/*.glb
 .env
+.claude/scheduled_tasks.lock

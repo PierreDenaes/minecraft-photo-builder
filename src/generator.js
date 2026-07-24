@@ -11,8 +11,8 @@ let SCHEM_REFS = [];
 try { SCHEM_REFS = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/schem-refs.json'), 'utf8')); } catch { /* absent */ }
 function schemRefsFor(style) {
   const priority = SCHEM_REFS.filter((r) => r.style === style);
-  const others = SCHEM_REFS.filter((r) => r.style !== style).slice(0, 2);
-  const chosen = priority.length > 0 ? priority.concat(others).slice(0, 3) : SCHEM_REFS.slice(0, 3);
+  // Pas de padding hors-style : mieux vaut 1 ref pertinente que 1+2 mismatchées
+  const chosen = priority.length > 0 ? priority.slice(0, 3) : SCHEM_REFS.slice(0, 3);
   if (chosen.length === 0) return '';
   const lines = chosen.map((r) => `- ${r.style} (${r.dims.x}×${r.dims.y}×${r.dims.z}) : matériaux dominants ${r.top_materiaux.slice(0, 5).join(', ')} ; ratio stairs ${r.ratios.stairs}%, glass ${r.ratios.glass}%`);
   return `\n\nRéférences de vrais bâtiments (vocabulaire de matériaux à imiter selon le style) :\n${lines.join('\n')}`;
