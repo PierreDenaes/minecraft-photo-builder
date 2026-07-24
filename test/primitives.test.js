@@ -336,12 +336,12 @@ test('perron : largeur paire refusée (asymétrique impossible)', () => {
   assert.throws(() => perron({ x: 0, z: 0, y0: 0, largeur: 4, marches: 2, materiau: 'stone', facing: 'north' }), /largeur/i);
 });
 
-test('baie illumine=true : glowstone en second rang derrière les vitres (côté intérieur)', () => {
+test('baie illumine=true : source lumineuse dans le mur intérieur au-dessus du linteau', () => {
   const b = baie({ facade: 'sud', x1: 2, x2: 4, z1: 0, z2: 0, y1: 2, y2: 3, encadrement: 'oak_log', illumine: true });
-  // les vitres restent à z=0
   assert.ok(b.some((k) => k.z === 0 && k.block === 'glass_pane'));
-  // glowstone derrière : z=1 (côté intérieur pour façade sud), même x/y que les vitres
-  assert.ok(b.some((k) => k.z === 1 && k.block === 'glowstone' && k.x === 3 && k.y === 2), JSON.stringify(b.filter((k) => k.z === 1)));
+  // glowstone à y2+1, décalé d'un cran vers l'intérieur (invisible depuis dehors)
+  assert.ok(b.some((k) => k.z === 1 && k.block === 'glowstone' && k.x === 3 && k.y === 4),
+    JSON.stringify(b.filter((k) => k.block === 'glowstone')));
 });
 
 // ---- Vague 3 : densité de façade ----
@@ -401,4 +401,17 @@ test('avantCorps : saillie correcte pour façade ouest (bug de revue)', () => {
 test('avantCorps : saillie correcte pour façade est', () => {
   const a = avantCorps({ facade: 'est', x1: 3, x2: 8, z_facade: 5, y0: 0, y1: 4, murs: 'stone_bricks', fondation: 'cobblestone' });
   assert.ok(a.some((b) => b.x === 6 && b.y === 2), 'saillie x=6');
+});
+
+test('baie illumine=true : PAS de bloc directement derrière la vitre (visible depuis dehors)', () => {
+  const b = baie({ facade: 'sud', x1: 2, x2: 4, z1: 0, z2: 0, y1: 2, y2: 3, encadrement: 'oak_log', illumine: true });
+  // Aucun bloc derrière la vitre au même y (visible en transparence)
+  for (let x = 2; x <= 4; x++) for (let y = 2; y <= 3; y++) {
+    const blockerDerriere = b.find((k) => k.x === x && k.y === y && k.z === 1);
+    assert.ok(!blockerDerriere || blockerDerriere.block === 'air',
+      `bloc derrière la vitre visible à x=${x} y=${y} : ${blockerDerriere?.block}`);
+  }
+  // mais un glowstone en HAUTEUR au-dessus du linteau, invisible depuis dehors
+  const glow = b.find((k) => k.block === 'glowstone');
+  assert.ok(glow, 'source lumineuse attendue');
 });

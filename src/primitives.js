@@ -62,12 +62,15 @@ function baie({ facade, x1, z1, x2, z2, y1, y2, encadrement, illumine = false })
   for (let x = x1; x <= x2; x++) for (let z = z1; z <= z2; z++) for (let y = y1; y <= y2; y++) {
     out.push({ x, y, z, block: 'glass_pane' });
   }
-  // Illumination : glowstone à l'INTÉRIEUR (une case derrière chaque vitre)
-  // pour donner la lumière chaude "crépusculaire" du visuel de présentation
+  // Illumination : source lumineuse posée AU-DESSUS des vitres, côté intérieur
+  // (invisible depuis l'extérieur, la lumière traverse le linteau et diffuse
+  // à travers les vitres). Éviter le glowstone directement derrière la vitre :
+  // il serait VISIBLE depuis dehors comme un « bloc matière derrière le verre »
   if (illumine) {
     const [dx, dz] = INSIDE_DIR[facade];
-    for (let x = x1; x <= x2; x++) for (let z = z1; z <= z2; z++) for (let y = y1; y <= y2; y++) {
-      out.push({ x: x + dx, y, z: z + dz, block: 'glowstone' });
+    // ligne de glowstones à y2+1 (juste au-dessus du linteau, contre le mur intérieur)
+    for (let x = x1; x <= x2; x++) for (let z = z1; z <= z2; z++) {
+      out.push({ x: x + dx, y: y2 + 1, z: z + dz, block: 'glowstone' });
     }
   }
   // encadrement : appui (y=y1-1), linteau (y=y2+1), jambages (aux extrémités)
