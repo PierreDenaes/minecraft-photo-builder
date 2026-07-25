@@ -37,29 +37,30 @@ test('detectFloors repère les dalles, pas les murs', () => {
   assert.deepStrictEqual(detectFloors(building), [0, 6]);
 });
 
-test('sets LLM appliqués : Haiku, mobilier du rôle posé mécaniquement contre les murs', async () => {
+test('rôle LLM appliqué (Haiku) : layout chambre pose lit + barrel + éclairage plafond', async () => {
   let captured = null;
-  const sets = '[{"piece":0,"role":"chambre","meubles":["red_bed","barrel","bookshelf"]}]';
+  const sets = '[{"piece":0,"role":"chambre"}]';
   const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: sets }] }; } } };
   const room = closedRoom();
   const decor = await decorateInterior(room, { type_batiment: 'manoir', style: 'medieval' }, { client });
   assert.strictEqual(captured.model, 'claude-haiku-4-5-20251001');
   assert.ok(sysText(captured.system).includes('JSON strict'));
+  assert.ok(sysText(captured.system).includes('chambre'));
   assert.ok(captured.messages[0].content.includes('manoir'));
-  assert.ok(captured.messages[0].content.includes('volée droite')); // almanach section 7
-  assert.ok(decor.some((b) => b.block === 'barrel'));
-  assert.ok(decor.some((b) => /red_bed\[facing=.*part=foot\]/.test(b.block)));
-  assert.ok(decor.some((b) => /red_bed\[facing=.*part=head\]/.test(b.block)));
+  assert.ok(decor.some((b) => /red_bed\[facing=.*part=foot\]/.test(b.block)), `pied de lit attendu : ${decor.map((b) => b.block).join(', ')}`);
+  assert.ok(decor.some((b) => /red_bed\[facing=.*part=head\]/.test(b.block)), 'tête de lit attendue');
+  assert.ok(decor.some((b) => /^lantern(\[|$)/.test(b.block)), 'lanterne au plafond attendue');
   const occ = new Set(room.map((b) => `${b.x},${b.y},${b.z}`));
   for (const b of decor) assert.ok(!occ.has(`${b.x},${b.y},${b.z}`), 'collision structure');
 });
 
-test('panne API → repli générique déterministe (pas de pièce vide)', async () => {
+test('panne API → repli salon (pas de pièce vide)', async () => {
   const client = { messages: { create: async () => { throw new Error('panne'); } } };
   const decor = await decorateInterior(closedRoom(), {}, { client });
-  assert.ok(decor.length > 0);
-  assert.ok(decor.some((b) => /wall_torch\[facing=/.test(b.block)), 'éclairage mural attendu');
-  assert.ok(decor.some((b) => b.block === 'barrel'));
+  assert.ok(decor.length > 0, `repli salon doit meubler : ${decor.length} blocs`);
+  // le layout salon pose au moins des sièges (stairs) et éclairage plafond
+  assert.ok(decor.some((b) => /oak_stairs/.test(b.block)) || decor.some((b) => b.block === 'lantern'),
+    `salon devrait avoir stairs ou lantern : ${decor.map((b) => b.block).join(', ')}`);
 });
 
 test('sans client → repli sans appel API', async () => {

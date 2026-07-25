@@ -124,70 +124,38 @@ function detectRooms(building) {
   return rooms;
 }
 
-const FACING_AWAY = { '1,0': 'west', '-1,0': 'east', '0,1': 'north', '0,-1': 'south' };
-const LIGHT_SPACING = 5;
+const { layoutFor } = require('./roomlayouts');
 
-// Placement déterministe : mobilier contre les murs, éclairage mural espacé,
-// passages (cases devant les ouvertures) toujours libres
+// Placement déterministe : le LLM (Haiku) choisit le RÔLE de chaque pièce
+// (chambre/cuisine/bibliothèque/salon/salle_a_manger/chapelle/forge/atelier/entree),
+// un layout par rôle place le mobilier avec circulation garantie et éclairage plafond.
 function furnishRooms(building, rooms, sets) {
   const occ = new Set(building.map((b) => `${b.x},${b.y},${b.z}`));
   const decor = [];
-  const placed = new Set();
   rooms.forEach((room, ri) => {
     const set = sets[ri];
-    if (!set || !Array.isArray(set.meubles) || set.meubles.length === 0) return;
+    if (!set || !set.role) return;
     const fy = room.y;
+    const y = fy + 1;
     const inRoom = new Set(room.cells.map((c) => `${c.x},${c.z}`));
-    const wallDir = (c) => [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([dx, dz]) =>
-      occ.has(`${c.x + dx},${fy + 1},${c.z + dz}`));
-    // une case est un PASSAGE si un voisin hors pièce est traversable (ouverture 1x2)
+    const wallDirAt = (x, z) => [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([dx, dz]) =>
+      occ.has(`${x + dx},${y},${z + dz}`));
+    // passages
     const isDoorway = (c) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dz]) => {
       const nx = c.x + dx;
       const nz = c.z + dz;
       if (inRoom.has(`${nx},${nz}`)) return false;
-      return !occ.has(`${nx},${fy + 1},${nz}`) && !occ.has(`${nx},${fy + 2},${nz}`);
+      return !occ.has(`${nx},${y},${nz}`) && !occ.has(`${nx},${y + 1},${nz}`);
     });
-    const doorFronts = new Set();
+    const doorFrontsSet = new Set();
     for (const c of room.cells) {
       if (isDoorway(c)) {
-        doorFronts.add(`${c.x},${c.z}`);
-        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) doorFronts.add(`${c.x + dx},${c.z + dz}`);
+        doorFrontsSet.add(`${c.x},${c.z}`);
+        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) doorFrontsSet.add(`${c.x + dx},${c.z + dz}`);
       }
     }
-    const spots = room.cells
-      .filter((c) => wallDir(c) && !doorFronts.has(`${c.x},${c.z}`))
-      .sort((a, b) => a.z - b.z || a.x - b.x);
-    // éclairage mural : une wall_torch tous les LIGHT_SPACING spots
-    let since = LIGHT_SPACING;
-    for (const c of spots) {
-      if (since >= LIGHT_SPACING) {
-        decor.push({ x: c.x, y: fy + 2, z: c.z, block: 'wall_torch' });
-        since = 0;
-      } else {
-        since++;
-      }
-    }
-    // mobilier : un meuble un spot sur deux, plafond de 20 par pièce
-    let mi = 0;
-    let count = 0;
-    for (let si = 0; si < spots.length && count < Math.min(20, set.meubles.length * 3); si += 2) {
-      const c = spots[si];
-      const key = `${c.x},${fy + 1},${c.z}`;
-      if (placed.has(key)) continue;
-      const meuble = set.meubles[mi % set.meubles.length];
-      mi++;
-      let block = meuble;
-      if (/_bed$/.test(meuble)) {
-        const w = wallDir(c);
-        const headKey = `${c.x - w[0]},${fy + 1},${c.z - w[1]}`;
-        if (placed.has(headKey)) continue; // la tête chevaucherait un meuble
-        block = `${meuble}[facing=${FACING_AWAY[`${w[0]},${w[1]}`]},part=foot]`;
-        placed.add(headKey); // la tête (complétée par fixAttachments) occupe sa case
-      }
-      decor.push({ x: c.x, y: fy + 1, z: c.z, block });
-      placed.add(key);
-      count++;
-    }
+    const roomCtx = { cells: room.cells, wallDirAt, doorFrontsSet, y, occupied: occ, dims: { w: 0, d: 0 } };
+    for (const b of layoutFor(set.role, roomCtx)) decor.push(b);
   });
   return decor;
 }

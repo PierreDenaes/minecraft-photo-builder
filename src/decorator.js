@@ -8,7 +8,7 @@ const MODEL_SETS = 'claude-haiku-4-5-20251001';
 
 // Physique des attachements Minecraft : une torche debout exige un bloc plein
 // DESSOUS, au mur c'est wall_torch avec orientation, sinon l'objet saute à la pose
-const NEEDS_FLOOR = new Set(['torch', 'lantern', 'campfire', 'flower_pot']);
+const NEEDS_FLOOR = new Set(['torch', 'campfire', 'flower_pot']);
 const ATTACH_FACINGS = [['east', -1, 0], ['west', 1, 0], ['south', 0, -1], ['north', 0, 1]];
 const SOLID_DECOR = new Set(['bookshelf', 'crafting_table', 'furnace', 'smoker', 'barrel', 'glowstone',
   'sea_lantern', 'hay_block', 'white_wool', 'red_wool', 'blue_wool', 'green_wool', 'yellow_wool',
@@ -41,6 +41,11 @@ function fixAttachments(items, isSolid) {
       kept.push({ x: b.x, y: b.y, z: b.z, block: `${base}[facing=${facing},part=foot]` });
       kept.push({ x: b.x + dx, y: b.y, z: b.z + dz, block: `${base}[facing=${facing},part=head]` });
       continue;
+    } else if (base === 'lantern') {
+      // lantern peut être POSÉE (support dessous) OU SUSPENDUE (support dessus, hanging=true)
+      const above = solidAt(b.x, b.y + 1, b.z);
+      if (!below && !above) continue;
+      if (!below && above) block = 'lantern[hanging=true]';
     } else if (NEEDS_FLOOR.has(base)) {
       if (!below) continue;
     } else if (base === 'ladder') {
@@ -54,33 +59,35 @@ function fixAttachments(items, isSolid) {
 }
 
 // Set de repli déterministe quand le LLM est indisponible : mobilier générique
-const DEFAULT_SET = ['wall_torch', 'barrel', 'bookshelf', 'crafting_table'];
 
-// Le LLM ne choisit que la SÉMANTIQUE (rôle et mobilier de chaque pièce) ;
-// les positions sont calculées mécaniquement par furnishRooms
+// 9 rôles à disposition — chacun a un LAYOUT dédié dans roomlayouts.js qui pose
+// le mobilier avec circulation garantie et éclairage plafond.
+const ROLES_VALIDES = ['chambre', 'cuisine', 'bibliotheque', 'salon', 'salle_a_manger', 'chapelle', 'forge', 'atelier', 'entree'];
+
+// Le LLM ne choisit QUE le rôle de chaque pièce (pas les meubles).
 async function chooseFurnitureSets(rooms, description, { client } = {}) {
-  const fallback = rooms.map(() => ({ role: 'piece', meubles: DEFAULT_SET }));
+  const fallback = rooms.map(() => ({ role: 'salon' }));
   if (!client) return fallback;
   try {
     const roomsDesc = rooms.map((r, i) => ({ piece: i, etage: r.y, taille_cases: r.cells.length }));
     const response = await withRetry(() => client.messages.create({
       model: MODEL_SETS,
-      max_tokens: 800,
+      max_tokens: 400,
       temperature: 0,
-      system: `Tu es décorateur d'intérieur Minecraft. Pour chaque pièce listée, choisis un rôle cohérent avec le bâtiment (chambre, coin repas, bibliothèque, atelier, entrée...) et 3 à 6 blocs de mobilier adaptés, UNIQUEMENT parmi : ${[...INTERIOR_BLOCKS].join(', ')}. Une chapelle n'a pas de lit, une forge a des fourneaux. Réponds UNIQUEMENT en JSON strict : [{"piece":N,"role":"...","meubles":["bloc",...]}], une entrée par pièce, dans l'ordre.`,
+      system: `Tu es décorateur d'intérieur Minecraft. Pour chaque pièce listée, choisis UN rôle parmi : ${ROLES_VALIDES.join(', ')}. Cohérence avec le bâtiment : une chapelle n'a pas de chambre, une forge n'a pas de bibliothèque, une villa moderne a plutôt salon/cuisine/chambre/salle_a_manger, un manoir médiéval a chambre/bibliotheque/salon/salle_a_manger, un atelier a atelier/forge/entree. Réponds UNIQUEMENT en JSON strict : [{"piece":N,"role":"..."}], une entrée par pièce, dans l'ordre.`,
       messages: [{
         role: 'user',
-        content: `Bâtiment : ${description.type_batiment || 'bâtiment'}, style ${description.style || 'non précisé'}.\nPièces : ${JSON.stringify(roomsDesc)}\n\nRéférentiel (applique ces règles) :\n${getSections([7])}`
+        content: `Bâtiment : ${description.type_batiment || 'bâtiment'}, style ${description.style || 'non précisé'}.\nPièces : ${JSON.stringify(roomsDesc)}`
       }]
     }), { retries: 1 });
     const rawT = stripCodeFences(response.content.find((b) => b.type === 'text').text).trim();
     const parsed = JSON.parse(rawT.startsWith('[') ? rawT : `[${rawT}`);
     return rooms.map((_, i) => {
-      const meubles = (parsed[i]?.meubles || []).filter((m) => INTERIOR_BLOCKS.has(baseOf(String(m))));
-      return meubles.length > 0 ? { role: parsed[i].role, meubles } : fallback[i];
+      const role = parsed[i]?.role;
+      return { role: ROLES_VALIDES.includes(role) ? role : 'salon' };
     });
   } catch (err) {
-    console.warn('[decorateur] choix de mobilier LLM indisponible, repli générique :', err.message);
+    console.warn('[decorateur] choix de rôles LLM indisponible, repli salon :', err.message);
     return fallback;
   }
 }
