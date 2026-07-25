@@ -54,6 +54,7 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 ## Règles de composition
 - Une porte doit être dans un mur existant (même x/z que la façade de la boite).
 - CHAQUE bâtiment habitable a AU MOINS UNE porte en façade — le bâtiment principal en premier.
+- Pour les villas et maisons, prévois PLUSIEURS entrées : une porte principale sur la façade avant, et si la scène a une piscine/terrasse/jardin, une SECONDE porte donnant sur cet extérieur arrière (baie coulissante = utilise porte, pas baie). Une villa vraie a 2 à 3 accès.
 - Une baie doit être dans un mur existant.
 - Un escalier doit partir du plancher de la boite (y_bas) et arriver au plancher haut (y_haut = y1 de la boite).
 - Un toit doit couvrir l'emprise de la boite (mêmes x1/x2/z1/z2).

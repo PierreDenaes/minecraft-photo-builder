@@ -435,3 +435,26 @@ test('escalier / perron : acceptent le facing en français (nord/sud/est/ouest)'
   const p = perron({ x: 0, z: 0, y0: 0, largeur: 3, marches: 2, materiau: 'oak', facing: 'sud' });
   assert.ok(p.some((b) => /oak_stairs\[facing=south/.test(b.block)));
 });
+
+test('escalier + boite empilée : la trémie survit à un plancher au-dessus (ordre concat)', () => {
+  // ordre : boite d'abord (plancher à y=5), escalier ensuite (trémie à y=5) → trémie doit gagner
+  const b = boite({ x1: 0, z1: 0, x2: 9, z2: 9, y0: 0, y1: 5, murs: 'stone_bricks', fondation: 'cobblestone', plancher: 'oak_planks' });
+  const e = escalier({ x: 3, z: 5, y_bas: 0, y_haut: 5, facing: 'east', materiau: 'oak', tremie: true });
+  // combine ordre : boite en premier, escalier en second (comme dans les returns du LLM)
+  const merged = [...b, ...e];
+  // filtre déterministe : à position P, l'air prime
+  const dedup = new Map();
+  for (const bb of merged) {
+    const k = `${bb.x},${bb.y},${bb.z}`;
+    const prev = dedup.get(k);
+    if (!prev || (bb.block === 'air' && prev.block !== 'air')) dedup.set(k, bb);
+  }
+  const at = (x, y, z) => [...dedup.values()].find((bb) => bb.x === x && bb.y === y && bb.z === z);
+  // la case au-dessus des marches 2/3 (y=5) devrait être AIR (trémie)
+  const tremieCells = e.filter((bb) => bb.block === 'air');
+  assert.ok(tremieCells.length > 0, 'escalier doit produire des cases air pour la trémie');
+  for (const t of tremieCells) {
+    const finalAt = at(t.x, t.y, t.z);
+    assert.strictEqual(finalAt?.block, 'air', `case trémie (${t.x},${t.y},${t.z}) rebouchée par ${finalAt?.block}`);
+  }
+});

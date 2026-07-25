@@ -54,14 +54,14 @@ test('déduplique une coordonnée en gardant le dernier bloc', () => {
   ]);
 });
 
-test('ignore les blocs air', () => {
+test('émet les air explicites (trémie, ouverture) pour garantir le vide en jeu', () => {
   const blocks = [
     { x: 0, y: 0, z: 0, block: 'air' },
     { x: 1, y: 0, z: 0, block: 'stone' }
   ];
-  assert.deepStrictEqual(optimizeToCommands(blocks, origin), [
-    '/setblock 101 -60 200 stone'
-  ]);
+  const cmds = optimizeToCommands(blocks, origin);
+  assert.ok(cmds.includes('/setblock 100 -60 200 air'), 'air explicite doit être émis');
+  assert.ok(cmds.includes('/setblock 101 -60 200 stone'));
 });
 
 test('les feuilles sont posées persistent=true (sinon elles se décomposent sans tronc)', () => {
@@ -75,4 +75,29 @@ test('les feuilles sont posées persistent=true (sinon elles se décomposent san
   assert.ok(cmds.some((c) => c.startsWith('/setblock') && c.endsWith('cherry_leaves[persistent=true]')));
   assert.ok(cmds.some((c) => c.endsWith(' stone')));
   assert.ok(!cmds.some((c) => / [a-z_]+_leaves$/.test(c)));
+});
+
+test('optimizer : air explicite en fin de liste PRIME sur un bloc plein posé avant (trémie escalier)', () => {
+  // le LLM concatène [rdc, escalier] : le plancher rdc à y=5 est posé, puis
+  // l'escalier remet un air à la même case pour percer la trémie.
+  const cmds = optimizeToCommands([
+    { x: 3, y: 5, z: 5, block: 'oak_planks' }, // plancher
+    { x: 3, y: 5, z: 5, block: 'air' }         // trémie
+  ], { x: 100, y: 60, z: 100 });
+  // aucun oak_planks posé à cette case, un setblock air OU aucune commande
+  const relevant = cmds.filter((c) => c.includes('103 65 105'));
+  assert.ok(!relevant.some((c) => /oak_planks/.test(c)), `oak_planks écrasant l'air : ${relevant.join(' | ')}`);
+});
+
+test('optimizer : ordre inverse — air posé AVANT le plancher, la trémie doit rester (BUG)', () => {
+  // le LLM concatène [escalier, rdc] : escalier pose l'air à y=5 pour la trémie,
+  // puis rdc pose son plancher oak_planks à la même case. Aujourd'hui la trémie
+  // est reperdue (oak_planks écrit après). Elle DOIT persister.
+  const cmds = optimizeToCommands([
+    { x: 3, y: 5, z: 5, block: 'air' },        // trémie escalier (première)
+    { x: 3, y: 5, z: 5, block: 'oak_planks' }  // plancher rdc (seconde)
+  ], { x: 100, y: 60, z: 100 });
+  const relevant = cmds.filter((c) => c.includes('103 65 105'));
+  assert.ok(!relevant.some((c) => /oak_planks/.test(c)),
+    `plancher écrase la trémie de l'escalier : ${relevant.join(' | ')}`);
 });
