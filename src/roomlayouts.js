@@ -77,12 +77,14 @@ function layoutChambre(room) {
   const out = [];
   const wall = longestWallRun(room);
   if (wall.cells.length >= 2) {
-    // lit sur le milieu du mur le plus long, tête AU MUR (part=head côté mur)
-    const mid = wall.cells[Math.floor(wall.cells.length / 2) - 1] || wall.cells[0];
+    // Convention Minecraft : facing d'un lit = direction PIED → TÊTE.
+    // On veut la tête au mur (mid) et le pied dans la pièce (mid - w).
+    // Donc facing pointe vers le mur = FACING_TOWARD[w].
+    const mid = wall.cells[Math.floor(wall.cells.length / 2)] || wall.cells[0];
     const [dx, dz] = mid.w;
     const foot = { x: mid.x - dx, z: mid.z - dz };
     if (!room.doorFrontsSet.has(`${foot.x},${foot.z}`) && !room.doorFrontsSet.has(`${mid.x},${mid.z}`)) {
-      const facing = FACING_AWAY[`${dx},${dz}`]; // pied regarde vers le centre
+      const facing = FACING_TOWARD[`${dx},${dz}`];
       out.push({ x: mid.x, y: room.y, z: mid.z, block: `red_bed[facing=${facing},part=head]` });
       out.push({ x: foot.x, y: room.y, z: foot.z, block: `red_bed[facing=${facing},part=foot]` });
     }

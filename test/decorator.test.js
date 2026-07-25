@@ -68,12 +68,13 @@ test('sans client → repli sans appel API', async () => {
   assert.ok(decor.length > 0);
 });
 
-test('meubles hors liste blanche intérieure → set de repli', async () => {
-  const sets = '[{"piece":0,"role":"mine","meubles":["diamond_ore","tnt"]}]';
+test('rôle inconnu → repli salon', async () => {
+  const sets = '[{"piece":0,"role":"mine"}]';
   const client = { messages: { create: async () => ({ content: [{ type: 'text', text: sets }] }) } };
   const decor = await decorateInterior(closedRoom(), {}, { client });
   assert.ok(!decor.some((b) => /diamond_ore|tnt/.test(b.block)));
-  assert.ok(decor.some((b) => b.block === 'barrel')); // repli générique
+  // repli salon : sièges (stairs) OU rangement (barrel avec facing)
+  assert.ok(decor.some((b) => /oak_stairs|barrel/.test(b.block)));
 });
 
 test('bâtiment sans pièce → [] sans appel API', async () => {

@@ -121,3 +121,23 @@ test('layoutFor : rôle inconnu → fallback générique déterministe', () => {
   const b = layoutFor('inconnu', makeRoom());
   assert.ok(b.length > 0, 'fallback doit meubler la pièce');
 });
+
+test('chambre : la tête du lit est CONTRE le mur, pas dans le mur (bug facing)', () => {
+  const room = makeRoom({ w: 10, d: 8 });
+  const b = layoutFor('chambre', room);
+  const foot = b.find((k) => /_bed\[.*part=foot/.test(k.block));
+  const head = b.find((k) => /_bed\[.*part=head/.test(k.block));
+  assert.ok(foot && head);
+  // la tête doit être ADJACENTE au pied (distance manhattan = 1)
+  const dist = Math.abs(foot.x - head.x) + Math.abs(foot.z - head.z);
+  assert.strictEqual(dist, 1, `pied et tête doivent être adjacents : foot=(${foot.x},${foot.z}) head=(${head.x},${head.z}) dist=${dist}`);
+  // la tête doit avoir un mur adjacent (à moins 1 sur x ou z)
+  const wallAdj = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dz]) => room.occupied.has(`${head.x + dx},${head.y},${head.z + dz}`));
+  assert.ok(wallAdj, `tête sans mur adjacent : (${head.x},${head.z})`);
+  // le facing doit être cohérent : head = foot + BED_HEAD[facing]
+  const facing = /facing=(north|south|east|west)/.exec(foot.block)[1];
+  const BED_HEAD = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
+  const [dx, dz] = BED_HEAD[facing];
+  assert.strictEqual(head.x, foot.x + dx, `facing=${facing} : head.x devrait être ${foot.x + dx}, est ${head.x}`);
+  assert.strictEqual(head.z, foot.z + dz, `facing=${facing} : head.z devrait être ${foot.z + dz}, est ${head.z}`);
+});

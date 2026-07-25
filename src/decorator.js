@@ -51,6 +51,11 @@ function fixAttachments(items, isSolid) {
     } else if (base === 'ladder') {
       if (!lateral) continue;
       block = `ladder[facing=${lateral[0]}]`;
+    } else if (/^(furnace|smoker|anvil|chest|barrel|blast_furnace)$/.test(base) && lateral && !/facing=/.test(b.block)) {
+      // Orientés vers le CENTRE de la pièce (facing = opposé du mur adjacent).
+      // Ex: mur à l'est (dx=1) → l'objet regarde vers l'ouest.
+      const opposite = { east: 'west', west: 'east', north: 'south', south: 'north' };
+      block = `${base}[facing=${opposite[lateral[0]]}]`;
     }
     if (SOLID_DECOR.has(base)) keptSolid.add(`${b.x},${b.y},${b.z}`);
     kept.push(block === b.block ? b : { ...b, block });
