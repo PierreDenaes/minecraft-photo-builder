@@ -58,6 +58,7 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 - Une baie doit être dans un mur existant.
 - Un escalier doit partir du plancher de la boite (y_bas) et arriver au plancher haut (y_haut = y1 de la boite).
 - Un toit doit couvrir l'emprise de la boite (mêmes x1/x2/z1/z2).
+- HAUTEUR D'ÉTAGE MINIMUM : chaque boite habitable doit avoir y1 - y0 >= 5 (soit AU MOINS 4 blocs d'air libre sous le plafond, un joueur MC fait 2 blocs de haut). Une boite y0:0, y1:4 est trop basse — vise y0:0, y1:5 pour un RDC ; y0:5, y1:10 pour l'étage.
 - EMPILEMENT DES ÉTAGES : quand tu poses 2 boites l'une sur l'autre (rdc + étage), la seconde a y0 = y1 de la première et AUCUNE fondation (omets le paramètre fondation). N'INTERCALE PAS de toitPlat ni de toitDeuxPans entre deux étages. La séparation entre étages = le plancher de la boite du bas. Le toit ne se pose qu'en TERMINAISON du bâtiment, jamais entre deux niveaux.
 - TRÉMIE D'ESCALIER : escalier avec y_haut qui débouche sur le plancher haut d'une boite fonctionne (la trémie perce le plancher). Si y_haut débouche sur un toitPlat, l'escalier arrive sous le toit sans issue. Ne pose PAS un toitPlat au-dessus de la sortie d'un escalier intérieur.
 - Une piscine est HORS de la boite (à côté), pas dedans, et **s'enterre** : si la maison est au sol y=0, la surface de la piscine doit être à y=profondeur (par ex. y_surface=2 pour profondeur=2), le fond restant à y=0. Ne pose JAMAIS y_surface<profondeur, sinon le fond passerait sous y=0 et toute la scène flotterait.
@@ -72,7 +73,7 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 - Fallback : si un champ manque, réutilise murs ou toit. Mais 1 seul matériau sur tout = façade médiocre.
 
 ## Fidélité aux travées et détails extérieurs
-- Si travees.facade_principale = N, appelle baie EXACTEMENT N fois sur cette façade, régulièrement espacées.
+- Si travees.facade_principale = N, appelle baie EXACTEMENT N fois sur cette façade, régulièrement espacées. Si la vision décrit "baies_vitrees" ou "baies_vitrees_coulissantes" dans elements, tu DOIS poser au moins 3 baies (glass_pane) par façade principale — les vitres sont OBLIGATOIRES, jamais optionnelles quand la photo en montre.
 - Si elements contient "balcon", "garde-corps", "marches", "lampadaires", "terrasse", "ponton" → utilise les primitives correspondantes (perron, gardeCorps, lampadaire, terrasse, pontonBois).
 - Une villa moderne = boite blanche + accents sombres en toitPlat + baies larges avec encadrement bois + perron + gardeCorps sur balcon + 2 à 4 lampadaires devant.
 
