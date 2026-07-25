@@ -79,3 +79,27 @@ test('detectFloors voit l\'étage de la maison malgré la piscine qui dilue l\'e
   assert.ok(floors.includes(0));
   assert.ok(floors.includes(4), `étage y=4 attendu : ${floors}`);
 });
+
+test('detectFloors : ne détecte PAS les linteaux de baies comme planchers', () => {
+  const out = [];
+  const put = (x, y, z, block = 'white_concrete') => out.push({ x, y, z, block });
+  // boite 10x8, y0=0 y1=6 (dalle basse + plancher haut)
+  for (let x = 0; x < 10; x++) for (let z = 0; z < 8; z++) {
+    put(x, 0, z); put(x, 6, z);
+  }
+  for (let y = 1; y < 6; y++) {
+    for (let x = 0; x < 10; x++) { put(x, y, 0); put(x, y, 7); }
+    for (let z = 0; z < 8; z++) { put(0, y, z); put(9, y, z); }
+  }
+  // baies sur la façade sud (z=0), linteau à y=4 sur x=2..7 (6 linteaux)
+  for (let x = 2; x < 8; x++) {
+    put(x, 4, 0, 'oak_log'); // linteau
+    // vitres y=1..3 (l'air remplace le mur)
+    for (let y = 1; y <= 3; y++) out.push({ x, y, z: 0, block: 'glass_pane' });
+  }
+  const floors = detectFloors(out);
+  // Vrais planchers = y=0 (dalle basse) et y=6 (plancher haut). Le linteau y=4
+  // NE doit PAS être détecté comme plancher.
+  assert.ok(!floors.includes(4), `linteau y=4 détecté comme plancher : ${floors}`);
+  assert.ok(floors.includes(0));
+});

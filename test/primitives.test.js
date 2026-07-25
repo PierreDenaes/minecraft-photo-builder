@@ -337,7 +337,7 @@ test('perron : largeur paire refusée (asymétrique impossible)', () => {
 });
 
 test('baie illumine=true : source lumineuse dans le mur intérieur au-dessus du linteau', () => {
-  const b = baie({ facade: 'sud', x1: 2, x2: 4, z1: 0, z2: 0, y1: 2, y2: 3, encadrement: 'oak_log', illumine: true });
+  const b = baie({ facade: 'nord', x1: 2, x2: 4, z1: 0, z2: 0, y1: 2, y2: 3, encadrement: 'oak_log', illumine: true });
   assert.ok(b.some((k) => k.z === 0 && k.block === 'glass_pane'));
   // glowstone à y2+1, décalé d'un cran vers l'intérieur (invisible depuis dehors)
   assert.ok(b.some((k) => k.z === 1 && k.block === 'glowstone' && k.x === 3 && k.y === 4),
@@ -348,7 +348,7 @@ test('baie illumine=true : source lumineuse dans le mur intérieur au-dessus du 
 const { colombages, lierre, avantCorps } = require('../src/primitives');
 
 test('colombages : logs verticaux en saillie sur la façade, espacés régulièrement', () => {
-  const c = colombages({ facade: 'sud', x1: 0, x2: 10, z: 0, y1: 1, y2: 3, materiau: 'dark_oak_log', espacement: 3 });
+  const c = colombages({ facade: 'nord', x1: 0, x2: 10, z: 0, y1: 1, y2: 3, materiau: 'dark_oak_log', espacement: 3 });
   // logs en saillie devant la façade (z=-1 pour façade sud) tous les 3 blocs
   const logs = c.filter((b) => b.block === 'dark_oak_log');
   assert.ok(logs.length > 0);
@@ -367,7 +367,7 @@ test('lierre : rangées de vine sur un mur existant, dispersé', () => {
 });
 
 test('avantCorps : boite en saillie de 1 devant une façade, plus étroite que celle-ci', () => {
-  const a = avantCorps({ facade: 'sud', x1: 3, x2: 8, z_facade: 0, y0: 0, y1: 4, murs: 'stone_bricks', fondation: 'cobblestone' });
+  const a = avantCorps({ facade: 'nord', x1: 3, x2: 8, z_facade: 0, y0: 0, y1: 4, murs: 'stone_bricks', fondation: 'cobblestone' });
   // saillie de 1 vers le sud (z=-1)
   assert.ok(a.some((b) => b.z === -1));
   // murs latéraux au ras de la façade
@@ -404,7 +404,7 @@ test('avantCorps : saillie correcte pour façade est', () => {
 });
 
 test('baie illumine=true : PAS de bloc directement derrière la vitre (visible depuis dehors)', () => {
-  const b = baie({ facade: 'sud', x1: 2, x2: 4, z1: 0, z2: 0, y1: 2, y2: 3, encadrement: 'oak_log', illumine: true });
+  const b = baie({ facade: 'nord', x1: 2, x2: 4, z1: 0, z2: 0, y1: 2, y2: 3, encadrement: 'oak_log', illumine: true });
   // Aucun bloc derrière la vitre au même y (visible en transparence)
   for (let x = 2; x <= 4; x++) for (let y = 2; y <= 3; y++) {
     const blockerDerriere = b.find((k) => k.x === x && k.y === y && k.z === 1);

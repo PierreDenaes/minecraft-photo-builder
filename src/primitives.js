@@ -1,10 +1,14 @@
 // Primitives de construction : le LLM appelle ces fonctions au lieu de poser des
 // blocs. Chacune retourne un tableau [{x, y, z, block}] et vérifie ses arguments.
 
+// Convention Minecraft standard : NORD = -Z (z minimum), SUD = +Z (z maximum),
+// EST = +X (x maximum), OUEST = -X (x minimum). Le LLM connaît cette convention
+// et l'utilise implicitement — mon ancienne convention inversée provoquait
+// des primitives posées HORS bâtiment (baies avec glowstone dans le vide).
 const OPPOSITE = { nord: 'south', sud: 'north', est: 'west', ouest: 'east' };
 const FACADE_AXIS = {
-  nord: (b) => ({ fixed: 'z', side: 'max' }),   // façade nord = z maximum
-  sud: (b) => ({ fixed: 'z', side: 'min' }),    // façade sud = z minimum
+  nord: (b) => ({ fixed: 'z', side: 'min' }),   // façade nord = z minimum
+  sud: (b) => ({ fixed: 'z', side: 'max' }),    // façade sud = z maximum
   est: (b) => ({ fixed: 'x', side: 'max' }),
   ouest: (b) => ({ fixed: 'x', side: 'min' })
 };
@@ -71,7 +75,9 @@ function porte({ facade, x, z, y0 = 0, hauteur = 2, materiau }) {
 
 // Baie vitrée : rangée de glass_pane à l'emplacement donné, encadrement autour
 // Direction vers l'INTÉRIEUR du bâtiment depuis chaque façade (pour illumine)
-const INSIDE_DIR = { nord: [0, -1], sud: [0, 1], est: [-1, 0], ouest: [1, 0] };
+// Direction VERS L'INTÉRIEUR depuis chaque façade (convention MC : nord=z_min,
+// intérieur est vers +z depuis la façade nord)
+const INSIDE_DIR = { nord: [0, 1], sud: [0, -1], est: [-1, 0], ouest: [1, 0] };
 
 function baie({ facade, x1, z1, x2, z2, y1, y2, encadrement, illumine = false }) {
   if (!(facade in OPPOSITE)) throw new Error(`baie : facade "${facade}" inconnue`);
