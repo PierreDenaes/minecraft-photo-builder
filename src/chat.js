@@ -62,11 +62,6 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
         return;
       }
 
-      if (cmd === '!maison') {
-        bot.chat(`${username} : reconstruction 3D fidèle (TripoSR local, ~1 min) → http://${config.web.public_host}:${config.web.port}/upload/${username}?mode=maison`);
-        return;
-      }
-
       if (cmd === '!go') {
         const pkey = username.toLowerCase();
         const p = pending.get(pkey);

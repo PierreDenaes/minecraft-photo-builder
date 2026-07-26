@@ -14,7 +14,6 @@ const { estimateDepth } = require('./depth');
 const { voxelizeScene } = require('./voxelizer');
 const { composite } = require('./composite');
 const { parseModel } = require('./mesh');
-const { reconstruct3D } = require('./triposr');
 const { voxelizeMesh } = require('./meshvoxelizer');
 const { loadBlockColors, filterColors, NATURAL_BLOCKS, CONSTRUCTION_BLOCKS, FLUID_BLOCKS } = require('./blockcolors');
 const { clusterColors, assignThemes, buildThemePicker, themeOfBlock, realisticMaterials } = require('./palette');
@@ -295,35 +294,6 @@ function createBot(cfg) {
     return proposeStructure(username, blocks, { type_batiment: `modèle 3D (${ext})` }, { maxSize: Math.max(dio.size_x, dio.max_y, dio.size_z), maxBlocks: dio.max_blocks });
   }
 
-  async function onMaison(username, buffer, mimeType) {
-    bot.chat(`Photo reçue de ${username} — reconstruction 3D via TripoSR (~1 à 3 min)...`);
-    let glbBuffer;
-    try {
-      const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
-      glbBuffer = await reconstruct3D(buffer, ext);
-    } catch (err) {
-      bot.chat(`${username} : ${err.message}`);
-      return `erreur TripoSR : ${err.message}`;
-    }
-    bot.chat('Reconstruction 3D terminée — voxelisation en cours...');
-    const { triangles } = await parseModel(glbBuffer, 'glb');
-    // couleurs : palette de construction complète (le modèle a ses propres couleurs par sommet)
-    const shell = await voxelizeMesh(triangles, {
-      maxX: cfg.limits.max_size, maxY: cfg.limits.max_size, maxZ: cfg.limits.max_size,
-      defaultBlock: 'stone', colors: colorsBati
-    });
-    const support = enforceSupport(shell);
-    if (support.removed > 0) console.log(`[maison] gravité : ${support.removed} blocs supprimés`);
-    if (support.guard) bot.chat('⚠ Structure majoritairement flottante conservée — modèle 3D à revoir.');
-    const building = support.blocks;
-    const decor = await decorateInterior(building, { type_batiment: 'maison', style: 'moderne' },
-      { client: apiClient });
-    if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
-    const meubles = building.concat(decor);
-    return proposeStructure(username, meubles, { type_batiment: 'maison (reconstruction 3D)' },
-      { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks });
-  }
-
   async function onPortrait(username, buffer) {
     bot.chat(`Photo reçue de ${username}, fresque pixel-art en préparation...`);
     const { data, info } = await sharp(buffer).removeAlpha()
@@ -388,7 +358,7 @@ function createBot(cfg) {
     return proposeStructure(username, meubles, description, { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks });
   }
 
-  const app = createWebServer({ onPhoto, onDiorama, onModel, onPortrait, onMaison });
+  const app = createWebServer({ onPhoto, onDiorama, onModel, onPortrait });
   app.listen(cfg.web.port, () =>
     console.log(`[web] upload sur http://${cfg.web.public_host}:${cfg.web.port}/upload/<pseudo>`)
   );

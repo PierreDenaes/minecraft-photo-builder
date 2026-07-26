@@ -89,3 +89,21 @@ Pierre : « on part sur TripoSR ». Après 5 itérations de correctifs sur le mo
 ## Livrable
 
 Sur Pierre : lance `bash scripts/setup-triposr.sh`, patiente ~10 min (téléchargement modèle + install torch), puis teste `!maison` sur une photo — 30 s à 2 min de reconstruction, résultat fidèle à la photo.
+
+---
+
+## STATUT (2026-07-26) : ABANDONNÉ
+
+Testé en live sur une photo de maison bretonne (`sans-titre-8-1536x1024.jpg`) : TripoSR produit un mesh amorphe (plaque bombée sans profondeur) car il est entraîné sur des objets simples (sculptures, jouets, mobilier), pas sur l'architecture. Le voxeliseur reproduit fidèlement ce mesh amorphe = tas de blocs sans sens.
+
+Fixes appliqués pendant les tests (utiles pour la postérité si on repense un jour à TripoSR) :
+- xatlas 0.0.9 → wheel Mac ARM absent, contourné par install 0.0.11 avant requirements.txt
+- onnxruntime absent des requirements.txt de rembg
+- TripoSR sans setup.py → ajout de vendor/TripoSR au sys.path du wrapper
+- extract_mesh() exige has_vertex_color=True
+- torchmcubes ne supporte pas MPS → device forcé CPU sur Mac
+- Timeout 5 min trop court (DL modèle 1,7 Go) → 20 min
+- Trace stderr : garder 800 derniers caractères au lieu des 300 premiers (noyés dans FutureWarning)
+- Parser GLB (src/mesh.js) : ajout VEC4 dans GLB_COMPS (bug latent depuis I5 pour vertex colors RGBA)
+
+Verdict : le fix GLB VEC4 est utile pour tous les GLB texturés à couleurs RGBA (conservé dans le repo). Tout le reste (src/triposr.js, wrapper Python, setup script) est retiré. Le mode primitives (`!photo`) reste notre meilleur outil pour l'architecture.

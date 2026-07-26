@@ -6,3 +6,4 @@ models/
 docs/*.glb
 .env
 .claude/scheduled_tasks.lock
+vendor/

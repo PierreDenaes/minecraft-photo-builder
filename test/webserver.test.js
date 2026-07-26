@@ -165,32 +165,3 @@ test('image en mode portrait routée vers onPortrait', async () => {
   server.close();
 });
 
-test('mode=maison route vers onMaison', async () => {
-  let called = null;
-  const app = createWebServer({
-    onPhoto: async () => 'photo',
-    onMaison: async () => { called = 'maison'; return 'ok maison'; },
-    onDiorama: async () => 'diorama',
-    onModel: async () => 'model',
-    onPortrait: async () => 'portrait'
-  });
-  const server = app.listen(0);
-  const fd = new FormData();
-  fd.append('username', 'Steve');
-  fd.append('mode', 'maison');
-  fd.append('photo', new Blob([Buffer.from([0xff, 0xd8, 0xff])], { type: 'image/jpeg' }), 'x.jpg');
-  const res = await fetch(`http://localhost:${server.address().port}/build-from-photo`, { method: 'POST', body: fd });
-  const body = await res.json();
-  server.close();
-  assert.strictEqual(body.ok, true);
-  assert.strictEqual(called, 'maison');
-});
-
-test('formulaire maison indique le mode', async () => {
-  const app = createWebServer({ onPhoto: async () => '', onDiorama: async () => '', onModel: async () => '', onPortrait: async () => '', onMaison: async () => '' });
-  const server = app.listen(0);
-  const res = await fetch(`http://localhost:${server.address().port}/upload/Steve?mode=maison`);
-  const html = await res.text();
-  server.close();
-  assert.match(html, /name="mode" value="maison"/);
-});
