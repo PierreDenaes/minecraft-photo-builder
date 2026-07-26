@@ -104,25 +104,6 @@
     "style": "autre"
   },
   {
-    "nom": "30687",
-    "fichier": "30687.schem",
-    "dims": {
-      "x": 1,
-      "y": 1,
-      "z": 1
-    },
-    "total_blocs": 1,
-    "top_materiaux": [
-      "air(100%)"
-    ],
-    "ratios": {
-      "stairs": 0,
-      "glass": 0,
-      "torches": 0
-    },
-    "style": "autre"
-  },
-  {
     "nom": "30693",
     "fichier": "30693.schem",
     "dims": {

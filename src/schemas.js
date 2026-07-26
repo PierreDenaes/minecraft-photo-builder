@@ -92,15 +92,18 @@ async function chooseSchema(description) {
   if (catalog.length === 0) return null;
   const type = (description.type_batiment || '').toLowerCase();
   const style = (description.style || '').toLowerCase();
-  const typeAliases = {
-    villa: ['villa', 'maison_contemporaine', 'villa_contemporaine'],
-    maison: ['maison', 'chaumiere', 'cottage', 'maison_de_campagne'],
-    manoir: ['manoir', 'chateau', 'demeure']
+  // Matching tolérant : chaque type du catalogue matche si son mot-clé apparaît
+  // dans le type libre de la vision ("maison_bretonne_en_pierre" → "maison")
+  const typeKeywords = {
+    villa: ['villa'],
+    maison: ['maison', 'chaumiere', 'cottage'],
+    manoir: ['manoir', 'chateau', 'demeure', 'ferme', 'batisse'],
+    tour: ['tour', 'phare', 'donjon']
   };
   const matchType = (schemaType) => {
     if (schemaType === type) return true;
-    const aliases = typeAliases[schemaType] || [];
-    return aliases.some((a) => type.includes(a));
+    const kws = typeKeywords[schemaType] || [schemaType];
+    return kws.some((kw) => type.includes(kw));
   };
   // Priorité 1 : type + style
   let match = catalog.find((e) => matchType(e.type_batiment) && e.style === style);

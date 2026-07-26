@@ -116,27 +116,6 @@
     }
   },
   {
-    "nom": "30687",
-    "fichier": "30687.schem",
-    "style": "autre",
-    "type_batiment": "maison",
-    "emprise": {
-      "x": 1,
-      "y": 1,
-      "z": 1
-    },
-    "tags": [
-      "autre",
-      "petit"
-    ],
-    "materiaux_base": {
-      "murs_principaux": "stone_bricks",
-      "accent": "stone",
-      "toit": "dark_oak_planks",
-      "tous": []
-    }
-  },
-  {
     "nom": "30693",
     "fichier": "30693.schem",
     "style": "rustique_organique",

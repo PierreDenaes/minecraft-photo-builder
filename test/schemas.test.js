@@ -78,3 +78,14 @@ test('chooseSchema : STRICT — retourne null si aucun schema ne matche vraiment
   const choice = await chooseSchema(description);
   assert.strictEqual(choice, null, 'aucun schema égyptien dans le catalogue → doit refuser');
 });
+
+test('chooseSchema : type_batiment libre "maison_bretonne_en_pierre" matche "maison"', async () => {
+  const description = { style: 'medieval', type_batiment: 'maison_bretonne_en_pierre' };
+  const choice = await chooseSchema(description);
+  // doit trouver un match sur "maison" mais SANS retourner un schema minuscule
+  if (choice) {
+    const emprise = choice.emprise;
+    const vol = emprise.x * emprise.y * emprise.z;
+    assert.ok(vol >= 500, `schema trop petit choisi : ${choice.nom} ${emprise.x}x${emprise.y}x${emprise.z}`);
+  }
+});

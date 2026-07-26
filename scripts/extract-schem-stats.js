@@ -83,6 +83,11 @@ async function extractOne(file) {
       console.warn(`[schem] ${f} trop grand (${r.dims.x}×${r.dims.y}×${r.dims.z}) — ignoré`);
       continue;
     }
+    // écarte les nains (< 500 blocs OU un côté ≤ 3) — pas un vrai bâtiment
+    if (r.total_blocs < 500 || Math.min(r.dims.x, r.dims.y, r.dims.z) <= 3) {
+      console.warn(`[schem] ${f} trop petit (${r.dims.x}×${r.dims.y}×${r.dims.z}, ${r.total_blocs} blocs) — ignoré`);
+      continue;
+    }
     refs.push(r);
   }
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
