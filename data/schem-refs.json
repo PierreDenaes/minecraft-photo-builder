@@ -1,5 +1,135 @@
 [
   {
+    "nom": "18812",
+    "fichier": "18812.schem",
+    "dims": {
+      "x": 35,
+      "y": 22,
+      "z": 29
+    },
+    "total_blocs": 4196,
+    "top_materiaux": [
+      "grass_block(16%)",
+      "spruce_planks(16%)",
+      "deepslate_tiles(15%)",
+      "deepslate_tile_stairs(11%)",
+      "oak_log(8%)",
+      "spruce_trapdoor(4%)",
+      "diorite(4%)",
+      "calcite(3%)"
+    ],
+    "ratios": {
+      "stairs": 14,
+      "glass": 0.8,
+      "torches": 1.07
+    },
+    "style": "moderne"
+  },
+  {
+    "nom": "25464",
+    "fichier": "25464.schem",
+    "dims": {
+      "x": 80,
+      "y": 57,
+      "z": 80
+    },
+    "total_blocs": 99339,
+    "top_materiaux": [
+      "dirt(66%)",
+      "spruce_log(9%)",
+      "spruce_planks(6%)",
+      "spruce_slab(3%)",
+      "grass_block(3%)",
+      "polished_andesite(2%)",
+      "polished_diorite(2%)",
+      "polished_granite(2%)"
+    ],
+    "ratios": {
+      "stairs": 0,
+      "glass": 0.7,
+      "torches": 0
+    },
+    "style": "autre"
+  },
+  {
+    "nom": "26113",
+    "fichier": "26113.schem",
+    "dims": {
+      "x": 56,
+      "y": 108,
+      "z": 46
+    },
+    "total_blocs": 71672,
+    "top_materiaux": [
+      "smooth_quartz(42%)",
+      "cyan_stained_glass_pane(17%)",
+      "quartz_block(9%)",
+      "smooth_quartz_stairs(4%)",
+      "red_sandstone_wall(4%)",
+      "stone(4%)",
+      "prismarine(3%)",
+      "white_terracotta(3%)"
+    ],
+    "ratios": {
+      "stairs": 7,
+      "glass": 17,
+      "torches": 2.71
+    },
+    "style": "moderne"
+  },
+  {
+    "nom": "26177",
+    "fichier": "26177.schem",
+    "dims": {
+      "x": 155,
+      "y": 89,
+      "z": 115
+    },
+    "total_blocs": 186996,
+    "top_materiaux": [
+      "black_stained_glass(20%)",
+      "chiseled_quartz_block(9%)",
+      "quartz_pillar(8%)",
+      "polished_andesite(7%)",
+      "pale_oak_fence(5%)",
+      "polished_tuff_slab(5%)",
+      "smooth_quartz_slab(5%)",
+      "polished_tuff_wall(4%)"
+    ],
+    "ratios": {
+      "stairs": 5,
+      "glass": 27.8,
+      "torches": 0.15
+    },
+    "style": "moderne"
+  },
+  {
+    "nom": "26313",
+    "fichier": "26313.schem",
+    "dims": {
+      "x": 30,
+      "y": 19,
+      "z": 37
+    },
+    "total_blocs": 4479,
+    "top_materiaux": [
+      "dirt(20%)",
+      "quartz_block(16%)",
+      "quartz_slab(15%)",
+      "oak_planks(11%)",
+      "red_concrete(6%)",
+      "smooth_stone(5%)",
+      "grass_block(4%)",
+      "cyan_terracotta(3%)"
+    ],
+    "ratios": {
+      "stairs": 1.7,
+      "glass": 3.7,
+      "torches": 0.07
+    },
+    "style": "moderne"
+  },
+  {
     "nom": "29464",
     "fichier": "29464.schem",
     "dims": {
@@ -7,21 +137,21 @@
       "y": 21,
       "z": 33
     },
-    "total_blocs": 23562,
+    "total_blocs": 5477,
     "top_materiaux": [
-      "air(77%)",
-      "dirt(9%)",
-      "white_concrete(2%)",
-      "grass_block(2%)",
-      "water(1%)",
-      "gray_concrete(1%)",
-      "spruce_trapdoor(1%)",
-      "smooth_stone(1%)"
+      "dirt(38%)",
+      "white_concrete(9%)",
+      "grass_block(9%)",
+      "water(6%)",
+      "gray_concrete(4%)",
+      "spruce_trapdoor(4%)",
+      "smooth_stone(3%)",
+      "spruce_planks(3%)"
     ],
     "ratios": {
-      "stairs": 0.4,
-      "glass": 0.8,
-      "torches": 0.08
+      "stairs": 1.9,
+      "glass": 3.3,
+      "torches": 0.37
     },
     "style": "moderne"
   },
@@ -33,23 +163,23 @@
       "y": 33,
       "z": 79
     },
-    "total_blocs": 477081,
+    "total_blocs": 116962,
     "top_materiaux": [
-      "air(75%)",
-      "polished_andesite(6%)",
-      "dirt(4%)",
-      "white_stained_glass(2%)",
-      "coal_block(1%)",
-      "stone(1%)",
-      "smooth_stone(1%)",
-      "polished_granite_slab(1%)"
+      "polished_andesite(23%)",
+      "dirt(17%)",
+      "white_stained_glass(7%)",
+      "coal_block(6%)",
+      "stone(4%)",
+      "smooth_stone(3%)",
+      "polished_granite_slab(3%)",
+      "end_stone_bricks(3%)"
     ],
     "ratios": {
-      "stairs": 1.3,
-      "glass": 2.6,
-      "torches": 0.01
+      "stairs": 5.3,
+      "glass": 10.5,
+      "torches": 0.02
     },
-    "style": "autre"
+    "style": "medieval"
   },
   {
     "nom": "30457",
@@ -59,23 +189,49 @@
       "y": 27,
       "z": 26
     },
-    "total_blocs": 20358,
+    "total_blocs": 3706,
     "top_materiaux": [
-      "air(82%)",
-      "quartz_pillar(4%)",
-      "calcite(3%)",
-      "smooth_basalt(2%)",
-      "deepslate_tile_stairs(2%)",
-      "deepslate_tiles(1%)",
-      "light_blue_stained_glass_pane(1%)",
-      "sand(1%)"
+      "quartz_pillar(19%)",
+      "calcite(14%)",
+      "smooth_basalt(12%)",
+      "deepslate_tile_stairs(11%)",
+      "deepslate_tiles(8%)",
+      "light_blue_stained_glass_pane(7%)",
+      "sand(5%)",
+      "gray_concrete_powder(4%)"
     ],
     "ratios": {
-      "stairs": 3.2,
-      "glass": 1.3,
-      "torches": 0.15
+      "stairs": 17.4,
+      "glass": 7,
+      "torches": 0.81
     },
     "style": "moderne"
+  },
+  {
+    "nom": "30683",
+    "fichier": "30683.schem",
+    "dims": {
+      "x": 19,
+      "y": 17,
+      "z": 23
+    },
+    "total_blocs": 1361,
+    "top_materiaux": [
+      "grass_block(24%)",
+      "spruce_planks(11%)",
+      "stripped_spruce_log(8%)",
+      "stone_bricks(8%)",
+      "spruce_stairs(7%)",
+      "stone_brick_stairs(7%)",
+      "coarse_dirt(6%)",
+      "spruce_trapdoor(5%)"
+    ],
+    "ratios": {
+      "stairs": 15.7,
+      "glass": 1.4,
+      "torches": 0.81
+    },
+    "style": "rustique_organique"
   },
   {
     "nom": "30686",
@@ -85,21 +241,21 @@
       "y": 77,
       "z": 80
     },
-    "total_blocs": 498960,
+    "total_blocs": 4313,
     "top_materiaux": [
-      "air(99%)",
-      "acacia_planks(0%)",
-      "white_wool(0%)",
-      "spruce_planks(0%)",
-      "acacia_slab(0%)",
-      "oak_log(0%)",
-      "spruce_slab(0%)",
-      "short_grass(0%)"
+      "acacia_planks(19%)",
+      "white_wool(11%)",
+      "spruce_planks(7%)",
+      "acacia_slab(6%)",
+      "oak_log(6%)",
+      "spruce_slab(4%)",
+      "short_grass(4%)",
+      "stone(4%)"
     ],
     "ratios": {
-      "stairs": 0.1,
-      "glass": 0,
-      "torches": 0
+      "stairs": 12,
+      "glass": 2.5,
+      "torches": 0.09
     },
     "style": "autre"
   },
@@ -111,21 +267,21 @@
       "y": 35,
       "z": 24
     },
-    "total_blocs": 19320,
+    "total_blocs": 3756,
     "top_materiaux": [
-      "air(81%)",
-      "gray_concrete(2%)",
-      "stripped_spruce_wood(2%)",
-      "spruce_trapdoor(1%)",
-      "cracked_stone_bricks(1%)",
-      "spruce_planks(1%)",
-      "dark_oak_stairs(1%)",
-      "spruce_stairs(1%)"
+      "gray_concrete(13%)",
+      "stripped_spruce_wood(12%)",
+      "spruce_trapdoor(8%)",
+      "cracked_stone_bricks(8%)",
+      "spruce_planks(6%)",
+      "dark_oak_stairs(6%)",
+      "spruce_stairs(5%)",
+      "cobbled_deepslate(5%)"
     ],
     "ratios": {
-      "stairs": 2.8,
-      "glass": 0.2,
-      "torches": 0.07
+      "stairs": 14.5,
+      "glass": 1.1,
+      "torches": 0.35
     },
     "style": "rustique_organique"
   },
@@ -137,20 +293,20 @@
       "y": 21,
       "z": 21
     },
-    "total_blocs": 7497,
+    "total_blocs": 2789,
     "top_materiaux": [
-      "air(63%)",
-      "white_concrete(10%)",
-      "smooth_quartz_slab(8%)",
-      "light_gray_terracotta(8%)",
-      "light_blue_stained_glass(2%)",
-      "deepslate_tile_wall(2%)",
-      "deepslate_tiles(2%)",
-      "smooth_stone(1%)"
+      "white_concrete(26%)",
+      "smooth_quartz_slab(22%)",
+      "light_gray_terracotta(21%)",
+      "light_blue_stained_glass(6%)",
+      "deepslate_tile_wall(5%)",
+      "deepslate_tiles(4%)",
+      "smooth_stone(4%)",
+      "ochre_froglight(4%)"
     ],
     "ratios": {
       "stairs": 0,
-      "glass": 3.2,
+      "glass": 8.5,
       "torches": 0
     },
     "style": "moderne"
@@ -163,21 +319,21 @@
       "y": 12,
       "z": 16
     },
-    "total_blocs": 3456,
+    "total_blocs": 1361,
     "top_materiaux": [
-      "air(61%)",
-      "white_concrete(9%)",
-      "gray_concrete(8%)",
-      "terracotta(5%)",
-      "light_gray_concrete(4%)",
-      "light_blue_stained_glass_pane(3%)",
-      "light_blue_stained_glass(2%)",
-      "polished_diorite(2%)"
+      "white_concrete(23%)",
+      "gray_concrete(19%)",
+      "terracotta(12%)",
+      "light_gray_concrete(10%)",
+      "light_blue_stained_glass_pane(8%)",
+      "light_blue_stained_glass(4%)",
+      "polished_diorite(4%)",
+      "iron_trapdoor(4%)"
     ],
     "ratios": {
-      "stairs": 0.6,
-      "glass": 5,
-      "torches": 0.03
+      "stairs": 1.5,
+      "glass": 12.8,
+      "torches": 0.07
     },
     "style": "moderne"
   },
@@ -189,21 +345,21 @@
       "y": 17,
       "z": 21
     },
-    "total_blocs": 7854,
+    "total_blocs": 2644,
     "top_materiaux": [
-      "air(66%)",
-      "terracotta(4%)",
-      "light_blue_concrete_powder(4%)",
-      "light_blue_concrete(4%)",
-      "smooth_stone(4%)",
-      "smooth_quartz(2%)",
-      "stone(2%)",
-      "quartz_stairs(2%)"
+      "terracotta(13%)",
+      "light_blue_concrete_powder(12%)",
+      "light_blue_concrete(12%)",
+      "smooth_stone(11%)",
+      "smooth_quartz(6%)",
+      "stone(6%)",
+      "quartz_stairs(6%)",
+      "smooth_quartz_slab(5%)"
     ],
     "ratios": {
-      "stairs": 1.9,
-      "glass": 1.8,
-      "torches": 0.01
+      "stairs": 5.8,
+      "glass": 5.3,
+      "torches": 0.04
     },
     "style": "moderne"
   },
@@ -215,23 +371,23 @@
       "y": 30,
       "z": 74
     },
-    "total_blocs": 108780,
+    "total_blocs": 8235,
     "top_materiaux": [
-      "air(92%)",
-      "grass_block(3%)",
-      "spruce_planks(1%)",
-      "dirt(1%)",
-      "spruce_log(1%)",
-      "bricks(1%)",
-      "deepslate_brick_slab(0%)",
-      "dark_oak_planks(0%)"
+      "grass_block(35%)",
+      "spruce_planks(11%)",
+      "dirt(10%)",
+      "spruce_log(7%)",
+      "bricks(7%)",
+      "deepslate_brick_slab(6%)",
+      "dark_oak_planks(2%)",
+      "deepslate_tile_slab(2%)"
     ],
     "ratios": {
-      "stairs": 0.2,
-      "glass": 0.1,
-      "torches": 0.01
+      "stairs": 2.7,
+      "glass": 1.4,
+      "torches": 0.12
     },
-    "style": "autre"
+    "style": "moderne"
   },
   {
     "nom": "30725",
@@ -241,21 +397,21 @@
       "y": 25,
       "z": 20
     },
-    "total_blocs": 9500,
+    "total_blocs": 3749,
     "top_materiaux": [
-      "air(61%)",
-      "dirt(12%)",
-      "diorite(5%)",
-      "stone(5%)",
-      "grass_block(2%)",
-      "stripped_dark_oak_log(2%)",
-      "cobblestone(1%)",
-      "short_grass(1%)"
+      "dirt(30%)",
+      "diorite(14%)",
+      "stone(13%)",
+      "grass_block(5%)",
+      "stripped_dark_oak_log(4%)",
+      "cobblestone(3%)",
+      "short_grass(2%)",
+      "bone_block(2%)"
     ],
     "ratios": {
-      "stairs": 1.7,
-      "glass": 0.1,
-      "torches": 0.17
+      "stairs": 4.3,
+      "glass": 0.4,
+      "torches": 0.43
     },
     "style": "rustique_organique"
   },
@@ -267,21 +423,21 @@
       "y": 27,
       "z": 25
     },
-    "total_blocs": 15525,
+    "total_blocs": 5829,
     "top_materiaux": [
-      "air(62%)",
-      "dirt(22%)",
-      "grass_block(2%)",
-      "stripped_dark_oak_wood(2%)",
-      "spruce_planks(1%)",
-      "stone_bricks(1%)",
-      "deepslate_tiles(1%)",
-      "short_grass(1%)"
+      "dirt(57%)",
+      "grass_block(4%)",
+      "stripped_dark_oak_wood(4%)",
+      "spruce_planks(2%)",
+      "stone_bricks(2%)",
+      "deepslate_tiles(2%)",
+      "short_grass(2%)",
+      "spruce_stairs(2%)"
     ],
     "ratios": {
-      "stairs": 2.1,
-      "glass": 0.3,
-      "torches": 0.14
+      "stairs": 5.7,
+      "glass": 0.7,
+      "torches": 0.36
     },
     "style": "moderne"
   },
@@ -293,21 +449,21 @@
       "y": 23,
       "z": 22
     },
-    "total_blocs": 10120,
+    "total_blocs": 3300,
     "top_materiaux": [
-      "air(67%)",
-      "dirt(9%)",
-      "stone(5%)",
-      "grass_block(2%)",
-      "stripped_spruce_log(2%)",
-      "spruce_stairs(1%)",
-      "mangrove_planks(1%)",
-      "smooth_sandstone(1%)"
+      "dirt(27%)",
+      "stone(15%)",
+      "grass_block(6%)",
+      "stripped_spruce_log(5%)",
+      "spruce_stairs(4%)",
+      "mangrove_planks(4%)",
+      "smooth_sandstone(3%)",
+      "mangrove_stairs(3%)"
     ],
     "ratios": {
-      "stairs": 2.6,
-      "glass": 0.2,
-      "torches": 0.22
+      "stairs": 7.8,
+      "glass": 0.7,
+      "torches": 0.67
     },
     "style": "rustique_organique"
   },
@@ -319,20 +475,20 @@
       "y": 16,
       "z": 16
     },
-    "total_blocs": 5632,
+    "total_blocs": 1347,
     "top_materiaux": [
-      "air(76%)",
-      "white_concrete(3%)",
-      "deepslate_tile_slab(3%)",
-      "black_stained_glass_pane(3%)",
-      "spruce_planks(2%)",
-      "polished_diorite(2%)",
-      "spruce_slab(2%)",
-      "iron_trapdoor(1%)"
+      "white_concrete(13%)",
+      "deepslate_tile_slab(13%)",
+      "black_stained_glass_pane(11%)",
+      "spruce_planks(7%)",
+      "polished_diorite(6%)",
+      "spruce_slab(6%)",
+      "iron_trapdoor(6%)",
+      "gray_concrete(6%)"
     ],
     "ratios": {
-      "stairs": 0.2,
-      "glass": 2.7,
+      "stairs": 0.8,
+      "glass": 11.4,
       "torches": 0
     },
     "style": "moderne"
@@ -345,21 +501,21 @@
       "y": 21,
       "z": 17
     },
-    "total_blocs": 7854,
+    "total_blocs": 2631,
     "top_materiaux": [
-      "air(67%)",
-      "terracotta(7%)",
-      "bone_block(3%)",
-      "yellow_concrete(3%)",
-      "yellow_concrete_powder(3%)",
-      "white_stained_glass(3%)",
-      "polished_diorite(2%)",
-      "iron_trapdoor(2%)"
+      "terracotta(19%)",
+      "bone_block(10%)",
+      "yellow_concrete(10%)",
+      "yellow_concrete_powder(10%)",
+      "white_stained_glass(8%)",
+      "polished_diorite(7%)",
+      "iron_trapdoor(6%)",
+      "spruce_trapdoor(5%)"
     ],
     "ratios": {
-      "stairs": 0.9,
-      "glass": 4,
-      "torches": 0.05
+      "stairs": 2.8,
+      "glass": 11.8,
+      "torches": 0.15
     },
     "style": "desert"
   },
@@ -371,23 +527,23 @@
       "y": 50,
       "z": 20
     },
-    "total_blocs": 48000,
+    "total_blocs": 2655,
     "top_materiaux": [
-      "air(94%)",
-      "cobblestone(1%)",
-      "mossy_cobblestone(1%)",
-      "stone_bricks(1%)",
-      "spruce_fence(1%)",
-      "stone(0%)",
-      "stone_brick_wall(0%)",
-      "cobblestone_slab(0%)"
+      "cobblestone(17%)",
+      "mossy_cobblestone(16%)",
+      "stone_bricks(15%)",
+      "spruce_fence(12%)",
+      "stone(6%)",
+      "stone_brick_wall(5%)",
+      "cobblestone_slab(4%)",
+      "cracked_deepslate_tiles(4%)"
     ],
     "ratios": {
-      "stairs": 0.3,
+      "stairs": 5.1,
       "glass": 0,
       "torches": 0
     },
-    "style": "medieval"
+    "style": "moderne"
   },
   {
     "nom": "30741",
@@ -397,21 +553,21 @@
       "y": 27,
       "z": 17
     },
-    "total_blocs": 12393,
+    "total_blocs": 4124,
     "top_materiaux": [
-      "air(67%)",
-      "spruce_planks(6%)",
-      "oak_wood(4%)",
-      "cobbled_deepslate(4%)",
-      "calcite(3%)",
-      "diorite(3%)",
-      "spruce_trapdoor(3%)",
-      "cobbled_deepslate_stairs(2%)"
+      "spruce_planks(17%)",
+      "oak_wood(12%)",
+      "cobbled_deepslate(11%)",
+      "calcite(9%)",
+      "diorite(9%)",
+      "spruce_trapdoor(8%)",
+      "cobbled_deepslate_stairs(7%)",
+      "dark_oak_stairs(4%)"
     ],
     "ratios": {
-      "stairs": 5.1,
-      "glass": 0.5,
-      "torches": 0.07
+      "stairs": 15.5,
+      "glass": 1.5,
+      "torches": 0.22
     },
     "style": "moderne"
   },
@@ -423,21 +579,21 @@
       "y": 21,
       "z": 15
     },
-    "total_blocs": 9135,
+    "total_blocs": 2692,
     "top_materiaux": [
-      "air(71%)",
-      "stripped_spruce_wood(4%)",
-      "spruce_planks(4%)",
-      "cobbled_deepslate_stairs(4%)",
-      "cobbled_deepslate(3%)",
-      "spruce_trapdoor(2%)",
-      "andesite(2%)",
-      "calcite(2%)"
+      "stripped_spruce_wood(13%)",
+      "spruce_planks(13%)",
+      "cobbled_deepslate_stairs(13%)",
+      "cobbled_deepslate(10%)",
+      "spruce_trapdoor(6%)",
+      "andesite(6%)",
+      "calcite(5%)",
+      "stone(5%)"
     ],
     "ratios": {
-      "stairs": 4.1,
-      "glass": 0.7,
-      "torches": 0.12
+      "stairs": 13.8,
+      "glass": 2.2,
+      "torches": 0.41
     },
     "style": "moderne"
   },
@@ -449,21 +605,21 @@
       "y": 22,
       "z": 23
     },
-    "total_blocs": 9614,
+    "total_blocs": 4855,
     "top_materiaux": [
-      "air(50%)",
-      "spruce_planks(18%)",
-      "stripped_spruce_wood(12%)",
-      "spruce_trapdoor(3%)",
-      "cobbled_deepslate_stairs(3%)",
-      "spruce_stairs(3%)",
-      "calcite(1%)",
-      "diorite(1%)"
+      "spruce_planks(36%)",
+      "stripped_spruce_wood(24%)",
+      "spruce_trapdoor(7%)",
+      "cobbled_deepslate_stairs(7%)",
+      "spruce_stairs(6%)",
+      "calcite(3%)",
+      "diorite(3%)",
+      "stone_bricks(2%)"
     ],
     "ratios": {
-      "stairs": 6.6,
-      "glass": 0.5,
-      "torches": 0.1
+      "stairs": 13.1,
+      "glass": 1.1,
+      "torches": 0.21
     },
     "style": "moderne"
   },
@@ -475,21 +631,21 @@
       "y": 24,
       "z": 25
     },
-    "total_blocs": 16200,
+    "total_blocs": 3617,
     "top_materiaux": [
-      "air(78%)",
-      "stripped_spruce_wood(5%)",
-      "spruce_stairs(4%)",
-      "spruce_planks(3%)",
-      "calcite(2%)",
-      "diorite(2%)",
-      "spruce_trapdoor(1%)",
-      "spruce_wall_sign(1%)"
+      "stripped_spruce_wood(23%)",
+      "spruce_stairs(18%)",
+      "spruce_planks(13%)",
+      "calcite(11%)",
+      "diorite(10%)",
+      "spruce_trapdoor(6%)",
+      "spruce_wall_sign(5%)",
+      "glass_pane(3%)"
     ],
     "ratios": {
-      "stairs": 4.1,
-      "glass": 0.6,
-      "torches": 0.06
+      "stairs": 18.6,
+      "glass": 2.7,
+      "torches": 0.28
     },
     "style": "moderne"
   },
@@ -501,21 +657,21 @@
       "y": 29,
       "z": 15
     },
-    "total_blocs": 10440,
+    "total_blocs": 3944,
     "top_materiaux": [
-      "air(62%)",
-      "stripped_jungle_wood(6%)",
-      "oak_planks(5%)",
-      "stripped_oak_wood(4%)",
-      "stone(3%)",
-      "grass_block(3%)",
-      "jungle_planks(3%)",
-      "stripped_dark_oak_wood(2%)"
+      "stripped_jungle_wood(15%)",
+      "oak_planks(13%)",
+      "stripped_oak_wood(10%)",
+      "stone(8%)",
+      "grass_block(7%)",
+      "jungle_planks(7%)",
+      "stripped_dark_oak_wood(5%)",
+      "stone_bricks(4%)"
     ],
     "ratios": {
-      "stairs": 2.1,
+      "stairs": 5.5,
       "glass": 0,
-      "torches": 0.08
+      "torches": 0.2
     },
     "style": "rustique_organique"
   },
@@ -527,21 +683,21 @@
       "y": 60,
       "z": 29
     },
-    "total_blocs": 60900,
+    "total_blocs": 31035,
     "top_materiaux": [
-      "air(49%)",
-      "granite(6%)",
-      "brown_mushroom_block(6%)",
-      "jungle_planks(4%)",
-      "packed_mud(4%)",
-      "stripped_jungle_wood(4%)",
-      "cobblestone(4%)",
-      "stone(4%)"
+      "granite(13%)",
+      "brown_mushroom_block(11%)",
+      "jungle_planks(9%)",
+      "packed_mud(9%)",
+      "stripped_jungle_wood(9%)",
+      "cobblestone(8%)",
+      "stone(8%)",
+      "stripped_oak_wood(7%)"
     ],
     "ratios": {
-      "stairs": 0.9,
+      "stairs": 1.8,
       "glass": 0,
-      "torches": 0.03
+      "torches": 0.06
     },
     "style": "rustique_organique"
   },
@@ -553,21 +709,21 @@
       "y": 122,
       "z": 121
     },
-    "total_blocs": 1077626,
+    "total_blocs": 320979,
     "top_materiaux": [
-      "air(70%)",
-      "packed_mud(4%)",
-      "oak_planks(4%)",
-      "grass_block(3%)",
-      "stripped_oak_wood(3%)",
-      "granite(3%)",
-      "stone_bricks(2%)",
-      "stripped_jungle_wood(2%)"
+      "packed_mud(13%)",
+      "oak_planks(13%)",
+      "grass_block(10%)",
+      "stripped_oak_wood(9%)",
+      "granite(9%)",
+      "stone_bricks(8%)",
+      "stripped_jungle_wood(6%)",
+      "brown_mushroom_block(6%)"
     ],
     "ratios": {
-      "stairs": 0.3,
+      "stairs": 1,
       "glass": 0,
-      "torches": 0.01
+      "torches": 0.02
     },
     "style": "rustique_organique"
   },
@@ -579,21 +735,21 @@
       "y": 62,
       "z": 30
     },
-    "total_blocs": 39060,
+    "total_blocs": 10089,
     "top_materiaux": [
-      "air(74%)",
-      "stone(3%)",
-      "stripped_jungle_wood(2%)",
-      "stripped_oak_wood(2%)",
-      "oak_planks(2%)",
-      "grass_block(2%)",
-      "calcite(2%)",
-      "stripped_dark_oak_wood(2%)"
+      "stone(10%)",
+      "stripped_jungle_wood(9%)",
+      "stripped_oak_wood(9%)",
+      "oak_planks(6%)",
+      "grass_block(6%)",
+      "calcite(6%)",
+      "stripped_dark_oak_wood(6%)",
+      "jungle_planks(6%)"
     ],
     "ratios": {
-      "stairs": 0.6,
+      "stairs": 2.2,
       "glass": 0,
-      "torches": 0.04
+      "torches": 0.15
     },
     "style": "moderne"
   },
@@ -605,21 +761,21 @@
       "y": 64,
       "z": 38
     },
-    "total_blocs": 82688,
+    "total_blocs": 24446,
     "top_materiaux": [
-      "air(70%)",
-      "oak_planks(6%)",
-      "stripped_oak_wood(6%)",
-      "stripped_jungle_wood(4%)",
-      "jungle_planks(2%)",
-      "stone(2%)",
-      "grass_block(1%)",
-      "packed_mud(1%)"
+      "oak_planks(21%)",
+      "stripped_oak_wood(19%)",
+      "stripped_jungle_wood(12%)",
+      "jungle_planks(6%)",
+      "stone(6%)",
+      "grass_block(5%)",
+      "packed_mud(4%)",
+      "brown_mushroom_block(3%)"
     ],
     "ratios": {
-      "stairs": 0.6,
+      "stairs": 2,
       "glass": 0,
-      "torches": 0.01
+      "torches": 0.05
     },
     "style": "rustique_organique"
   },
@@ -631,21 +787,21 @@
       "y": 38,
       "z": 57
     },
-    "total_blocs": 173280,
+    "total_blocs": 12098,
     "top_materiaux": [
-      "air(93%)",
-      "grass_block(2%)",
-      "stone(1%)",
-      "stripped_oak_log(1%)",
-      "spruce_planks(1%)",
-      "deepslate_bricks(1%)",
-      "cobblestone(1%)",
-      "deepslate_brick_stairs(0%)"
+      "grass_block(27%)",
+      "stone(12%)",
+      "stripped_oak_log(9%)",
+      "spruce_planks(9%)",
+      "deepslate_bricks(8%)",
+      "cobblestone(8%)",
+      "deepslate_brick_stairs(6%)",
+      "dirt(2%)"
     ],
     "ratios": {
-      "stairs": 0.5,
-      "glass": 0.1,
-      "torches": 0.02
+      "stairs": 7.4,
+      "glass": 2,
+      "torches": 0.34
     },
     "style": "rustique_organique"
   },
@@ -657,21 +813,21 @@
       "y": 55,
       "z": 29
     },
-    "total_blocs": 57420,
+    "total_blocs": 13475,
     "top_materiaux": [
-      "air(77%)",
-      "oak_planks(5%)",
-      "stripped_oak_wood(3%)",
-      "grass_block(2%)",
-      "stripped_jungle_wood(2%)",
-      "stone(1%)",
-      "stripped_dark_oak_wood(1%)",
-      "calcite(1%)"
+      "oak_planks(22%)",
+      "stripped_oak_wood(12%)",
+      "grass_block(8%)",
+      "stripped_jungle_wood(8%)",
+      "stone(5%)",
+      "stripped_dark_oak_wood(5%)",
+      "calcite(3%)",
+      "warped_planks(3%)"
     ],
     "ratios": {
-      "stairs": 1,
+      "stairs": 4.4,
       "glass": 0,
-      "torches": 0.03
+      "torches": 0.13
     },
     "style": "moderne"
   },
@@ -683,21 +839,21 @@
       "y": 35,
       "z": 99
     },
-    "total_blocs": 377685,
+    "total_blocs": 200965,
     "top_materiaux": [
-      "air(47%)",
-      "dirt(33%)",
-      "stone(7%)",
-      "water(2%)",
-      "grass_block(1%)",
-      "oak_leaves(1%)",
+      "dirt(62%)",
+      "stone(13%)",
+      "water(4%)",
+      "grass_block(3%)",
+      "oak_leaves(2%)",
       "smooth_sandstone(1%)",
-      "andesite(1%)"
+      "andesite(1%)",
+      "short_grass(1%)"
     ],
     "ratios": {
-      "stairs": 0.4,
+      "stairs": 0.7,
       "glass": 0.1,
-      "torches": 0.04
+      "torches": 0.08
     },
     "style": "desert"
   }

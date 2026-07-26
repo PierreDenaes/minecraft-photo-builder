@@ -46,8 +46,9 @@ async function extractOne(file) {
   let stairs = 0, glass = 0, torches = 0, total = 0;
   for (let y = 0; y < s.height; y++) for (let x = 0; x < s.width; x++) for (let z = 0; z < s.length; z++) {
     const b = s.getBlock({ x, y, z });
-    if (!b || b.type === 'minecraft:air') continue;
+    if (!b) continue;
     const name = b.type.replace(/^minecraft:/, '');
+    if (name === 'air' || name === 'cave_air' || name === 'void_air') continue;
     counts.set(name, (counts.get(name) || 0) + 1);
     total++;
     if (/_stairs/.test(name)) stairs++;

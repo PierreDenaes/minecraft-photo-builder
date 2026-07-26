@@ -64,8 +64,9 @@ async function loadSchema(nom) {
     for (let x = 0; x < s.width; x++) {
       for (let z = 0; z < s.length; z++) {
         const b = s.getBlock({ x, y, z });
-        if (!b || b.type === 'minecraft:air') continue;
+        if (!b) continue;
         const name = b.type.replace(/^minecraft:/, '');
+        if (name === 'air' || name === 'cave_air' || name === 'void_air') continue;
         if (valid.size > 0 && !valid.has(name)) { unknown.add(name); continue; }
         blocks.push({ x, y, z, block: name });
         palette.add(name);
