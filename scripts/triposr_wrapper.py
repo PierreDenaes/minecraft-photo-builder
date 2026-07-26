@@ -16,6 +16,13 @@ import sys
 import os
 from pathlib import Path
 
+# TripoSR n'a pas de setup.py ; le module `tsr` vit dans vendor/TripoSR/tsr.
+# Ajoute ce chemin au sys.path pour que l'import fonctionne peu importe le cwd.
+_ROOT = Path(__file__).resolve().parent.parent
+_TRIPOSR_DIR = _ROOT / "vendor" / "TripoSR"
+if _TRIPOSR_DIR.exists():
+    sys.path.insert(0, str(_TRIPOSR_DIR))
+
 
 def die(msg):
     print(f"[triposr_wrapper] {msg}", file=sys.stderr)
