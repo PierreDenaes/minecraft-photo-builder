@@ -300,3 +300,9 @@ test('!portrait donne le lien mode=portrait', () => {
   assert.match(messages[0], /upload\/Steve\?mode=portrait/);
 });
 
+
+test('!schema donne le lien mode=schema', () => {
+  const { messages, handle } = setup();
+  handle('Steve', '!schema');
+  assert.match(messages[0], /upload\/Steve\?mode=schema/);
+});

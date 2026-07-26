@@ -62,6 +62,11 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
         return;
       }
 
+      if (cmd === '!schema') {
+        bot.chat(`${username} : bâtiment fidèle depuis la bibliothèque de schemas → http://${config.web.public_host}:${config.web.port}/upload/${username}?mode=schema`);
+        return;
+      }
+
       if (cmd === '!go') {
         const pkey = username.toLowerCase();
         const p = pending.get(pkey);

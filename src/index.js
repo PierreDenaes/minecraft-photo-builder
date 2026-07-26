@@ -4,6 +4,7 @@ const path = require('node:path');
 const mineflayer = require('mineflayer');
 const config = require('../config.json');
 const { analyzeImage, compareToPhoto } = require('./vision');
+const { loadSchema, remapPalette, chooseSchema } = require('./schemas');
 const { generateStructure } = require('./generator');
 const { validateStructure } = require('./optimizer');
 const { Builder } = require('./builder');
@@ -294,6 +295,41 @@ function createBot(cfg) {
     return proposeStructure(username, blocks, { type_batiment: `modèle 3D (${ext})` }, { maxSize: Math.max(dio.size_x, dio.max_y, dio.size_z), maxBlocks: dio.max_blocks });
   }
 
+  async function onSchema(username, buffer, mimeType) {
+    bot.chat(`Photo reçue de ${username} — étape 1/3 : lecture de la photo...`);
+    const base64 = buffer.toString('base64');
+    const description = await analyzeImage(base64, mimeType, {
+      maxSize: cfg.limits.max_size, validBlocks
+    });
+    if (description.erreur) {
+      bot.chat(`${username} : analyse impossible — ${description.erreur}`);
+      return `erreur : ${description.erreur}`;
+    }
+    bot.chat(`Étape 2/3 : sélection du schema le mieux adapté (type=${description.type_batiment}, style=${description.style})...`);
+    const choice = await chooseSchema(description);
+    if (!choice) {
+      bot.chat(`${username} : aucun schema dans la bibliothèque ne correspond à ${description.type_batiment} ${description.style}. Utilise !photo pour une génération par primitives.`);
+      return 'aucun schema adapté';
+    }
+    bot.chat(`Schema sélectionné : ${choice.nom} (${choice.style}, ${choice.type_batiment}, ${choice.emprise.x}×${choice.emprise.z}×${choice.emprise.y})`);
+    bot.chat('Étape 3/3 : chargement et adaptation de la palette...');
+    const schema = await loadSchema(choice.nom);
+    // Remap : les murs principaux du schema deviennent la palette de la photo
+    const remap = {};
+    const p = description.palette_blocs || {};
+    if (p.murs && choice.materiaux_base.murs_principaux !== p.murs) {
+      remap[choice.materiaux_base.murs_principaux] = p.murs;
+    }
+    if (p.toit && choice.materiaux_base.toit && choice.materiaux_base.toit !== p.toit) {
+      remap[choice.materiaux_base.toit] = p.toit;
+    }
+    const adapted = Object.keys(remap).length > 0 ? remapPalette(schema, remap) : schema;
+    return proposeStructure(username, adapted.blocks,
+      { type_batiment: `${choice.type_batiment} (schema ${choice.nom})` },
+      { maxSize: Math.max(schema.dims.x, schema.dims.y, schema.dims.z),
+        maxBlocks: cfg.limits.max_blocks });
+  }
+
   async function onPortrait(username, buffer) {
     bot.chat(`Photo reçue de ${username}, fresque pixel-art en préparation...`);
     const { data, info } = await sharp(buffer).removeAlpha()
@@ -358,7 +394,7 @@ function createBot(cfg) {
     return proposeStructure(username, meubles, description, { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks });
   }
 
-  const app = createWebServer({ onPhoto, onDiorama, onModel, onPortrait });
+  const app = createWebServer({ onPhoto, onDiorama, onModel, onPortrait, onSchema });
   app.listen(cfg.web.port, () =>
     console.log(`[web] upload sur http://${cfg.web.public_host}:${cfg.web.port}/upload/<pseudo>`)
   );

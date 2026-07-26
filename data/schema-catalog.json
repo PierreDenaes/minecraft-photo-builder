@@ -1,0 +1,840 @@
+[
+  {
+    "nom": "29464",
+    "fichier": "29464.schem",
+    "style": "moderne",
+    "type_batiment": "manoir",
+    "emprise": {
+      "x": 34,
+      "y": 21,
+      "z": 33
+    },
+    "tags": [
+      "moderne",
+      "moyen",
+      "beton"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "white_concrete",
+      "accent": "gray_concrete",
+      "toit": "spruce_trapdoor",
+      "tous": [
+        "white_concrete",
+        "gray_concrete",
+        "spruce_trapdoor",
+        "smooth_stone"
+      ]
+    }
+  },
+  {
+    "nom": "30216",
+    "fichier": "30216.schem",
+    "style": "autre",
+    "type_batiment": "manoir",
+    "emprise": {
+      "x": 183,
+      "y": 33,
+      "z": 79
+    },
+    "tags": [
+      "autre",
+      "grand",
+      "vitre"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "polished_andesite",
+      "accent": "white_stained_glass",
+      "toit": "coal_block",
+      "tous": [
+        "polished_andesite",
+        "white_stained_glass",
+        "coal_block",
+        "stone",
+        "smooth_stone",
+        "polished_granite_slab"
+      ]
+    }
+  },
+  {
+    "nom": "30457",
+    "fichier": "30457.schem",
+    "style": "moderne",
+    "type_batiment": "villa",
+    "emprise": {
+      "x": 29,
+      "y": 27,
+      "z": 26
+    },
+    "tags": [
+      "moderne",
+      "moyen",
+      "pierre_taillee",
+      "vitre",
+      "detaille"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "quartz_pillar",
+      "accent": "calcite",
+      "toit": "smooth_basalt",
+      "tous": [
+        "quartz_pillar",
+        "calcite",
+        "smooth_basalt",
+        "deepslate_tile_stairs",
+        "deepslate_tiles",
+        "light_blue_stained_glass_pane"
+      ]
+    }
+  },
+  {
+    "nom": "30686",
+    "fichier": "30686.schem",
+    "style": "autre",
+    "type_batiment": "manoir",
+    "emprise": {
+      "x": 81,
+      "y": 77,
+      "z": 80
+    },
+    "tags": [
+      "autre",
+      "grand",
+      "bois"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "acacia_planks",
+      "accent": "white_wool",
+      "toit": "spruce_planks",
+      "tous": [
+        "acacia_planks",
+        "white_wool",
+        "spruce_planks",
+        "acacia_slab",
+        "oak_log",
+        "spruce_slab"
+      ]
+    }
+  },
+  {
+    "nom": "30687",
+    "fichier": "30687.schem",
+    "style": "autre",
+    "type_batiment": "maison",
+    "emprise": {
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "tags": [
+      "autre",
+      "petit"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "stone_bricks",
+      "accent": "stone",
+      "toit": "dark_oak_planks",
+      "tous": []
+    }
+  },
+  {
+    "nom": "30693",
+    "fichier": "30693.schem",
+    "style": "rustique_organique",
+    "type_batiment": "tour",
+    "emprise": {
+      "x": 23,
+      "y": 35,
+      "z": 24
+    },
+    "tags": [
+      "rustique_organique",
+      "moyen",
+      "beton",
+      "bois",
+      "pierre",
+      "detaille"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "gray_concrete",
+      "accent": "stripped_spruce_wood",
+      "toit": "spruce_trapdoor",
+      "tous": [
+        "gray_concrete",
+        "stripped_spruce_wood",
+        "spruce_trapdoor",
+        "cracked_stone_bricks",
+        "spruce_planks",
+        "dark_oak_stairs",
+        "spruce_stairs"
+      ]
+    }
+  },
+  {
+    "nom": "30697",
+    "fichier": "30697.schem",
+    "style": "moderne",
+    "type_batiment": "villa",
+    "emprise": {
+      "x": 17,
+      "y": 21,
+      "z": 21
+    },
+    "tags": [
+      "moderne",
+      "petit",
+      "beton",
+      "pierre_taillee",
+      "vitre"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "white_concrete",
+      "accent": "smooth_quartz_slab",
+      "toit": "light_gray_terracotta",
+      "tous": [
+        "white_concrete",
+        "smooth_quartz_slab",
+        "light_gray_terracotta",
+        "light_blue_stained_glass",
+        "deepslate_tile_wall",
+        "deepslate_tiles",
+        "smooth_stone"
+      ]
+    }
+  },
+  {
+    "nom": "30698",
+    "fichier": "30698.schem",
+    "style": "moderne",
+    "type_batiment": "villa",
+    "emprise": {
+      "x": 18,
+      "y": 12,
+      "z": 16
+    },
+    "tags": [
+      "moderne",
+      "petit",
+      "beton",
+      "vitre"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "white_concrete",
+      "accent": "gray_concrete",
+      "toit": "terracotta",
+      "tous": [
+        "white_concrete",
+        "gray_concrete",
+        "terracotta",
+        "light_gray_concrete",
+        "light_blue_stained_glass_pane",
+        "light_blue_stained_glass",
+        "polished_diorite"
+      ]
+    }
+  },
+  {
+    "nom": "30699",
+    "fichier": "30699.schem",
+    "style": "moderne",
+    "type_batiment": "villa",
+    "emprise": {
+      "x": 22,
+      "y": 17,
+      "z": 21
+    },
+    "tags": [
+      "moderne",
+      "petit",
+      "beton",
+      "pierre_taillee"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "terracotta",
+      "accent": "light_blue_concrete_powder",
+      "toit": "light_blue_concrete",
+      "tous": [
+        "terracotta",
+        "light_blue_concrete_powder",
+        "light_blue_concrete",
+        "smooth_stone",
+        "smooth_quartz",
+        "stone",
+        "quartz_stairs"
+      ]
+    }
+  },
+  {
+    "nom": "30700",
+    "fichier": "30700.schem",
+    "style": "autre",
+    "type_batiment": "manoir",
+    "emprise": {
+      "x": 49,
+      "y": 30,
+      "z": 74
+    },
+    "tags": [
+      "autre",
+      "grand",
+      "bois"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "spruce_planks",
+      "accent": "spruce_log",
+      "toit": "bricks",
+      "tous": [
+        "spruce_planks",
+        "spruce_log",
+        "bricks",
+        "deepslate_brick_slab",
+        "dark_oak_planks"
+      ]
+    }
+  },
+  {
+    "nom": "30725",
+    "fichier": "30725.schem",
+    "style": "rustique_organique",
+    "type_batiment": "maison",
+    "emprise": {
+      "x": 19,
+      "y": 25,
+      "z": 20
+    },
+    "tags": [
+      "rustique_organique",
+      "moyen",
+      "bois",
+      "pierre"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "diorite",
+      "accent": "stone",
+      "toit": "stripped_dark_oak_log",
+      "tous": [
+        "diorite",
+        "stone",
+        "stripped_dark_oak_log",
+        "cobblestone"
+      ]
+    }
+  },
+  {
+    "nom": "30726",
+    "fichier": "30726.schem",
+    "style": "moderne",
+    "type_batiment": "villa",
+    "emprise": {
+      "x": 23,
+      "y": 27,
+      "z": 25
+    },
+    "tags": [
+      "moderne",
+      "moyen",
+      "bois",
+      "pierre",
+      "detaille"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "stripped_dark_oak_wood",
+      "accent": "spruce_planks",
+      "toit": "stone_bricks",
+      "tous": [
+        "stripped_dark_oak_wood",
+        "spruce_planks",
+        "stone_bricks",
+        "deepslate_tiles"
+      ]
+    }
+  },
+  {
+    "nom": "30727",
+    "fichier": "30727.schem",
+    "style": "rustique_organique",
+    "type_batiment": "maison",
+    "emprise": {
+      "x": 20,
+      "y": 23,
+      "z": 22
+    },
+    "tags": [
+      "rustique_organique",
+      "moyen",
+      "bois",
+      "detaille"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "stone",
+      "accent": "stripped_spruce_log",
+      "toit": "spruce_stairs",
+      "tous": [
+        "stone",
+        "stripped_spruce_log",
+        "spruce_stairs",
+        "mangrove_planks",
+        "smooth_sandstone"
+      ]
+    }
+  },
+  {
+    "nom": "30732",
+    "fichier": "30732.schem",
+    "style": "moderne",
+    "type_batiment": "villa",
+    "emprise": {
+      "x": 22,
+      "y": 16,
+      "z": 16
+    },
+    "tags": [
+      "moderne",
+      "petit",
+      "beton",
+      "bois",
+      "vitre"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "white_concrete",
+      "accent": "deepslate_tile_slab",
+      "toit": "black_stained_glass_pane",
+      "tous": [
+        "white_concrete",
+        "deepslate_tile_slab",
+        "black_stained_glass_pane",
+        "spruce_planks",
+        "polished_diorite",
+        "spruce_slab",
+        "iron_trapdoor"
+      ]
+    }
+  },
+  {
+    "nom": "30733",
+    "fichier": "30733.schem",
+    "style": "desert",
+    "type_batiment": "maison",
+    "emprise": {
+      "x": 22,
+      "y": 21,
+      "z": 17
+    },
+    "tags": [
+      "desert",
+      "petit",
+      "beton",
+      "vitre"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "terracotta",
+      "accent": "bone_block",
+      "toit": "yellow_concrete",
+      "tous": [
+        "terracotta",
+        "bone_block",
+        "yellow_concrete",
+        "yellow_concrete_powder",
+        "white_stained_glass",
+        "polished_diorite",
+        "iron_trapdoor"
+      ]
+    }
+  },
+  {
+    "nom": "30737",
+    "fichier": "30737.schem",
+    "style": "medieval",
+    "type_batiment": "manoir",
+    "emprise": {
+      "x": 48,
+      "y": 50,
+      "z": 20
+    },
+    "tags": [
+      "medieval",
+      "grand",
+      "pierre"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "cobblestone",
+      "accent": "mossy_cobblestone",
+      "toit": "stone_bricks",
+      "tous": [
+        "cobblestone",
+        "mossy_cobblestone",
+        "stone_bricks",
+        "spruce_fence",
+        "stone",
+        "stone_brick_wall",
+        "cobblestone_slab"
+      ]
+    }
+  },
+  {
+    "nom": "30741",
+    "fichier": "30741.schem",
+    "style": "moderne",
+    "type_batiment": "villa",
+    "emprise": {
+      "x": 27,
+      "y": 27,
+      "z": 17
+    },
+    "tags": [
+      "moderne",
+      "moyen",
+      "pierre_taillee",
+      "bois",
+      "detaille"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "spruce_planks",
+      "accent": "oak_wood",
+      "toit": "cobbled_deepslate",
+      "tous": [
+        "spruce_planks",
+        "oak_wood",
+        "cobbled_deepslate",
+        "calcite",
+        "diorite",
+        "spruce_trapdoor",
+        "cobbled_deepslate_stairs"
+      ]
+    }
+  },
+  {
+    "nom": "30742",
+    "fichier": "30742.schem",
+    "style": "moderne",
+    "type_batiment": "villa",
+    "emprise": {
+      "x": 29,
+      "y": 21,
+      "z": 15
+    },
+    "tags": [
+      "moderne",
+      "moyen",
+      "pierre_taillee",
+      "bois",
+      "detaille"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "stripped_spruce_wood",
+      "accent": "spruce_planks",
+      "toit": "cobbled_deepslate_stairs",
+      "tous": [
+        "stripped_spruce_wood",
+        "spruce_planks",
+        "cobbled_deepslate_stairs",
+        "cobbled_deepslate",
+        "spruce_trapdoor",
+        "andesite",
+        "calcite"
+      ]
+    }
+  },
+  {
+    "nom": "30743",
+    "fichier": "30743.schem",
+    "style": "moderne",
+    "type_batiment": "villa",
+    "emprise": {
+      "x": 19,
+      "y": 22,
+      "z": 23
+    },
+    "tags": [
+      "moderne",
+      "moyen",
+      "pierre_taillee",
+      "bois",
+      "detaille"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "spruce_planks",
+      "accent": "stripped_spruce_wood",
+      "toit": "spruce_trapdoor",
+      "tous": [
+        "spruce_planks",
+        "stripped_spruce_wood",
+        "spruce_trapdoor",
+        "cobbled_deepslate_stairs",
+        "spruce_stairs",
+        "calcite",
+        "diorite"
+      ]
+    }
+  },
+  {
+    "nom": "30750",
+    "fichier": "30750.schem",
+    "style": "moderne",
+    "type_batiment": "villa",
+    "emprise": {
+      "x": 27,
+      "y": 24,
+      "z": 25
+    },
+    "tags": [
+      "moderne",
+      "moyen",
+      "pierre_taillee",
+      "bois",
+      "detaille"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "stripped_spruce_wood",
+      "accent": "spruce_stairs",
+      "toit": "spruce_planks",
+      "tous": [
+        "stripped_spruce_wood",
+        "spruce_stairs",
+        "spruce_planks",
+        "calcite",
+        "diorite",
+        "spruce_trapdoor",
+        "spruce_wall_sign"
+      ]
+    }
+  },
+  {
+    "nom": "30803",
+    "fichier": "30803.schem",
+    "style": "rustique_organique",
+    "type_batiment": "tour",
+    "emprise": {
+      "x": 24,
+      "y": 29,
+      "z": 15
+    },
+    "tags": [
+      "rustique_organique",
+      "moyen",
+      "bois",
+      "detaille"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "stripped_jungle_wood",
+      "accent": "oak_planks",
+      "toit": "stripped_oak_wood",
+      "tous": [
+        "stripped_jungle_wood",
+        "oak_planks",
+        "stripped_oak_wood",
+        "stone",
+        "jungle_planks",
+        "stripped_dark_oak_wood"
+      ]
+    }
+  },
+  {
+    "nom": "30804",
+    "fichier": "30804.schem",
+    "style": "rustique_organique",
+    "type_batiment": "manoir",
+    "emprise": {
+      "x": 35,
+      "y": 60,
+      "z": 29
+    },
+    "tags": [
+      "rustique_organique",
+      "grand",
+      "bois",
+      "champignon",
+      "pierre"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "granite",
+      "accent": "brown_mushroom_block",
+      "toit": "jungle_planks",
+      "tous": [
+        "granite",
+        "brown_mushroom_block",
+        "jungle_planks",
+        "packed_mud",
+        "stripped_jungle_wood",
+        "cobblestone",
+        "stone"
+      ]
+    }
+  },
+  {
+    "nom": "30808",
+    "fichier": "30808.schem",
+    "style": "rustique_organique",
+    "type_batiment": "manoir",
+    "emprise": {
+      "x": 73,
+      "y": 122,
+      "z": 121
+    },
+    "tags": [
+      "rustique_organique",
+      "grand",
+      "bois",
+      "champignon",
+      "pierre"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "packed_mud",
+      "accent": "oak_planks",
+      "toit": "stripped_oak_wood",
+      "tous": [
+        "packed_mud",
+        "oak_planks",
+        "stripped_oak_wood",
+        "granite",
+        "stone_bricks",
+        "stripped_jungle_wood"
+      ]
+    }
+  },
+  {
+    "nom": "30823",
+    "fichier": "30823.schem",
+    "style": "moderne",
+    "type_batiment": "villa",
+    "emprise": {
+      "x": 21,
+      "y": 62,
+      "z": 30
+    },
+    "tags": [
+      "moderne",
+      "grand",
+      "pierre_taillee",
+      "bois"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "stone",
+      "accent": "stripped_jungle_wood",
+      "toit": "stripped_oak_wood",
+      "tous": [
+        "stone",
+        "stripped_jungle_wood",
+        "stripped_oak_wood",
+        "oak_planks",
+        "calcite",
+        "stripped_dark_oak_wood"
+      ]
+    }
+  },
+  {
+    "nom": "30843",
+    "fichier": "30843.schem",
+    "style": "rustique_organique",
+    "type_batiment": "manoir",
+    "emprise": {
+      "x": 34,
+      "y": 64,
+      "z": 38
+    },
+    "tags": [
+      "rustique_organique",
+      "grand",
+      "bois",
+      "champignon"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "oak_planks",
+      "accent": "stripped_oak_wood",
+      "toit": "stripped_jungle_wood",
+      "tous": [
+        "oak_planks",
+        "stripped_oak_wood",
+        "stripped_jungle_wood",
+        "jungle_planks",
+        "stone",
+        "packed_mud"
+      ]
+    }
+  },
+  {
+    "nom": "30844",
+    "fichier": "30844.schem",
+    "style": "rustique_organique",
+    "type_batiment": "manoir",
+    "emprise": {
+      "x": 80,
+      "y": 38,
+      "z": 57
+    },
+    "tags": [
+      "rustique_organique",
+      "grand",
+      "bois",
+      "pierre"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "stone",
+      "accent": "stripped_oak_log",
+      "toit": "spruce_planks",
+      "tous": [
+        "stone",
+        "stripped_oak_log",
+        "spruce_planks",
+        "deepslate_bricks",
+        "cobblestone",
+        "deepslate_brick_stairs"
+      ]
+    }
+  },
+  {
+    "nom": "30853",
+    "fichier": "30853.schem",
+    "style": "moderne",
+    "type_batiment": "manoir",
+    "emprise": {
+      "x": 36,
+      "y": 55,
+      "z": 29
+    },
+    "tags": [
+      "moderne",
+      "grand",
+      "pierre_taillee",
+      "bois"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "oak_planks",
+      "accent": "stripped_oak_wood",
+      "toit": "stripped_jungle_wood",
+      "tous": [
+        "oak_planks",
+        "stripped_oak_wood",
+        "stripped_jungle_wood",
+        "stone",
+        "stripped_dark_oak_wood",
+        "calcite"
+      ]
+    }
+  },
+  {
+    "nom": "italian2",
+    "fichier": "italian2.schem",
+    "style": "desert",
+    "type_batiment": "manoir",
+    "emprise": {
+      "x": 109,
+      "y": 35,
+      "z": 99
+    },
+    "tags": [
+      "desert",
+      "grand"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "stone",
+      "accent": "oak_leaves",
+      "toit": "smooth_sandstone",
+      "tous": [
+        "stone",
+        "oak_leaves",
+        "smooth_sandstone",
+        "andesite"
+      ]
+    }
+  }
+]

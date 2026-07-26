@@ -165,3 +165,24 @@ test('image en mode portrait routée vers onPortrait', async () => {
   server.close();
 });
 
+
+test('mode=schema route vers onSchema', async () => {
+  let called = null;
+  const app = createWebServer({
+    onPhoto: async () => 'photo',
+    onDiorama: async () => 'diorama',
+    onModel: async () => 'model',
+    onPortrait: async () => 'portrait',
+    onSchema: async () => { called = 'schema'; return 'ok schema'; }
+  });
+  const server = app.listen(0);
+  const fd = new FormData();
+  fd.append('username', 'Steve');
+  fd.append('mode', 'schema');
+  fd.append('photo', new Blob([Buffer.from([0xff, 0xd8, 0xff])], { type: 'image/jpeg' }), 'x.jpg');
+  const res = await fetch(`http://localhost:${server.address().port}/build-from-photo`, { method: 'POST', body: fd });
+  const body = await res.json();
+  server.close();
+  assert.strictEqual(body.ok, true);
+  assert.strictEqual(called, 'schema');
+});

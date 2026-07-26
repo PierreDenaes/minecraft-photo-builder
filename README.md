@@ -10,6 +10,7 @@ Bot Minecraft (Mineflayer) qui construit en jeu à partir d'une **photo**, d'un 
 | `!diorama` | Copie conforme : photo de paysage (profondeur estimée localement par Depth Anything V2) **ou** modèle 3D `.obj`/`.stl`/`.glb` (textures, couleurs de sommets et STRIP/FAN lus). Mode « inspire » par défaut : le modèle sert de référence, l'IA reconstruit un bâtiment habitable posé sur un relief naturel avec sous-sol (strates, cavités, minerais) et végétation. Cadrage intelligent : une maison seule est posée seule, sans colline inventée |
 | `!statue` | Statue voxelisée d'un modèle 3D de personnage, sur socle, palette couleurs vives. Le fichier fait foi pour l'orientation : `!tourner` (90° yaw) et `!redresser` (pitch) avant **ou** après construction |
 | `!portrait` | Fresque murale pixel-art d'un bloc d'épaisseur avec cadre, mapping couleur sur toute la palette |
+| `!schema` | Bâtiment fidèle depuis la bibliothèque de schemas (`docs/schem/*.schem`) : la vision détecte le style, le sélecteur choisit le schema le plus proche, la palette est adaptée aux couleurs de la photo. Refuse honnêtement si rien ne correspond. |
 | `!go` / `!cancel` | Confirme ou annule la proposition en attente |
 | `!status` | Avancement de la construction |
 | `!undo` | Restaure la zone d'avant la dernière construction |

@@ -1,64 +1,88 @@
-const { Schematic } = require('prismarine-schematic');
-const Vec3 = require('vec3');
+const { loadSchematic } = require('@enginehub/schematicjs');
+const nbt = require('@enginehub/nbt-ts');
+const zlib = require('zlib');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// Extrait par schema : nom, dims, matériaux dominants, ratios structurels.
-// Le prompt utilise ces stats pour donner au LLM le VOCABULAIRE des styles réels
-// (« manoir organique : granite + jungle_planks + stripped_jungle_wood, stairs 5%+ »).
+// Extrait par schema : dims, matériaux dominants, ratios, style deviné.
+// Utilise @enginehub/schematicjs (support Sponge v1/v2/v3 + MCEdit), là où
+// prismarine-schematic ne lisait que v2. Le NBT vient de @enginehub/nbt-ts.
 
 const SCHEM_DIR = path.join(__dirname, '../docs/schem');
 const OUT = path.join(__dirname, '../data/schem-refs.json');
 
-async function extractOne(file) {
-  const buf = fs.readFileSync(path.join(SCHEM_DIR, file));
-  let s;
-  try { s = await Schematic.read(buf, '1.20.4'); } catch { return null; }
-  const counts = new Map();
-  let stairs = 0, doors = 0, glass = 0, water = 0, torches = 0, total = 0;
-  for (let y = 0; y < s.size.y; y++) for (let x = 0; x < s.size.x; x++) for (let z = 0; z < s.size.z; z++) {
-    const b = await s.getBlock(new Vec3(x, y, z));
-    if (!b || b.name === 'air') continue;
-    counts.set(b.name, (counts.get(b.name) || 0) + 1);
-    total++;
-    if (/_stairs/.test(b.name)) stairs++;
-    if (/_door/.test(b.name)) doors++;
-    if (/glass/.test(b.name)) glass++;
-    if (b.name === 'water') water++;
-    if (/torch|lantern/.test(b.name)) torches++;
+// Convertit récursivement un plain object NBT en Map (attendu par schematicjs)
+function toMap(v) {
+  if (v && typeof v === 'object' && !(v instanceof Map) && !(v instanceof Buffer) && !Array.isArray(v) && !ArrayBuffer.isView(v)) {
+    if ('value' in v && Object.keys(v).length <= 2) return v; // Byte/Short/Int/Long/Float boxed
+    const m = new Map();
+    for (const [k, val] of Object.entries(v)) m.set(k, toMap(val));
+    return m;
   }
-  const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-  return {
-    nom: file.replace(/\.schem$/, ''),
-    dims: { x: s.size.x, y: s.size.y, z: s.size.z },
-    total_blocs: total,
-    top_materiaux: top.map(([n, c]) => `${n}(${Math.round(100 * c / total)}%)`),
-    ratios: {
-      stairs: +(100 * stairs / total).toFixed(1),
-      glass: +(100 * glass / total).toFixed(1),
-      torches: +(100 * torches / total).toFixed(2)
-    }
-  };
+  if (Array.isArray(v)) return v.map(toMap);
+  return v;
 }
 
-// Devine un style-clé à partir des matériaux dominants
 function guessStyle(top) {
   const s = top.join(' ');
   if (/white_concrete|black_stained_glass|deepslate_tile/.test(s)) return 'moderne';
+  if (/quartz|smooth_basalt|calcite/.test(s)) return 'moderne';
   if (/packed_mud|jungle|brown_mushroom|stripped/.test(s)) return 'rustique_organique';
   if (/stone_bricks|cobblestone|dark_oak_log/.test(s)) return 'medieval';
   if (/sandstone|smooth_sandstone|terracotta/.test(s)) return 'desert';
   return 'autre';
 }
 
+async function extractOne(file) {
+  let raw;
+  try { raw = fs.readFileSync(path.join(SCHEM_DIR, file)); }
+  catch { return null; }
+  try { raw = zlib.gunzipSync(raw); } catch { /* déjà décompressé */ }
+  let value;
+  try { ({ value } = nbt.decode(raw)); } catch { return null; }
+  let s;
+  try { s = loadSchematic(toMap(value)); } catch { return null; }
+  const counts = new Map();
+  let stairs = 0, glass = 0, torches = 0, total = 0;
+  for (let y = 0; y < s.height; y++) for (let x = 0; x < s.width; x++) for (let z = 0; z < s.length; z++) {
+    const b = s.getBlock({ x, y, z });
+    if (!b || b.type === 'minecraft:air') continue;
+    const name = b.type.replace(/^minecraft:/, '');
+    counts.set(name, (counts.get(name) || 0) + 1);
+    total++;
+    if (/_stairs/.test(name)) stairs++;
+    if (/glass/.test(name)) glass++;
+    if (/torch|lantern/.test(name)) torches++;
+  }
+  if (total === 0) return null;
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  return {
+    nom: file.replace(/\.schem$/, ''),
+    fichier: file,
+    dims: { x: s.width, y: s.height, z: s.length },
+    total_blocs: total,
+    top_materiaux: top.map(([n, c]) => `${n}(${Math.round(100 * c / total)}%)`),
+    ratios: {
+      stairs: +(100 * stairs / total).toFixed(1),
+      glass: +(100 * glass / total).toFixed(1),
+      torches: +(100 * torches / total).toFixed(2)
+    },
+    style: guessStyle(top.map(([n]) => n))
+  };
+}
+
 (async () => {
-  const files = fs.readdirSync(SCHEM_DIR).filter((f) => f.endsWith('.schem'));
+  const files = fs.readdirSync(SCHEM_DIR)
+    .filter((f) => f.endsWith('.schem') && !/ \(\d+\)\.schem$/.test(f));
   const refs = [];
   for (const f of files) {
     const r = await extractOne(f);
-    if (!r) { console.warn(`[schem] ${f} illisible — ignoré`); continue; }
-    if (r.total_blocs === 0) { console.warn(`[schem] ${f} vide (palette non lue) — ignoré`); continue; }
-    r.style = guessStyle(r.top_materiaux);
+    if (!r) { console.warn(`[schem] ${f} illisible ou vide — ignoré`); continue; }
+    // écarte les monstres (>200 blocs de côté = scène entière, pas un bâtiment isolé)
+    if (Math.max(r.dims.x, r.dims.y, r.dims.z) > 200) {
+      console.warn(`[schem] ${f} trop grand (${r.dims.x}×${r.dims.y}×${r.dims.z}) — ignoré`);
+      continue;
+    }
     refs.push(r);
   }
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
