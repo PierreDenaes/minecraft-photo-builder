@@ -9,7 +9,9 @@ const { spawn } = require('node:child_process');
 
 const DEFAULT_SCRIPT = path.join(__dirname, '..', 'scripts', 'triposr_wrapper.py');
 const DEFAULT_PYTHON = path.join(__dirname, '..', 'vendor', 'TripoSR', 'venv', 'bin', 'python3');
-const DEFAULT_TIMEOUT_MS = 300000; // 5 min
+// Premier appel : téléchargement du modèle (~1,7 Go) + inférence peut prendre
+// 15 à 20 min sur une connexion lente. Appels suivants : 30 s à 3 min.
+const DEFAULT_TIMEOUT_MS = 1200000; // 20 min
 
 function ensureTmp() {
   const dir = path.join(__dirname, '..', 'tmp');
