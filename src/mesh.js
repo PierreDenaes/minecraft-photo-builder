@@ -67,7 +67,7 @@ async function parseGLB(buffer) {
   }
   if (!json || !bin) throw new Error('GLB invalide : chunks JSON/BIN manquants');
 
-  const GLB_COMPS = { SCALAR: 1, VEC2: 2, VEC3: 3 };
+  const GLB_COMPS = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 };
 
   function readAccessor(i) {
     const acc = json.accessors[i];
