@@ -299,3 +299,10 @@ test('!portrait donne le lien mode=portrait', () => {
   handle('Steve', '!portrait');
   assert.match(messages[0], /upload\/Steve\?mode=portrait/);
 });
+
+test('!maison donne le lien mode=maison', () => {
+  const { messages, handle } = setup();
+  handle('Steve', '!maison');
+  assert.match(messages[0], /upload\/Steve\?mode=maison/);
+  assert.match(messages[0], /TripoSR/);
+});

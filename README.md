@@ -10,6 +10,7 @@ Bot Minecraft (Mineflayer) qui construit en jeu à partir d'une **photo**, d'un 
 | `!diorama` | Copie conforme : photo de paysage (profondeur estimée localement par Depth Anything V2) **ou** modèle 3D `.obj`/`.stl`/`.glb` (textures, couleurs de sommets et STRIP/FAN lus). Mode « inspire » par défaut : le modèle sert de référence, l'IA reconstruit un bâtiment habitable posé sur un relief naturel avec sous-sol (strates, cavités, minerais) et végétation. Cadrage intelligent : une maison seule est posée seule, sans colline inventée |
 | `!statue` | Statue voxelisée d'un modèle 3D de personnage, sur socle, palette couleurs vives. Le fichier fait foi pour l'orientation : `!tourner` (90° yaw) et `!redresser` (pitch) avant **ou** après construction |
 | `!portrait` | Fresque murale pixel-art d'un bloc d'épaisseur avec cadre, mapping couleur sur toute la palette |
+| `!maison` | Reconstruction 3D fidèle d'un bâtiment depuis une photo (TripoSR local, ~1-3 min). Prérequis : `bash scripts/setup-triposr.sh` (voir plus bas) |
 | `!go` / `!cancel` | Confirme ou annule la proposition en attente |
 | `!status` | Avancement de la construction |
 | `!undo` | Restaure la zone d'avant la dernière construction |
@@ -64,3 +65,20 @@ npm run server:reset  # réinitialise le monde
 ```
 
 Architecture dans `src/` (un module par responsabilité : vision, generator, voxelizer, meshvoxelizer, palette, terrain, subsurface, support, decorator, habitability, portrait, builder, optimizer, chat, webserver). Spécifications des itérations dans `docs/superpowers/specs/`, pistes d'amélioration dans `docs/audit-ameliorations-2026-07-19.md` (FAWE + schematics, détourage BiRefNet, simplification GLB, TripoSR).
+
+## Reconstruction 3D locale (TripoSR) — commande `!maison`
+
+`!maison` transforme une photo en vrai modèle 3D voxelisé, plus fidèle que le mode primitives quand tu veux la reproduction exacte d'un objet ou d'un petit bâtiment. Installation ponctuelle :
+
+```bash
+# Prérequis : Python 3.10 ou 3.11 (PAS 3.14+, incompatible PyTorch), ~5 Go d'espace disque, ~10 min
+# macOS : brew install python@3.11
+
+bash scripts/setup-triposr.sh
+```
+
+Le script clone TripoSR dans `vendor/TripoSR/`, crée un venv, installe torch + rembg + les dépendances, et vérifie l'import. Le modèle (~2 Go) sera téléchargé au premier `!maison` depuis HuggingFace.
+
+**Durée** : 30 s à 3 min par photo sur Apple Silicon (CPU/MPS). CUDA détecté automatiquement si dispo.
+
+**Si l'install échoue** : le bot répondra `TripoSR non installé (script Python introuvable...)` lors de `!maison`. Relance le setup ou reste sur `!photo` (mode primitives).
