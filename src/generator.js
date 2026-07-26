@@ -221,7 +221,23 @@ function completeDoors(blocks) {
   return blocks.concat(added);
 }
 
-async function generateStructure(description, { client, timeoutMs = 5000, validBlocks, existingBlocks, structuralSummary, image, correction, mode } = {}) {
+// Format lisible pour un LLM : liste de 3 schemas avec matériaux par zone
+function formatInspiration(inspiration) {
+  if (!inspiration || inspiration.length === 0) return '';
+  const lines = inspiration.map((a, i) => {
+    const fond = a.materiaux_par_zone.fondation.map((m) => `${m.bloc}(${m.pct}%)`).join(', ') || '—';
+    const murs = a.materiaux_par_zone.murs.map((m) => `${m.bloc}(${m.pct}%)`).join(', ') || '—';
+    const toit = a.materiaux_par_zone.toit.map((m) => `${m.bloc}(${m.pct}%)`).join(', ') || '—';
+    return `[${i + 1}] ${a.type_batiment} ${a.style} (${a.proportions.largeur}×${a.proportions.profondeur}×${a.proportions.hauteur})
+  Fondation : ${fond}
+  Murs : ${murs}
+  Toit : ${toit}
+  Ratios : ${a.ratios.stairs}% stairs, ${a.ratios.glass}% vitrage`;
+  }).join('\n\n');
+  return `\n\nInspiration (${inspiration.length} vrai(s) bâtiment(s) du même style — INSPIRE-toi de ces matériaux et proportions pour reproduire la photo, ne les copie pas bloc à bloc) :\n${lines}`;
+}
+
+async function generateStructure(description, { client, timeoutMs = 5000, validBlocks, existingBlocks, structuralSummary, image, correction, mode, inspiration } = {}) {
   const usingPrimitives = mode === 'primitives';
   const activePrompt = usingPrimitives ? PRIMITIVES_PROMPT : SYSTEM_PROMPT;
   const sandbox = usingPrimitives ? PRIMITIVES_SANDBOX : {};
@@ -249,7 +265,7 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
       })();
   const userText = correction
     ? `Voici le code de la PREMIÈRE version générée :\n\n<code_v1>\n${correction.codeV1}\n</code_v1>\n\nCette version a été comparée à la photo de référence (jointe). Écarts et défauts constatés :\n\n${correction.critique || ''}\n${correction.defauts || ''}\n\nMODIFIE ce code pour corriger TOUS les écarts listés.\n- **CONSERVE INTÉGRALEMENT** tout ce qui n'est PAS critiqué : mêmes boite, mêmes toit, MÊMES piscine/lampadaires/terrasse/ponton s'ils existent, mêmes baies déjà présentes. TOUS les returns et TOUS les spread ...xxx du code v1 doivent se retrouver dans le code corrigé.\n- Ne repars JAMAIS de zéro.\n- Chaque écart listé doit avoir UNE addition ou modification ciblée (nouvelle baie pour "0 vitre", nouveau matériau pour "façade uniforme"...), pas une réécriture globale.\n- Si un défaut dit "0 vitre" alors qu'il y avait des baies : elles ont probablement été omises — RÉINTÈGRE-les et ajoute-en si nécessaire.\nRéponds UNIQUEMENT avec le code complet corrigé, terminé par ${SENTINEL}.${referentiel}`
-    : `Description du bâtiment :\n${JSON.stringify(description, null, 2)}${summarySection}${blocksSection}${imageSection}${referentiel}\n\nÉcris generateStructure().`;
+    : `Description du bâtiment :\n${JSON.stringify(description, null, 2)}${summarySection}${blocksSection}${imageSection}${referentiel}${formatInspiration(inspiration)}\n\nÉcris generateStructure().`;
   const content = image
     ? [
       { type: 'image', source: { type: 'base64', media_type: image.mimeType, data: image.base64 } },

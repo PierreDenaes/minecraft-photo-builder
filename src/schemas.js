@@ -159,4 +159,75 @@ async function chooseSchema(description) {
   return null;
 }
 
-module.exports = { loadSchema, remapPalette, chooseSchema, listCatalog };
+// Retourne jusqu'à n schemas triés par pertinence — style_exact_et_type >
+// type_exact > style_exact. Utilisé par le mode RAG (I18) qui passe 2-3 exemples
+// au LLM plutôt qu'un seul.
+async function chooseSchemas(description, n = 3) {
+  const catalog = loadCatalog();
+  if (catalog.length === 0) return [];
+  const type = (description.type_batiment || '').toLowerCase();
+  const style = (description.style || '').toLowerCase();
+  const typeKeywords = {
+    villa: ['villa'],
+    maison: ['maison', 'chaumiere', 'cottage'],
+    manoir: ['manoir', 'chateau', 'demeure', 'ferme', 'batisse'],
+    tour: ['tour', 'phare', 'donjon']
+  };
+  const matchType = (schemaType) => {
+    if (schemaType === type) return true;
+    const kws = typeKeywords[schemaType] || [schemaType];
+    return kws.some((kw) => type.includes(kw));
+  };
+  const scored = catalog.map((e) => {
+    let score = 0;
+    if (e.style === style) score += 10;
+    if (matchType(e.type_batiment)) score += 5;
+    return { entry: e, score };
+  }).filter((s) => s.score > 0);
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, n).map((s) => s.entry);
+}
+
+// Analyse UN schema pour extraire proportions et matériaux par zone verticale
+// (fondation = 0-30% de h, murs = 30-70%, toit = 70-100%). Utilisé par le
+// mode RAG pour nourrir le LLM d'exemples concrets.
+async function analyzeSchema(entry) {
+  const full = await loadSchema(entry.nom);
+  const h = full.dims.y;
+  const yBoundLow = Math.max(1, Math.floor(h * 0.3));
+  const yBoundHigh = Math.max(yBoundLow + 1, Math.floor(h * 0.7));
+  const zones = { fondation: new Map(), murs: new Map(), toit: new Map() };
+  for (const b of full.blocks) {
+    const zone = b.y < yBoundLow ? 'fondation' : b.y < yBoundHigh ? 'murs' : 'toit';
+    const map = zones[zone];
+    map.set(b.block, (map.get(b.block) || 0) + 1);
+  }
+  const topOfZone = (map) => {
+    const total = [...map.values()].reduce((a, c) => a + c, 0);
+    if (total === 0) return [];
+    return [...map.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([bloc, count]) => ({ bloc, pct: Math.round((count / total) * 100) }));
+  };
+  const refInfo = require('../data/schem-refs.json').find((r) => r.nom === entry.nom) || {};
+  return {
+    nom: entry.nom,
+    style: entry.style,
+    type_batiment: entry.type_batiment,
+    proportions: {
+      largeur: full.dims.x,
+      profondeur: full.dims.z,
+      hauteur: full.dims.y,
+      ratio_h_l: Math.round((full.dims.y / Math.max(full.dims.x, full.dims.z)) * 100) / 100
+    },
+    materiaux_par_zone: {
+      fondation: topOfZone(zones.fondation),
+      murs: topOfZone(zones.murs),
+      toit: topOfZone(zones.toit)
+    },
+    ratios: refInfo.ratios || { stairs: 0, glass: 0, torches: 0 }
+  };
+}
+
+module.exports = { loadSchema, remapPalette, chooseSchema, chooseSchemas, analyzeSchema, listCatalog };

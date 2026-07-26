@@ -4,7 +4,7 @@ const path = require('node:path');
 const mineflayer = require('mineflayer');
 const config = require('../config.json');
 const { analyzeImage, compareToPhoto } = require('./vision');
-const { loadSchema, remapPalette, chooseSchema } = require('./schemas');
+const { chooseSchemas, analyzeSchema } = require('./schemas');
 const { generateStructure } = require('./generator');
 const { validateStructure } = require('./optimizer');
 const { Builder } = require('./builder');
@@ -296,7 +296,7 @@ function createBot(cfg) {
   }
 
   async function onSchema(username, buffer, mimeType) {
-    bot.chat(`Photo reçue de ${username} — étape 1/3 : lecture de la photo...`);
+    bot.chat(`Photo reçue de ${username} — étape 1/4 : lecture de la photo...`);
     const base64 = buffer.toString('base64');
     const description = await analyzeImage(base64, mimeType, {
       maxSize: cfg.limits.max_size, validBlocks
@@ -305,36 +305,34 @@ function createBot(cfg) {
       bot.chat(`${username} : analyse impossible — ${description.erreur}`);
       return `erreur : ${description.erreur}`;
     }
-    bot.chat(`Étape 2/3 : sélection du schema le mieux adapté (type=${description.type_batiment}, style=${description.style})...`);
-    const choice = await chooseSchema(description);
-    if (!choice) {
-      bot.chat(`${username} : aucun schema dans la bibliothèque ne correspond à ${description.type_batiment} ${description.style}. Utilise !photo pour une génération par primitives.`);
-      return 'aucun schema adapté';
+    bot.chat(`Étape 2/4 : sélection de schemas de référence (${description.style} / ${description.type_batiment})...`);
+    const chosen = await chooseSchemas(description, 3);
+    if (chosen.length === 0) {
+      bot.chat(`${username} : aucun schema du même style dans la bibliothèque. Bascule sur !photo (mode primitives sans inspiration).`);
+      return onPhoto(username, buffer, mimeType);
     }
-    const styleMatch = choice.style === (description.style || '').toLowerCase();
-    const typeMatch = choice.type_batiment === (description.type_batiment || '').toLowerCase()
-      || (description.type_batiment || '').toLowerCase().includes(choice.type_batiment);
-    const qualite = styleMatch && typeMatch ? 'match exact'
-      : styleMatch ? 'style OK, type approximatif'
-      : typeMatch ? 'type OK, style approximatif'
-      : 'plus proche disponible (rien d\'exact)';
-    bot.chat(`Schema : ${choice.nom} (${choice.style}, ${choice.type_batiment}, ${choice.emprise.x}×${choice.emprise.z}×${choice.emprise.y}) — ${qualite}`);
-    bot.chat('Étape 3/3 : chargement et adaptation de la palette...');
-    const schema = await loadSchema(choice.nom);
-    // Remap : les murs principaux du schema deviennent la palette de la photo
-    const remap = {};
-    const p = description.palette_blocs || {};
-    if (p.murs && choice.materiaux_base.murs_principaux !== p.murs) {
-      remap[choice.materiaux_base.murs_principaux] = p.murs;
+    bot.chat(`Références : ${chosen.map((c) => `${c.nom} (${c.style})`).join(', ')}`);
+    bot.chat('Étape 3/4 : analyse des références et génération inspirée (~1 min)...');
+    const inspiration = [];
+    for (const c of chosen) {
+      try { inspiration.push(await analyzeSchema(c)); }
+      catch (err) { console.warn(`[schema] analyse ${c.nom} ignorée : ${err.message}`); }
     }
-    if (p.toit && choice.materiaux_base.toit && choice.materiaux_base.toit !== p.toit) {
-      remap[choice.materiaux_base.toit] = p.toit;
-    }
-    const adapted = Object.keys(remap).length > 0 ? remapPalette(schema, remap) : schema;
-    return proposeStructure(username, adapted.blocks,
-      { type_batiment: `${choice.type_batiment} (schema ${choice.nom})` },
-      { maxSize: Math.max(schema.dims.x, schema.dims.y, schema.dims.z),
-        maxBlocks: cfg.limits.max_blocks });
+    const genOpts = {
+      timeoutMs: cfg.limits.sandbox_timeout_ms,
+      validBlocks: realisticMaterials(materiaux, description),
+      existingBlocks: validBlocks,
+      image: { base64, mimeType },
+      mode: 'primitives',
+      inspiration
+    };
+    let { blocks } = await generateStructure(description, genOpts);
+    bot.chat('Étape 4/4 : décoration intérieure...');
+    const decor = await decorateInterior(blocks, description, { client: apiClient });
+    if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
+    const meubles = blocks.concat(decor);
+    return proposeStructure(username, meubles, description,
+      { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks });
   }
 
   async function onPortrait(username, buffer) {

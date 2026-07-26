@@ -357,3 +357,33 @@ test('schemRefsFor : si des refs correspondent au style, on n\'injecte QUE ces r
   assert.ok(!/rustique_organique/.test(txt), 'padding hors-style détecté');
   assert.ok(/moderne/.test(txt), 'ref moderne attendue');
 });
+
+test('inspiration : les schemas d\'exemple sont injectés dans le user msg (mode primitives)', async () => {
+  let captured = null;
+  const inspiration = [{
+    nom: '30732', style: 'moderne', type_batiment: 'villa',
+    proportions: { largeur: 22, profondeur: 16, hauteur: 16, ratio_h_l: 0.73 },
+    materiaux_par_zone: {
+      fondation: [{ bloc: 'smooth_stone', pct: 60 }],
+      murs: [{ bloc: 'white_concrete', pct: 40 }, { bloc: 'deepslate_tiles', pct: 20 }],
+      toit: [{ bloc: 'deepslate_tile_slab', pct: 55 }]
+    },
+    ratios: { stairs: 0.8, glass: 11.4, torches: 0 }
+  }];
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: OK_CODE }] }; } } };
+  await generateStructure({ type_batiment: 'villa' }, { client, timeoutMs: 5000, mode: 'primitives', inspiration });
+  const content = captured.messages[0].content;
+  const text = typeof content === 'string' ? content : content.find((b) => b.type === 'text').text;
+  assert.match(text, /Inspiration/);
+  assert.match(text, /white_concrete/);
+  assert.match(text, /deepslate_tile_slab/);
+});
+
+test('inspiration absente : comportement inchangé (pas de header "Inspiration")', async () => {
+  let captured = null;
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: OK_CODE }] }; } } };
+  await generateStructure({ type_batiment: 'villa' }, { client, timeoutMs: 5000, mode: 'primitives' });
+  const content = captured.messages[0].content;
+  const text = typeof content === 'string' ? content : content.find((b) => b.type === 'text').text;
+  assert.ok(!/Inspiration \(/.test(text), 'aucun header Inspiration sans le param');
+});

@@ -100,3 +100,45 @@ test('loadSchema : filtre le terrain plat sous le bâtiment (dirt/grass en couch
   const groundCount = s.blocks.filter((b) => b.y === minY && /^(dirt|grass_block|coarse_dirt|podzol|farmland|dirt_path)$/.test(b.block)).length;
   assert.ok(groundCount < 200, `trop de terrain conservé : ${groundCount} blocs de sol au niveau minY`);
 });
+
+// ---- I18 : schemas comme base de connaissances (RAG) ----
+const { chooseSchemas, analyzeSchema } = require('../src/schemas');
+
+test('chooseSchemas : retourne un tableau trié par pertinence (jusqu\'à n schemas)', async () => {
+  const results = await chooseSchemas({ style: 'moderne', type_batiment: 'villa' }, 3);
+  assert.ok(Array.isArray(results));
+  assert.ok(results.length > 0 && results.length <= 3);
+  // premier = style + type parfaits ; les suivants doivent au moins matcher un des deux
+  assert.strictEqual(results[0].style, 'moderne');
+});
+
+test('chooseSchemas : n=1 se comporte comme chooseSchema (compat)', async () => {
+  const arr = await chooseSchemas({ style: 'rustique_organique', type_batiment: 'maison' }, 1);
+  assert.strictEqual(arr.length, 1);
+  assert.ok(['rustique_organique', 'medieval', 'autre'].includes(arr[0].style));
+});
+
+test('chooseSchemas : catalogue sans match → []', async () => {
+  const arr = await chooseSchemas({ style: 'egyptien', type_batiment: 'pyramide' }, 3);
+  assert.deepStrictEqual(arr, []);
+});
+
+test('analyzeSchema : produit proportions, materiaux_par_zone (fondation/murs/toit), ratios', async () => {
+  const entry = require('../data/schema-catalog.json').find((e) => e.nom === '30732');
+  const analysis = await analyzeSchema(entry);
+  assert.ok(analysis.proportions, 'proportions attendues');
+  assert.ok(analysis.proportions.largeur > 0);
+  assert.ok(analysis.proportions.hauteur > 0);
+  assert.ok(analysis.materiaux_par_zone, 'materiaux_par_zone attendus');
+  const z = analysis.materiaux_par_zone;
+  assert.ok(z.fondation && Array.isArray(z.fondation), 'fondation array');
+  assert.ok(z.murs && Array.isArray(z.murs), 'murs array');
+  assert.ok(z.toit && Array.isArray(z.toit), 'toit array');
+  // chaque zone contient au moins 1 matériau avec un pct
+  for (const [zone, arr] of Object.entries(z)) {
+    if (arr.length === 0) continue;
+    assert.ok(typeof arr[0].bloc === 'string');
+    assert.ok(typeof arr[0].pct === 'number' && arr[0].pct >= 0 && arr[0].pct <= 100);
+  }
+  assert.ok(analysis.ratios);
+});
