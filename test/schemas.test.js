@@ -142,3 +142,8 @@ test('analyzeSchema : produit proportions, materiaux_par_zone (fondation/murs/to
   }
   assert.ok(analysis.ratios);
 });
+
+test('chooseSchemas : type sans style → refuse (Tour Eiffel industriel matche "tour" mais style absent)', async () => {
+  const arr = await chooseSchemas({ style: 'industriel', type_batiment: 'tour_eiffel' }, 3);
+  assert.deepStrictEqual(arr, [], 'aucun schema industriel dans le catalogue → refuse');
+});

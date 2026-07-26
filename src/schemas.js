@@ -185,6 +185,10 @@ async function chooseSchemas(description, n = 3) {
     return { entry: e, score };
   }).filter((s) => s.score > 0);
   scored.sort((a, b) => b.score - a.score);
+  // STRICT : le MEILLEUR match doit avoir le style exact (score ≥ 10). Un match
+  // seulement sur type_batiment (score 5) veut dire aucun schema du bon style
+  // → l'inspiration serait hors sujet (ex: rustique injecté pour Tour Eiffel).
+  if (scored.length === 0 || scored[0].score < 10) return [];
   return scored.slice(0, n).map((s) => s.entry);
 }
 

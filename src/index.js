@@ -327,6 +327,16 @@ function createBot(cfg) {
       inspiration
     };
     let { blocks } = await generateStructure(description, genOpts);
+    // Vérifications structurelles (identique à onPhoto) — sinon défauts silencieux
+    const checks = auditChecks(blocks, description);
+    const line = checks.map((c) => `${c.name} ${c.passed ? '✓' : '✗'}`).join(' · ');
+    bot.chat(`Vérifications : ${line}`.slice(0, 250));
+    const allOk = checks.every((c) => c.passed);
+    if (allOk) bot.chat('VALIDÉ ✓');
+    else {
+      const restants = auditHabitability(blocks, description);
+      if (restants.length > 0) bot.chat(`⚠ Défauts restants : ${restants.join(' ; ')}`.slice(0, 250));
+    }
     bot.chat('Étape 4/4 : décoration intérieure...');
     const decor = await decorateInterior(blocks, description, { client: apiClient });
     if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
