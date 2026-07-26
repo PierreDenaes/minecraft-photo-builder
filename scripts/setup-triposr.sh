@@ -55,7 +55,14 @@ fi
 echo "[setup-triposr] installation deps (peut prendre 5-10 min)..."
 "$VENV/bin/pip" install --upgrade pip wheel setuptools
 "$VENV/bin/pip" install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-"$VENV/bin/pip" install -r "$VENDOR/requirements.txt"
+# xatlas 0.0.9 (épinglé par TripoSR) n'a pas de wheel Mac ARM et sa compilation
+# depuis les sources échoue sur cmake. On installe une version récente avec wheel
+# précompilé AVANT le requirements.txt, puis on filtre xatlas du requirements.
+"$VENV/bin/pip" install --only-binary=:all: xatlas
+grep -v "^xatlas" "$VENDOR/requirements.txt" > "$VENDOR/requirements.filtered.txt"
+"$VENV/bin/pip" install -r "$VENDOR/requirements.filtered.txt"
+# onnxruntime : dépendance transitive de rembg, pas listée dans requirements.txt
+"$VENV/bin/pip" install onnxruntime
 
 # 5. Test rapide (import seulement, pas d'inférence)
 "$VENV/bin/python" -c "from tsr.system import TSR; print('[setup-triposr] TripoSR importable')" || {
