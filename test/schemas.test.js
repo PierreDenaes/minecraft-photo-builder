@@ -89,3 +89,14 @@ test('chooseSchema : type_batiment libre "maison_bretonne_en_pierre" matche "mai
     assert.ok(vol >= 500, `schema trop petit choisi : ${choice.nom} ${emprise.x}x${emprise.y}x${emprise.z}`);
   }
 });
+
+test('loadSchema : filtre le terrain plat sous le bâtiment (dirt/grass en couche basse)', async () => {
+  // 30843 a un vaste plateau d'herbe autour — on ne veut pas ce socle
+  const s = await loadSchema('30843');
+  // Après filtrage : au plus quelques dizaines de blocs de sol conservés (sous
+  // la maison uniquement, plus le vaste plateau d'herbe autour).
+  const ys = s.blocks.map((b) => b.y);
+  const minY = Math.min(...ys);
+  const groundCount = s.blocks.filter((b) => b.y === minY && /^(dirt|grass_block|coarse_dirt|podzol|farmland|dirt_path)$/.test(b.block)).length;
+  assert.ok(groundCount < 200, `trop de terrain conservé : ${groundCount} blocs de sol au niveau minY`);
+});

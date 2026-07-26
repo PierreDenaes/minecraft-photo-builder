@@ -73,6 +73,31 @@ async function loadSchema(nom) {
     }
   }
   if (unknown.size > 0) console.warn(`[schema ${entry.nom}] ${unknown.size} bloc(s) inconnu(s) ignoré(s) : ${[...unknown].slice(0, 5).join(', ')}...`);
+
+  // Retire le TERRAIN qui déborde de l'emprise du bâtiment. Beaucoup de schemas
+  // sont exportés avec leur sol (dirt/grass_block) qui s'étend au-delà de la
+  // maison → énorme socle en jeu.
+  const GROUND = /^(dirt|grass_block|coarse_dirt|podzol|farmland|dirt_path|rooted_dirt|gravel|mycelium)$/;
+  const STRUCT_START_Y = 3; // au-delà de 3 blocs au-dessus du sol = structure
+  if (blocks.length > 0) {
+    const minY = Math.min(...blocks.map((b) => b.y));
+    // emprise du bâtiment = colonnes (x,z) qui portent au moins un bloc de STRUCTURE
+    const structXZ = new Set();
+    for (const b of blocks) {
+      if (b.y >= minY + STRUCT_START_Y && !GROUND.test(b.block)) structXZ.add(`${b.x},${b.z}`);
+    }
+    if (structXZ.size > 0) {
+      const filtered = blocks.filter((b) => {
+        if (!GROUND.test(b.block)) return true;
+        // garde le terrain seulement sous les colonnes de structure
+        return structXZ.has(`${b.x},${b.z}`);
+      });
+      const removed = blocks.length - filtered.length;
+      if (removed > 0) console.log(`[schema ${entry.nom}] socle retiré : ${removed} bloc(s) de terrain hors emprise`);
+      blocks.length = 0;
+      blocks.push(...filtered);
+    }
+  }
   return {
     nom: entry.nom,
     style: entry.style,

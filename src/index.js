@@ -311,7 +311,14 @@ function createBot(cfg) {
       bot.chat(`${username} : aucun schema dans la bibliothèque ne correspond à ${description.type_batiment} ${description.style}. Utilise !photo pour une génération par primitives.`);
       return 'aucun schema adapté';
     }
-    bot.chat(`Schema sélectionné : ${choice.nom} (${choice.style}, ${choice.type_batiment}, ${choice.emprise.x}×${choice.emprise.z}×${choice.emprise.y})`);
+    const styleMatch = choice.style === (description.style || '').toLowerCase();
+    const typeMatch = choice.type_batiment === (description.type_batiment || '').toLowerCase()
+      || (description.type_batiment || '').toLowerCase().includes(choice.type_batiment);
+    const qualite = styleMatch && typeMatch ? 'match exact'
+      : styleMatch ? 'style OK, type approximatif'
+      : typeMatch ? 'type OK, style approximatif'
+      : 'plus proche disponible (rien d\'exact)';
+    bot.chat(`Schema : ${choice.nom} (${choice.style}, ${choice.type_batiment}, ${choice.emprise.x}×${choice.emprise.z}×${choice.emprise.y}) — ${qualite}`);
     bot.chat('Étape 3/3 : chargement et adaptation de la palette...');
     const schema = await loadSchema(choice.nom);
     // Remap : les murs principaux du schema deviennent la palette de la photo
