@@ -50,7 +50,9 @@ def main():
         die(f"dépendance manquante ({e}) — active le venv vendor/TripoSR/venv "
             "et vérifie que scripts/setup-triposr.sh a bien tourné")
 
-    device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
+    # MPS (Apple Silicon) ne supporte pas marching_cubes dans torchmcubes → CPU
+    # sur Mac. CUDA reste préféré si dispo (Linux/Windows).
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     model = TSR.from_pretrained(
         "stabilityai/TripoSR",
@@ -72,7 +74,7 @@ def main():
     # Inférence
     with torch.no_grad():
         scene_codes = model([image], device=device)
-    meshes = model.extract_mesh(scene_codes, resolution=256)
+    meshes = model.extract_mesh(scene_codes, has_vertex_color=True, resolution=256)
 
     sub = output_dir / "0"
     sub.mkdir(parents=True, exist_ok=True)

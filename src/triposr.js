@@ -53,7 +53,12 @@ async function reconstruct3D(imageBuffer, imageExt, {
     proc.on('error', (err) => { if (timer) clearTimeout(timer); reject(new Error(`TripoSR : échec de spawn (${err.message})`)); });
     proc.on('close', (code) => {
       if (timer) clearTimeout(timer);
-      if (code !== 0) return reject(new Error(`TripoSR : subprocess Python échoué (code ${code}) — ${stderr.slice(0, 300)}`));
+      if (code !== 0) {
+        // On garde la DERNIÈRE partie de stderr (la vraie erreur est en bas ;
+        // le début est souvent des FutureWarning bavards de transformers)
+        const trace = stderr.length > 800 ? '…' + stderr.slice(-800) : stderr;
+        return reject(new Error(`TripoSR : subprocess Python échoué (code ${code}) — ${trace}`));
+      }
       resolve();
     });
   });
