@@ -326,8 +326,29 @@ function createBot(cfg) {
       mode: 'primitives',
       inspiration
     };
-    let { blocks } = await generateStructure(description, genOpts);
-    // Vérifications structurelles (identique à onPhoto) — sinon défauts silencieux
+    let { blocks, code } = await generateStructure(description, genOpts);
+    // Passe de correction (identique à onPhoto) — rattrape les défauts oubliés
+    // par la première génération, avec les mêmes schemas en inspiration.
+    bot.chat('Passe de correction : comparaison à la photo puis régénération...');
+    try {
+      const render = await renderVoxels(blocks, blockColors);
+      const critique = await compareToPhoto(base64, mimeType, render.toString('base64'), { client: apiClient });
+      const defauts = auditHabitability(blocks, description);
+      const defautsText = defauts.length > 0
+        ? `Défauts structurels MESURÉS sur la première version — corrige-les impérativement :\n- ${defauts.join('\n- ')}`
+        : '';
+      if (critique || defautsText) {
+        ({ blocks } = await generateStructure(description, {
+          ...genOpts,
+          correction: { codeV1: code, critique: critique || '', defauts: defautsText }
+        }));
+      } else {
+        bot.chat('Rendu jugé fidèle (RAS) — pas de correction nécessaire.');
+      }
+    } catch (err) {
+      console.warn('[schema] passe de correction ignorée :', err.message);
+    }
+    // Vérifications structurelles finales
     const checks = auditChecks(blocks, description);
     const line = checks.map((c) => `${c.name} ${c.passed ? '✓' : '✗'}`).join(' · ');
     bot.chat(`Vérifications : ${line}`.slice(0, 250));
