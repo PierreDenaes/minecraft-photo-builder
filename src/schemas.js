@@ -4,6 +4,17 @@ const zlib = require('node:zlib');
 const { loadSchematic } = require('@enginehub/schematicjs');
 const nbt = require('@enginehub/nbt-ts');
 
+// Filtre défensif : les schemas contiennent parfois des blocs 1.21+, snapshot
+// ou mods qu'on n'a pas whitelistés. On les remplace par air plutôt que faire
+// échouer toute la construction.
+let VALID_BLOCKS = null;
+function loadValid() {
+  if (VALID_BLOCKS) return VALID_BLOCKS;
+  try { VALID_BLOCKS = new Set(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'valid_blocks.json'), 'utf8'))); }
+  catch { VALID_BLOCKS = new Set(); }
+  return VALID_BLOCKS;
+}
+
 // nbt-ts retourne un plain object mais schematicjs attend un Map récursif.
 function toMap(v) {
   if (v && typeof v === 'object' && !(v instanceof Map) && !(v instanceof Buffer) && !Array.isArray(v) && !ArrayBuffer.isView(v)) {
@@ -45,19 +56,23 @@ async function loadSchema(nom) {
   try { raw = zlib.gunzipSync(raw); } catch { /* déjà décompressé */ }
   const { value } = nbt.decode(raw);
   const s = loadSchematic(toMap(value));
+  const valid = loadValid();
   const blocks = [];
   const palette = new Set();
+  const unknown = new Set();
   for (let y = 0; y < s.height; y++) {
     for (let x = 0; x < s.width; x++) {
       for (let z = 0; z < s.length; z++) {
         const b = s.getBlock({ x, y, z });
         if (!b || b.type === 'minecraft:air') continue;
         const name = b.type.replace(/^minecraft:/, '');
+        if (valid.size > 0 && !valid.has(name)) { unknown.add(name); continue; }
         blocks.push({ x, y, z, block: name });
         palette.add(name);
       }
     }
   }
+  if (unknown.size > 0) console.warn(`[schema ${entry.nom}] ${unknown.size} bloc(s) inconnu(s) ignoré(s) : ${[...unknown].slice(0, 5).join(', ')}...`);
   return {
     nom: entry.nom,
     style: entry.style,
