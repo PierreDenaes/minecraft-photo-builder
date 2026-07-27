@@ -619,15 +619,42 @@ function berge({ x1, z1, x2, z2, y_sol, cote, profondeur_eau = 2, sable = 'sand'
 
 // Cheminée : colonne 1×1 depuis y_base jusqu'à y_haut, chapeau en slab au sommet.
 // Élément architectural très visible dans les manoirs, cottages, maisons bretonnes.
+// Nom réel de la slab correspondante — la maçonnerie perd son "s" du pluriel
+// (stone_bricks → stone_brick_slab) contrairement au bloc plein.
+const SLAB_NAME = {
+  stone_bricks: 'stone_brick_slab', mossy_stone_bricks: 'mossy_stone_brick_slab',
+  bricks: 'brick_slab', mud_bricks: 'mud_brick_slab',
+  deepslate_bricks: 'deepslate_brick_slab', deepslate_tiles: 'deepslate_tile_slab',
+  end_stone_bricks: 'end_stone_brick_slab', quartz_bricks: 'quartz_brick_slab',
+  prismarine_bricks: 'prismarine_brick_slab', nether_bricks: 'nether_brick_slab',
+  red_nether_bricks: 'red_nether_brick_slab', polished_blackstone_bricks: 'polished_blackstone_brick_slab',
+  // matériaux dont slab = ${nom}_slab (règle courante)
+  stone: 'stone_slab', smooth_stone: 'smooth_stone_slab', cobblestone: 'cobblestone_slab',
+  mossy_cobblestone: 'mossy_cobblestone_slab', andesite: 'andesite_slab', diorite: 'diorite_slab',
+  granite: 'granite_slab', polished_andesite: 'polished_andesite_slab',
+  polished_diorite: 'polished_diorite_slab', polished_granite: 'polished_granite_slab',
+  sandstone: 'sandstone_slab', smooth_sandstone: 'smooth_sandstone_slab',
+  cut_sandstone: 'cut_sandstone_slab', red_sandstone: 'red_sandstone_slab',
+  blackstone: 'blackstone_slab', polished_blackstone: 'polished_blackstone_slab',
+  deepslate: 'cobbled_deepslate_slab', cobbled_deepslate: 'cobbled_deepslate_slab',
+  polished_deepslate: 'polished_deepslate_slab', quartz_block: 'quartz_slab',
+  smooth_quartz: 'smooth_quartz_slab', prismarine: 'prismarine_slab',
+  dark_prismarine: 'dark_prismarine_slab', purpur_block: 'purpur_slab',
+  oak_planks: 'oak_slab', spruce_planks: 'spruce_slab', birch_planks: 'birch_slab',
+  jungle_planks: 'jungle_slab', acacia_planks: 'acacia_slab', dark_oak_planks: 'dark_oak_slab',
+  mangrove_planks: 'mangrove_slab', cherry_planks: 'cherry_slab',
+  crimson_planks: 'crimson_slab', warped_planks: 'warped_slab'
+};
+function slabFor(materiau) {
+  return SLAB_NAME[materiau] || 'stone_slab';
+}
+
 function cheminee({ x, z, y_base, y_haut, materiau }) {
   if (!materiau) throw new Error('cheminee : materiau manquant');
   if (y_haut <= y_base) throw new Error(`cheminee : y_haut>y_base requis (hauteur ${y_haut - y_base})`);
   const out = [];
   for (let y = y_base; y <= y_haut; y++) out.push({ x, y, z, block: materiau });
-  // chapeau : slab si le matériau a une slab, sinon fallback en stone_slab
-  const withSlab = /stone_bricks|cobblestone|bricks|deepslate_bricks|deepslate_tiles|stone|blackstone|sandstone/;
-  const cap = withSlab.test(materiau) ? `${materiau.replace(/_wall$/, '')}_slab` : 'stone_slab';
-  out.push({ x, y: y_haut + 1, z, block: cap });
+  out.push({ x, y: y_haut + 1, z, block: slabFor(materiau) });
   return out;
 }
 

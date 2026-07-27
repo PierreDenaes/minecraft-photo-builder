@@ -514,3 +514,19 @@ test('toitQuatrePans : deepslate_brick fonctionne (existe stairs+pignon en deeps
   assert.ok(!t.some((b) => b.block === 'deepslate_brick_planks'));
   assert.ok(t.some((b) => /deepslate_brick_stairs/.test(b.block)));
 });
+
+test('cheminee : matériau au pluriel (stone_bricks) → chapeau stone_brick_slab (singulier, vrai nom)', () => {
+  const c = cheminee({ x: 0, z: 0, y_base: 5, y_haut: 8, materiau: 'stone_bricks' });
+  const cap = c.find((k) => k.y === 9);
+  assert.strictEqual(cap.block, 'stone_brick_slab', `slab attendue au pluriel corrigé, obtenu ${cap.block}`);
+});
+
+test('cheminee : bricks → brick_slab (idem)', () => {
+  const c = cheminee({ x: 0, z: 0, y_base: 5, y_haut: 8, materiau: 'bricks' });
+  assert.strictEqual(c.find((k) => k.y === 9).block, 'brick_slab');
+});
+
+test('cheminee : cobblestone → cobblestone_slab (déjà correct)', () => {
+  const c = cheminee({ x: 0, z: 0, y_base: 5, y_haut: 8, materiau: 'cobblestone' });
+  assert.strictEqual(c.find((k) => k.y === 9).block, 'cobblestone_slab');
+});
