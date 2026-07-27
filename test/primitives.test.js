@@ -472,3 +472,28 @@ test('porte hauteur > 2 : tympan plein au-dessus de la porte battante (pas 5 blo
   // linteau tout en haut
   assert.strictEqual(p.find((b) => b.y === 6)?.block, 'stone_bricks');
 });
+
+// ---- I19 : primitive cheminee ----
+const { cheminee } = require('../src/primitives');
+
+test('cheminee : colonne 1x1 entre y_base et y_haut + chapeau au sommet', () => {
+  const c = cheminee({ x: 5, z: 5, y_base: 4, y_haut: 10, materiau: 'stone_bricks' });
+  // colonne entre y_base et y_haut
+  for (let y = 4; y <= 10; y++) {
+    const b = c.find((k) => k.x === 5 && k.y === y && k.z === 5);
+    assert.ok(b, `bloc y=${y} manquant`);
+    assert.strictEqual(b.block, 'stone_bricks');
+  }
+  // chapeau : slab ou wall au-dessus du sommet
+  const cap = c.find((k) => k.x === 5 && k.y === 11 && k.z === 5);
+  assert.ok(cap, 'chapeau attendu au-dessus');
+  assert.ok(/_slab|_wall/.test(cap.block), `chapeau doit être une slab ou wall : ${cap.block}`);
+});
+
+test('cheminee : y_haut <= y_base → erreur', () => {
+  assert.throws(() => cheminee({ x: 0, z: 0, y_base: 5, y_haut: 5, materiau: 'bricks' }), /hauteur/i);
+});
+
+test('cheminee : materiau manquant → erreur', () => {
+  assert.throws(() => cheminee({ x: 0, z: 0, y_base: 0, y_haut: 5 }), /materiau/i);
+});

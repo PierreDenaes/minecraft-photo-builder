@@ -50,6 +50,7 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 - lierre({ facade, x1, x2, z1, z2, y1, y2, densite=0.5 }) — cases de vine dispersées sur un mur (patine végétale, sur des façades exposées)
 - avantCorps({ facade, x1, x2, z_facade, y0, y1, murs, fondation, plancher }) — boite en saillie de 1 devant une façade, plus étroite que celle-ci (avant-corps central des manoirs et villas classiques)
 - berge({ x1, z1, x2, z2, y_sol, cote: 'nord'|'sud'|'est'|'ouest', profondeur_eau=2, sable='sand', bande=2 }) — divise l'emprise en 2 zones : terre au niveau y_sol + eau du côté indiqué, bande de sable au contact (rivage naturel, utilise si la photo montre le bâtiment au bord de l'eau)
+- cheminee({ x, z, y_base, y_haut, materiau }) — colonne 1×1 depuis y_base jusqu'à y_haut (dépassant le toit d'1 à 3 blocs) + chapeau slab. À placer sur le TOIT (y_base = niveau du toit, y_haut = 2-4 blocs plus haut). Si la vision décrit "cheminee" dans elements, tu DOIS en ajouter au moins UNE.
 
 ## Règles de composition
 - Une porte doit être dans un mur existant (même x/z que la façade de la boite).
@@ -66,6 +67,15 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 - TRÉMIE D'ESCALIER : escalier avec y_haut qui débouche sur le plancher haut d'une boite fonctionne (la trémie perce le plancher). Si y_haut débouche sur un toitPlat, l'escalier arrive sous le toit sans issue. Ne pose PAS un toitPlat au-dessus de la sortie d'un escalier intérieur.
 - Une piscine est HORS de la boite (à côté), pas dedans, et **s'enterre** : si la maison est au sol y=0, la surface de la piscine doit être à y=profondeur (par ex. y_surface=2 pour profondeur=2), le fond restant à y=0. Ne pose JAMAIS y_surface<profondeur, sinon le fond passerait sous y=0 et toute la scène flotterait.
 - Si un **résumé structurel** (carte de hauteurs ASCII 0-9, tours détectées, dims) est fourni : n'essaie PAS de recopier la carte bloc-à-bloc. ABSTRAIS-la en 2 à 6 primitives : zones à valeur ≥7 → tour({rayon, y_haut=valeur}), masses centrales à valeur ≥3 → boite, faîtage détecté → toitDeuxPans. La carte guide les proportions, pas la géométrie fine.
+
+## Palette : UTILISE EXACTEMENT les blocs annoncés par la vision (obligatoire)
+La description contient palette_blocs — c'est la palette du BÂTIMENT DE LA PHOTO déjà mappée en blocs Minecraft. Tu DOIS utiliser CES noms précisément dans tes appels de primitives, PAS les changer selon ton goût :
+- boite({ murs: description.palette_blocs.murs, fondation: description.palette_blocs.fondation, plancher: description.palette_blocs.exterieur }) — pas "cream" ou "beige" si la photo montre du gris pierre
+- toitDeuxPans/toitQuatrePans({ materiau: <préfixe déduit du toit>, ... }) — si palette_blocs.toit contient "deepslate_tiles" ou "polished_deepslate", utilise materiau: "deepslate" pour un toit d'ardoise sombre
+- baie({ encadrement: description.palette_blocs.menuiseries }) — le bois annoncé, PAS oak_log par défaut
+- porte({ materiau: description.palette_blocs.menuiseries }) ou accents si pas de menuiseries
+- cheminee({ materiau: description.palette_blocs.murs }) ou fondation
+Interdit de substituer white_concrete pour stone_bricks, cream/tan pour gris — la fidélité aux couleurs de la photo passe avant l'esthétique.
 
 ## Palette par zone (utilise 3 à 5 matériaux différents, jamais un seul)
 - palette_blocs.murs = matière PRINCIPALE des façades (boite murs).

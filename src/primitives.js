@@ -591,6 +591,20 @@ function berge({ x1, z1, x2, z2, y_sol, cote, profondeur_eau = 2, sable = 'sand'
   return out;
 }
 
+// Cheminée : colonne 1×1 depuis y_base jusqu'à y_haut, chapeau en slab au sommet.
+// Élément architectural très visible dans les manoirs, cottages, maisons bretonnes.
+function cheminee({ x, z, y_base, y_haut, materiau }) {
+  if (!materiau) throw new Error('cheminee : materiau manquant');
+  if (y_haut <= y_base) throw new Error(`cheminee : y_haut>y_base requis (hauteur ${y_haut - y_base})`);
+  const out = [];
+  for (let y = y_base; y <= y_haut; y++) out.push({ x, y, z, block: materiau });
+  // chapeau : slab si le matériau a une slab, sinon fallback en stone_slab
+  const withSlab = /stone_bricks|cobblestone|bricks|deepslate_bricks|deepslate_tiles|stone|blackstone|sandstone/;
+  const cap = withSlab.test(materiau) ? `${materiau.replace(/_wall$/, '')}_slab` : 'stone_slab';
+  out.push({ x, y: y_haut + 1, z, block: cap });
+  return out;
+}
+
 module.exports = { boite, porte, baie, toitPlat, toitDeuxPans, toitQuatrePans, escalier, piscine, tour,
   lampadaire, terrasse, pontonBois, haie, bordurePlantes, perron, gardeCorps,
-  colombages, lierre, avantCorps, berge };
+  colombages, lierre, avantCorps, berge, cheminee };
