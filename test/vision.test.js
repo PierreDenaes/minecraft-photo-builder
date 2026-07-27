@@ -76,15 +76,23 @@ test('le prompt système demande le cadrage sujet_seul/scene_complete', async ()
 
 const { compareToPhoto } = require('../src/vision');
 
-test('compareToPhoto envoie les deux images et retourne la critique', async () => {
+test('compareToPhoto envoie les deux images et retourne les écarts formatés', async () => {
   let captured = null;
-  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: '- toit trop plat\n- tours absentes' }] }; } } };
+  const critJson = JSON.stringify({
+    success: false, confidence: 0.9,
+    missing: ['cheminée sur pignon droit -> ajouter cheminee({x:12, ...})'],
+    excess: ['4ème baie -> retirer baie à x=18'],
+    defects: []
+  });
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: critJson }] }; } } };
   const critique = await compareToPhoto('UEhPVE8=', 'image/jpeg', 'UkVORFU=', { client });
   const images = captured.messages[0].content.filter((b) => b.type === 'image');
   assert.strictEqual(images.length, 2);
   assert.strictEqual(images[0].source.data, 'UEhPVE8=');
   assert.strictEqual(images[1].source.data, 'UkVORFU=');
-  assert.ok(critique.includes('toit trop plat'));
+  assert.ok(critique.includes('ÉLÉMENTS MANQUANTS'), `attendu section MANQUANTS dans : ${critique}`);
+  assert.ok(critique.includes('cheminée'), `attendu 'cheminée' dans : ${critique}`);
+  assert.ok(critique.includes('ÉLÉMENTS EN TROP'), `attendu section EN TROP dans : ${critique}`);
 });
 
 test('compareToPhoto : panne API → null sans lever', async () => {
@@ -92,18 +100,36 @@ test('compareToPhoto : panne API → null sans lever', async () => {
   assert.strictEqual(await compareToPhoto('a', 'image/png', 'b', { client }), null);
 });
 
-test('compareToPhoto : RAS (variantes) → null, catégories dans le prompt', async () => {
-  for (const ras of ['RAS', ' ras. ', 'RAS.', 'Ras']) {
-    const client = { messages: { create: async () => ({ content: [{ type: 'text', text: ras }] }) } };
-    assert.strictEqual(await compareToPhoto('a', 'image/png', 'b', { client }), null, `«${ras}» doit donner null`);
-  }
-  let captured = null;
-  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: '[TOIT] plat -> deux pans' }] }; } } };
+test('compareToPhoto : success=true → null (rendu jugé fidèle)', async () => {
+  const okJson = JSON.stringify({ success: true, confidence: 0.95, missing: [], excess: [], defects: [] });
+  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: okJson }] }) } };
+  assert.strictEqual(await compareToPhoto('a', 'image/png', 'b', { client }), null);
+});
+
+test('compareToPhoto : JSON non-parsable → null (dégradation silencieuse)', async () => {
+  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: 'bof je ne sais pas' }] }) } };
+  assert.strictEqual(await compareToPhoto('a', 'image/png', 'b', { client }), null);
+});
+
+test('compareToPhoto : JSON avec code fences (```json ... ```) est parsé', async () => {
+  const critJson = '```json\n' + JSON.stringify({ success: false, confidence: 0.7, missing: ['x'], excess: [], defects: [] }) + '\n```';
+  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: critJson }] }) } };
   const critique = await compareToPhoto('a', 'image/png', 'b', { client });
-  assert.strictEqual(critique, '[TOIT] plat -> deux pans');
-  assert.ok(sysText(captured.system).includes('[SILHOUETTE]'));
-  assert.ok(sysText(captured.system).includes('RAS'));
-  assert.ok(sysText(captured.system).includes('pixellisation'));
+  assert.ok(critique && critique.includes('ÉLÉMENTS MANQUANTS'));
+});
+
+test('compareToPhoto : prompt système contient les instructions JSON et les catégories', async () => {
+  let captured = null;
+  const critJson = JSON.stringify({ success: true, confidence: 0.9, missing: [], excess: [], defects: [] });
+  const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: critJson }] }; } } };
+  await compareToPhoto('a', 'image/png', 'b', { client });
+  const sys = sysText(captured.system);
+  assert.ok(sys.includes('JSON'), 'système doit exiger un JSON');
+  assert.ok(sys.includes('"missing"'), 'catégorie missing doit être dans le schéma');
+  assert.ok(sys.includes('"excess"'), 'catégorie excess doit être dans le schéma');
+  assert.ok(sys.includes('"defects"'), 'catégorie defects doit être dans le schéma');
+  assert.ok(sys.includes('confidence'));
+  assert.ok(sys.includes('pixellisation'), 'la règle d\'ignorer les artefacts MC doit rester');
 });
 
 const { STYLES, TOIT_FORMES } = require('../src/vision');

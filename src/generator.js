@@ -20,8 +20,22 @@ function schemRefsFor(style) {
 
 const PRIMITIVES_SANDBOX = { ...primitives, Math };
 const PRIMITIVES_PROMPT = `Tu écris du code JavaScript pur pour composer une structure Minecraft en appelant UNIQUEMENT les primitives fournies.
-Réponds UNIQUEMENT avec le code, sans texte autour, sans balises markdown.
-Termine ton code par le commentaire exact : // FIN_STRUCTURE
+
+Format de réponse OBLIGATOIRE (inspiré de Voyager) :
+
+<explanation>
+Explique en 3-6 phrases ta stratégie AVANT d'écrire le code : quelles primitives tu vas utiliser, comment tu vas composer les volumes, quelles règles de la spec tu vas respecter en priorité. La qualité de cette réflexion préalable détermine la qualité du code.
+</explanation>
+
+<code>
+function generateStructure() {
+  // ton code ici, en appelant les primitives
+  return [...];
+}
+// FIN_STRUCTURE
+</code>
+
+Rien d'autre. Pas de balises markdown de code, pas de commentaire d'introduction, pas de conclusion après </code>.
 
 ## Contrat
 - Définis une fonction generateStructure() qui retourne un tableau [{x, y, z, block}] — concatène simplement les résultats des primitives que tu appelles.
@@ -328,7 +342,14 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
       throw new Error('génération tronquée (max_tokens atteint) — réessaie avec une photo plus simple');
     }
     const raw = response.content.find((b) => b.type === 'text').text;
-    const code = stripCodeFences(raw);
+    // Extraction self-explanation format Voyager : <explanation>...</explanation><code>...</code>.
+    // Tolérant : si les balises absentes (ancien format), on prend tout après stripCodeFences.
+    const explanationMatch = raw.match(/<explanation>([\s\S]*?)<\/explanation>/i);
+    if (explanationMatch) {
+      console.log('[generator] plan LLM :\n', explanationMatch[1].trim());
+    }
+    const codeMatch = raw.match(/<code>([\s\S]*?)<\/code>/i);
+    const code = codeMatch ? stripCodeFences(codeMatch[1]) : stripCodeFences(raw);
     if (!code.includes(SENTINEL)) {
       throw new Error(`génération tronquée (sentinelle ${SENTINEL} absente)`);
     }

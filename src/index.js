@@ -342,26 +342,31 @@ function createBot(cfg) {
       inspiration: { schemas, memoryCases: memoryCasesSchema }
     };
     let { blocks, code } = await generateStructure(description, genOpts);
-    // Passe de correction (identique à onPhoto) — rattrape les défauts oubliés
-    // par la première génération, avec les mêmes schemas en inspiration.
-    bot.chat('Passe de correction : comparaison à la photo puis régénération...');
-    try {
-      const render = await renderVoxels(blocks, blockColors);
-      const critique = await compareToPhoto(base64, mimeType, render.toString('base64'), { client: apiClient });
-      const defauts = auditHabitability(blocks, description);
-      const defautsText = defauts.length > 0
-        ? `Défauts structurels MESURÉS sur la première version — corrige-les impérativement :\n- ${defauts.join('\n- ')}`
-        : '';
-      if (critique || defautsText) {
+    // Correction itérative bornée (mêmes 2 tours max qu'onPhoto).
+    bot.chat('Correction itérative (jusqu\'à 2 tours) avec schemas en inspiration...');
+    const MAX_CORRECTION_ROUNDS_SCHEMA = 2;
+    for (let round = 1; round <= MAX_CORRECTION_ROUNDS_SCHEMA; round++) {
+      try {
+        const render = await renderVoxels(blocks, blockColors);
+        const critique = await compareToPhoto(base64, mimeType, render.toString('base64'), { client: apiClient });
+        const defauts = auditHabitability(blocks, description);
+        const defautsText = defauts.length > 0
+          ? `Défauts structurels MESURÉS (tour ${round}) — corrige-les impérativement :\n- ${defauts.join('\n- ')}`
+          : '';
+        if (!critique && !defautsText) {
+          if (round === 1) bot.chat('Rendu jugé fidèle (RAS) — pas de correction nécessaire.');
+          else bot.chat(`Rendu fidèle après ${round - 1} correction(s) — arrêt.`);
+          break;
+        }
+        bot.chat(`Correction tour ${round}/${MAX_CORRECTION_ROUNDS_SCHEMA}...`);
         ({ blocks, code } = await generateStructure(description, {
           ...genOpts,
-          correction: { codeV1: code, critique: critique || '', defauts: defautsText }
+          correction: { codeV1: code, critique: critique || '', defauts: defautsText, round }
         }));
-      } else {
-        bot.chat('Rendu jugé fidèle (RAS) — pas de correction nécessaire.');
+      } catch (err) {
+        console.warn(`[schema] correction tour ${round} ignorée :`, err.message);
+        break;
       }
-    } catch (err) {
-      console.warn('[schema] passe de correction ignorée :', err.message);
     }
     // Vérifications structurelles finales
     const checks = auditChecks(blocks, description);
@@ -417,24 +422,33 @@ function createBot(cfg) {
       inspiration: { memoryCases }
     };
     let { blocks, code } = await generateStructure(description, genOpts);
-    bot.chat('Étape 3/4 : comparaison du résultat à la photo, puis correction (~1 min)...');
-    try {
-      const render = await renderVoxels(blocks, blockColors);
-      const critique = await compareToPhoto(base64, mimeType, render.toString('base64'), { client: apiClient });
-      const defauts = auditHabitability(blocks, description);
-      const defautsText = defauts.length > 0
-        ? `Défauts structurels MESURÉS sur la première version — corrige-les impérativement :\n- ${defauts.join('\n- ')}`
-        : '';
-      if (critique || defautsText) {
+    bot.chat('Étape 3/4 : correction itérative (jusqu\'à 2 tours) selon les écarts photo↔rendu...');
+    // Boucle inspirée de Voyager : itérer la correction tant que critic remonte des
+    // défauts, borné à MAX_CORRECTION_ROUNDS. Chaque tour = render → critic → regen.
+    // Stop dès que critic dit "success" (null) ou budget atteint.
+    const MAX_CORRECTION_ROUNDS = 2;
+    for (let round = 1; round <= MAX_CORRECTION_ROUNDS; round++) {
+      try {
+        const render = await renderVoxels(blocks, blockColors);
+        const critique = await compareToPhoto(base64, mimeType, render.toString('base64'), { client: apiClient });
+        const defauts = auditHabitability(blocks, description);
+        const defautsText = defauts.length > 0
+          ? `Défauts structurels MESURÉS (tour ${round}) — corrige-les impérativement :\n- ${defauts.join('\n- ')}`
+          : '';
+        if (!critique && !defautsText) {
+          if (round === 1) bot.chat('Rendu jugé fidèle (RAS) — pas de correction nécessaire.');
+          else bot.chat(`Rendu fidèle après ${round - 1} correction(s) — arrêt.`);
+          break;
+        }
+        bot.chat(`Correction tour ${round}/${MAX_CORRECTION_ROUNDS}...`);
         ({ blocks, code } = await generateStructure(description, {
           ...genOpts,
-          correction: { codeV1: code, critique: critique || '', defauts: defautsText }
+          correction: { codeV1: code, critique: critique || '', defauts: defautsText, round }
         }));
-      } else {
-        bot.chat('Rendu jugé fidèle (RAS) — pas de correction nécessaire.');
+      } catch (err) {
+        console.warn(`[photo] correction tour ${round} ignorée :`, err.message);
+        break;
       }
-    } catch (err) {
-      console.warn('[photo] passe de correction ignorée :', err.message);
     }
     const checks = auditChecks(blocks, description);
     const line = checks.map((c) => `${c.name} ${c.passed ? '✓' : '✗'}`).join(' · ');

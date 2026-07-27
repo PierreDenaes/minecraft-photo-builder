@@ -452,3 +452,29 @@ test('memoryCases apparaît UNE SEULE fois dans le prompt combiné (pas de doubl
   const occurrences = (combined.match(/Cas passés similaires/g) || []).length;
   assert.strictEqual(occurrences, 1, `"Cas passés similaires" devrait apparaître exactement 1 fois, trouvé ${occurrences}`);
 });
+
+test('generator extrait le code depuis <code>...</code> et logge l\'explication', async () => {
+  const codeInner = 'function generateStructure() { return [{x:0,y:0,z:0,block:"stone"}]; }\n// FIN_STRUCTURE';
+  const rawReply = `<explanation>\nJe pose un seul bloc de pierre à l'origine pour le test.\n</explanation>\n<code>\n${codeInner}\n</code>`;
+  const client = { messages: { create: async () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: rawReply }] }) } };
+  const { blocks, code } = await generateStructure(
+    { type_batiment: 'test', style: 'medieval', palette_blocs: { murs: 'stone' } },
+    { mode: 'primitives', client, timeoutMs: 5000, existingBlocks: ['stone'] }
+  );
+  assert.strictEqual(blocks.length, 1);
+  assert.strictEqual(blocks[0].block, 'stone');
+  assert.ok(code.includes('FIN_STRUCTURE'));
+  // le code exécuté ne doit PAS contenir les balises HTML
+  assert.ok(!code.includes('<code>'));
+  assert.ok(!code.includes('<explanation>'));
+});
+
+test('generator reste rétrocompatible : code sans balises <code> (ancien format)', async () => {
+  const rawReply = 'function generateStructure() { return [{x:1,y:0,z:0,block:"stone"}]; }\n// FIN_STRUCTURE';
+  const client = { messages: { create: async () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: rawReply }] }) } };
+  const { blocks } = await generateStructure(
+    { type_batiment: 'test', style: 'medieval', palette_blocs: { murs: 'stone' } },
+    { mode: 'primitives', client, timeoutMs: 5000, existingBlocks: ['stone'] }
+  );
+  assert.strictEqual(blocks.length, 1);
+});

@@ -104,44 +104,80 @@ async function analyzeImage(imageBase64, mimeType, { client, maxSize = 64, valid
   return parsed;
 }
 
-// Boucle de fidélité : compare la photo de référence au rendu voxel généré
-// et liste les écarts les plus visibles ; null si indisponible (non bloquant)
+// Boucle de fidélité : compare la photo de référence au rendu voxel généré.
+// Renvoie une STRING formatée (rétrocompat generator) dérivée d'un JSON structuré :
+// { success: bool, missing: [], excess: [], defects: [], confidence: 0..1 }
+// Ce format structuré (inspiré de Voyager critic) rend la correction plus
+// actionnable : le generator sait exactement ce qui manque vs ce qui est en trop.
+// Retourne null si le rendu est jugé fidèle OU si l'appel critique échoue.
 async function compareToPhoto(photoBase64, photoMime, renderBase64, { client } = {}) {
   try {
     const c = client || createClient();
     const response = await withRetry(() => c.messages.create({
       model: MODEL_CRITIQUE,
-      max_tokens: 600,
+      max_tokens: 800,
       temperature: 0,
       system: `Tu compares une PHOTO de référence (première image) et le RENDU voxel Minecraft généré à partir d'elle (seconde image).
 
 Ignore les différences inhérentes au format Minecraft : pixellisation, textures des blocs, absence de courbes lisses, simplification des petits détails. Ne compare que ce qui est corrigeable à l'échelle du bloc.
 
-Liste AU PLUS 5 écarts, uniquement les plus visibles, ceux qui empêchent de reconnaître la photo dans le rendu. Si le rendu est globalement fidèle et sans défaut de construction, réponds uniquement : RAS
+Réponds UNIQUEMENT avec un JSON valide (pas de balises markdown, pas de texte autour). Schéma :
 
-Format de chaque écart : une ligne "[CATEGORIE] constat -> correction concrète"
-Catégories : [SILHOUETTE] [PROPORTIONS] [TOIT] [OUVERTURES] [COULEUR] [DEFAUT]
-[DEFAUT] = défaut de construction visible dans le rendu : tour ou mur incomplet, face manquante, trou non voulu, toit inachevé.
+{
+  "success": true|false,
+  "confidence": 0.0 à 1.0,
+  "missing": ["élément CONCRET absent du rendu que la photo montre clairement, avec correction : quoi ajouter et où", ...],
+  "excess": ["élément présent dans le rendu qui n'est PAS dans la photo, avec correction : quoi retirer", ...],
+  "defects": ["défaut de CONSTRUCTION visible dans le rendu (mur incomplet, trou non voulu, toit inachevé), avec correction", ...]
+}
 
-Exemples :
-[TOIT] le rendu a un toit plat alors que la photo montre deux pans -> remplacer par un toit deux pans en stairs, faîtage selon l'axe long
-[PROPORTIONS] le bâtiment du rendu est trop trapu -> augmenter la hauteur des murs de 3 blocs, réduire la profondeur de 4
-[DEFAUT] la tour nord-est est ouverte sur sa face arrière -> fermer le cylindre sur 360 degrés
+Règles :
+- success=true UNIQUEMENT si le rendu est globalement reconnaissable ET sans défaut de construction. Dans ce cas, missing/excess/defects peuvent être vides ou contenir au max 1-2 items mineurs.
+- success=false si un élément majeur manque, est en trop, ou si un défaut de construction est visible.
+- confidence : ton niveau de certitude sur le verdict success (0.9+ si évident, 0.5 si limite).
+- AU PLUS 3 items par catégorie (missing/excess/defects) — les plus importants seulement.
+- Chaque item finit par "-> " suivi de la correction concrète.
 
-Pas de compliments, pas d'introduction, uniquement les lignes d'écart ou RAS.`,
+Exemples d'items :
+- missing: "cheminée sur pignon droit visible sur la photo -> ajouter primitive cheminee({x:22, z:5, y_base:12, y_haut:16, materiau:'stone_bricks'})"
+- excess: "4ème baie sur la façade principale (photo n'en montre que 3) -> retirer la baie à x=18"
+- defects: "tour nord-est ouverte sur sa face arrière -> fermer le cylindre sur 360 degrés"`,
       messages: [{
         role: 'user',
         content: [
           { type: 'image', source: { type: 'base64', media_type: photoMime, data: photoBase64 } },
           { type: 'image', source: { type: 'base64', media_type: 'image/png', data: renderBase64 } },
-          { type: 'text', text: 'Écarts entre la photo (référence) et le rendu :' }
+          { type: 'text', text: 'Compare et retourne le JSON.' }
         ]
       }]
     }), { retries: 1 });
-    const text = response.content.find((b) => b.type === 'text').text.trim();
-    // RAS (tolérant) = rendu fidèle : rien à corriger
-    if (/^ras\.?$/i.test(text)) return null;
-    return text;
+    const rawText = stripCodeFences(response.content.find((b) => b.type === 'text').text).trim();
+    let parsed;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch {
+      console.warn('[vision] critic JSON non-parsable, ignoré :', rawText.slice(0, 150));
+      return null;
+    }
+    console.log('[vision] critic :', JSON.stringify(parsed));
+    // Rendu jugé fidèle → pas de correction
+    if (parsed.success === true) return null;
+    // Formatte en texte pour le prompt de correction du generator
+    const lines = [];
+    if (parsed.missing && parsed.missing.length > 0) {
+      lines.push('ÉLÉMENTS MANQUANTS (à ajouter) :');
+      parsed.missing.forEach((m) => lines.push(`  - ${m}`));
+    }
+    if (parsed.excess && parsed.excess.length > 0) {
+      lines.push('ÉLÉMENTS EN TROP (à retirer) :');
+      parsed.excess.forEach((e) => lines.push(`  - ${e}`));
+    }
+    if (parsed.defects && parsed.defects.length > 0) {
+      lines.push('DÉFAUTS DE CONSTRUCTION (à corriger) :');
+      parsed.defects.forEach((d) => lines.push(`  - ${d}`));
+    }
+    if (lines.length === 0) return null;
+    return lines.join('\n');
   } catch (err) {
     console.warn('[vision] comparaison photo/rendu indisponible :', err.message);
     return null;
