@@ -50,4 +50,45 @@ async function searchImages(refinedQuery, { apiKey, n = 8, fetchFn = fetch } = {
     }));
 }
 
-module.exports = { refineQuery, searchImages };
+const PICK_MODEL = 'claude-haiku-4-5-20251001';
+
+const PICK_SYSTEM = `Tu compares N photos candidates pour une reconstruction Minecraft. Retourne UNIQUEMENT le NUMÉRO (1..N) de la meilleure photo, OU le mot "aucune" si toutes sont inutilisables.
+
+Bonne photo : diurne, façade complète, bâtiment centré, pas de foule, pas de texte overlay, pas de watermark, pas de dessin, pas de plan.
+Inutilisable : dessin, plan technique, screenshot de jeu vidéo, photo de nuit sans détail, portrait de personne, gros plan sur un détail.`;
+
+async function pickBest(candidates, { client, fetchFn = fetch } = {}) {
+  if (!candidates || candidates.length === 0) return null;
+  if (!client) throw new Error('pickBest : client Anthropic manquant');
+  // télécharge chaque thumbnail en base64
+  const images = [];
+  for (const c of candidates) {
+    try {
+      const resp = await fetchFn(c.thumbnail);
+      if (!resp.ok) continue;
+      const buf = Buffer.from(await resp.arrayBuffer());
+      const mimeType = resp.headers.get('content-type') || 'image/jpeg';
+      images.push({ base64: buf.toString('base64'), mimeType });
+    } catch { /* ignore, on continue avec les autres */ }
+  }
+  if (images.length === 0) return null;
+  const userContent = images.map((img) => ({
+    type: 'image',
+    source: { type: 'base64', media_type: img.mimeType, data: img.base64 }
+  }));
+  userContent.push({ type: 'text', text: 'Choisis.' });
+  const response = await client.messages.create({
+    model: PICK_MODEL,
+    max_tokens: 20,
+    temperature: 0,
+    system: PICK_SYSTEM,
+    messages: [{ role: 'user', content: userContent }]
+  });
+  const raw = response.content.find((b) => b.type === 'text').text.trim().toLowerCase();
+  if (raw === 'aucune') return null;
+  const num = parseInt(raw, 10);
+  if (!Number.isInteger(num) || num < 1 || num > images.length) return null;
+  return num;
+}
+
+module.exports = { refineQuery, searchImages, pickBest };

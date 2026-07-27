@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const { refineQuery, searchImages } = require('../src/websearch');
+const { refineQuery, searchImages, pickBest } = require('../src/websearch');
 
 const SERPAPI_FIXTURE = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/serpapi-response.json'), 'utf8'));
 
@@ -88,4 +88,53 @@ test('searchImages HTTP 429 → throw avec status', async () => {
 test('searchImages sans images_results retourne []', async () => {
   const results = await searchImages('chateau', { apiKey: 'test-key', fetchFn: fakeFetch({}) });
   assert.deepStrictEqual(results, []);
+});
+
+// Helper for pickBest tests
+function fakeVisionClient(reply) {
+  return {
+    messages: {
+      create: async () => ({ content: [{ type: 'text', text: reply }] })
+    }
+  };
+}
+
+function fakeThumbFetch() {
+  const fakeJpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]);
+  return async () => ({
+    ok: true,
+    headers: { get: () => 'image/jpeg' },
+    arrayBuffer: async () => fakeJpeg.buffer.slice(fakeJpeg.byteOffset, fakeJpeg.byteOffset + fakeJpeg.byteLength)
+  });
+}
+
+const CANDS = [
+  { url: 'https://a.com/1.jpg', thumbnail: 'https://a.com/t1.jpg', title: 'a', source: 'a.com' },
+  { url: 'https://a.com/2.jpg', thumbnail: 'https://a.com/t2.jpg', title: 'b', source: 'a.com' },
+  { url: 'https://a.com/3.jpg', thumbnail: 'https://a.com/t3.jpg', title: 'c', source: 'a.com' }
+];
+
+test('pickBest retourne l\'index parsé (Claude répond "2")', async () => {
+  const idx = await pickBest(CANDS, { client: fakeVisionClient('2'), fetchFn: fakeThumbFetch() });
+  assert.strictEqual(idx, 2);
+});
+
+test('pickBest retourne null si Claude répond "aucune"', async () => {
+  const idx = await pickBest(CANDS, { client: fakeVisionClient('aucune'), fetchFn: fakeThumbFetch() });
+  assert.strictEqual(idx, null);
+});
+
+test('pickBest retourne null si sortie non-parsable', async () => {
+  const idx = await pickBest(CANDS, { client: fakeVisionClient('bof je sais pas'), fetchFn: fakeThumbFetch() });
+  assert.strictEqual(idx, null);
+});
+
+test('pickBest retourne null si index hors bornes', async () => {
+  const idx = await pickBest(CANDS, { client: fakeVisionClient('99'), fetchFn: fakeThumbFetch() });
+  assert.strictEqual(idx, null);
+});
+
+test('pickBest avec candidates vides retourne null', async () => {
+  const idx = await pickBest([], { client: fakeVisionClient('1'), fetchFn: fakeThumbFetch() });
+  assert.strictEqual(idx, null);
 });
