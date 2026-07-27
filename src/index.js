@@ -21,6 +21,7 @@ const { clusterColors, assignThemes, buildThemePicker, themeOfBlock, realisticMa
 const { THEME_BLOCKS } = require('./blockcolors');
 const { createUnderground } = require('./subsurface');
 const { createClient } = require('./llm');
+const memory = require('./memory');
 const { cleanTriangles } = require('./meshclean');
 const { analyzeStructure } = require('./structure-analysis');
 const { terrainFromHeightmap, buildFoundations } = require('./terrain');
@@ -313,10 +314,15 @@ function createBot(cfg) {
     }
     bot.chat(`Références : ${chosen.map((c) => `${c.nom} (${c.style})`).join(', ')}`);
     bot.chat('Étape 3/4 : analyse des références et génération inspirée (~1 min)...');
-    const inspiration = [];
+    const schemas = [];
     for (const c of chosen) {
-      try { inspiration.push(await analyzeSchema(c)); }
+      try { schemas.push(await analyzeSchema(c)); }
       catch (err) { console.warn(`[schema] analyse ${c.nom} ignorée : ${err.message}`); }
+    }
+    const memoryCasesSchema = await memory.findSimilar(buffer, description, { n: 3, minNote: 3 })
+      .catch((err) => { console.warn('[memory] findSimilar échoué :', err.message); return []; });
+    if (memoryCasesSchema.length > 0) {
+      bot.chat(`${memoryCasesSchema.length} construction(s) passée(s) similaire(s) injectée(s) en inspiration.`);
     }
     const genOpts = {
       timeoutMs: cfg.limits.sandbox_timeout_ms,
@@ -324,7 +330,7 @@ function createBot(cfg) {
       existingBlocks: validBlocks,
       image: { base64, mimeType },
       mode: 'primitives',
-      inspiration
+      inspiration: { schemas, memoryCases: memoryCasesSchema }
     };
     let { blocks, code } = await generateStructure(description, genOpts);
     // Passe de correction (identique à onPhoto) — rattrape les défauts oubliés
@@ -388,12 +394,18 @@ function createBot(cfg) {
       return `erreur : ${description.erreur}`;
     }
     bot.chat(`Étape 2/4 : génération de ${description.type_batiment} d'après la photo (~1 min)...`);
+    const memoryCases = await memory.findSimilar(buffer, description, { n: 3, minNote: 3 })
+      .catch((err) => { console.warn('[memory] findSimilar échoué :', err.message); return []; });
+    if (memoryCases.length > 0) {
+      bot.chat(`${memoryCases.length} construction(s) passée(s) similaire(s) injectée(s) en inspiration.`);
+    }
     const genOpts = {
       timeoutMs: cfg.limits.sandbox_timeout_ms,
       validBlocks: realisticMaterials(materiaux, description),
       existingBlocks: validBlocks,
       image: { base64, mimeType },
-      mode: 'primitives'
+      mode: 'primitives',
+      inspiration: { memoryCases }
     };
     let { blocks, code } = await generateStructure(description, genOpts);
     bot.chat('Étape 3/4 : comparaison du résultat à la photo, puis correction (~1 min)...');

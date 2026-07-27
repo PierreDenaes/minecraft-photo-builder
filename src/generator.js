@@ -234,9 +234,9 @@ function completeDoors(blocks) {
 }
 
 // Format lisible pour un LLM : liste de 3 schemas avec matériaux par zone
-function formatInspiration(inspiration) {
-  if (!inspiration || inspiration.length === 0) return '';
-  const lines = inspiration.map((a, i) => {
+function formatSchemas(schemas) {
+  if (!schemas || schemas.length === 0) return '';
+  const lines = schemas.map((a, i) => {
     const fond = a.materiaux_par_zone.fondation.map((m) => `${m.bloc}(${m.pct}%)`).join(', ') || '—';
     const murs = a.materiaux_par_zone.murs.map((m) => `${m.bloc}(${m.pct}%)`).join(', ') || '—';
     const toit = a.materiaux_par_zone.toit.map((m) => `${m.bloc}(${m.pct}%)`).join(', ') || '—';
@@ -246,7 +246,25 @@ function formatInspiration(inspiration) {
   Toit : ${toit}
   Ratios : ${a.ratios.stairs}% stairs, ${a.ratios.glass}% vitrage`;
   }).join('\n\n');
-  return `\n\nInspiration (${inspiration.length} vrai(s) bâtiment(s) du même style — INSPIRE-toi de ces matériaux et proportions pour reproduire la photo, ne les copie pas bloc à bloc) :\n${lines}`;
+  return `\n\nInspiration (${schemas.length} vrai(s) bâtiment(s) du même style — INSPIRE-toi de ces matériaux et proportions pour reproduire la photo, ne les copie pas bloc à bloc) :\n${lines}`;
+}
+
+function formatMemoryCases(cases) {
+  if (!cases || cases.length === 0) return '';
+  const blocks = cases.map((c, i) => `--- Cas ${i + 1} (note ${c.note}/5, similarité ${c.similarity.toFixed(2)}, style ${(c.description && c.description.style) || 'inconnu'}) ---
+Description : ${JSON.stringify(c.description).slice(0, 200)}
+Code :
+${c.code}`);
+  return `\n\nCas passés similaires (bien notés) — inspire-toi de leur composition :\n\n${blocks.join('\n\n')}`;
+}
+
+function formatInspiration(inspiration) {
+  // Nouveau format objet { schemas?, memoryCases? }
+  if (inspiration && !Array.isArray(inspiration) && typeof inspiration === 'object') {
+    return formatSchemas(inspiration.schemas) + formatMemoryCases(inspiration.memoryCases);
+  }
+  // Ancien format : tableau brut de schemas (rétrocompatibilité)
+  return formatSchemas(inspiration);
 }
 
 async function generateStructure(description, { client, timeoutMs = 5000, validBlocks, existingBlocks, structuralSummary, image, correction, mode, inspiration } = {}) {
@@ -289,12 +307,17 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
   const messages = [{ role: 'user', content }];
   let lastErr = null;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    // Construire le tableau system : prompt de base (mis en cache) + éventuels cas mémoire
+    const memoryCases = inspiration && !Array.isArray(inspiration) ? inspiration.memoryCases : undefined;
+    const memoryCasesText = formatMemoryCases(memoryCases);
+    const systemBlocks = [{ type: 'text', text: activePrompt, cache_control: { type: 'ephemeral' } }];
+    if (memoryCasesText) systemBlocks.push({ type: 'text', text: memoryCasesText });
     const response = await withRetry(() =>
       c.messages.create({
         model: MODEL,
         max_tokens: 16000,
         temperature: 0.2,
-        system: [{ type: 'text', text: activePrompt, cache_control: { type: 'ephemeral' } }],
+        system: systemBlocks,
         messages
       })
     );

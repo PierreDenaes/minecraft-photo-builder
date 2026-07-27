@@ -387,3 +387,33 @@ test('inspiration absente : comportement inchangé (pas de header "Inspiration")
   const text = typeof content === 'string' ? content : content.find((b) => b.type === 'text').text;
   assert.ok(!/Inspiration \(/.test(text), 'aucun header Inspiration sans le param');
 });
+
+test('generateStructure avec inspiration.memoryCases injecte les cas dans le prompt', async () => {
+  const mockClient = {
+    messages: {
+      create: async (args) => {
+        // capture le system prompt
+        capturedSystem = args.system;
+        return { content: [{ type: 'text', text: 'function generateStructure() { return []; } // FIN_STRUCTURE' }] };
+      }
+    }
+  };
+  let capturedSystem = '';
+  await generateStructure(
+    { type_batiment: 'maison', style: 'medieval', palette_blocs: { murs: 'stone_bricks' } },
+    {
+      mode: 'primitives',
+      client: mockClient,
+      inspiration: {
+        memoryCases: [
+          { id: 'test-1', similarity: 0.85, note: 5, description: { style: 'medieval' }, code: 'function generateStructure() { return [{x:0,y:0,z:0,block:"stone_bricks"}]; }' }
+        ]
+      }
+    }
+  );
+  const systemText = Array.isArray(capturedSystem) ? capturedSystem.map((s) => s.text || s).join('\n') : capturedSystem;
+  assert.match(systemText, /Cas passés similaires/);
+  assert.match(systemText, /note 5\/5/);
+  assert.match(systemText, /similarité 0.85/);
+  assert.match(systemText, /function generateStructure/);
+});
