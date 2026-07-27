@@ -44,6 +44,11 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500, on
     try {
       const cmd = message.trim();
 
+      if (cmd === '!help') {
+        bot.chat('Commandes : !photo !schema !diorama !statue !portrait (upload) · !build <texte> · !go !cancel · !tourner !redresser · !status !undo · !note 1-5 · !help');
+        return;
+      }
+
       if (cmd === '!photo') {
         bot.chat(`${username} : envoie ta photo ici → http://${config.web.public_host}:${config.web.port}/upload/${username}`);
         return;
@@ -86,12 +91,17 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500, on
       }
 
       if (cmd === '!go') {
+        const st = builder.status();
+        if (st.active) {
+          bot.chat(`${username} : une construction est déjà en cours (${st.done}/${st.total}). Attends la fin ou !undo.`);
+          return;
+        }
         const pkey = username.toLowerCase();
         const p = pending.get(pkey);
         if (!p) { bot.chat(`${username} : aucune proposition en attente. Envoie une photo avec !photo`); return; }
         const launch = (player) => {
           pending.delete(pkey);
-          lastBuilt.set(pkey, { blocks: p.blocks, size: p.size, description: p.description, socle: p.socle });
+          lastBuilt.set(pkey, { blocks: p.blocks, size: p.size, description: p.description, socle: p.socle, photo: p.photo, code: p.code });
           const origin = builder.computeOrigin(player.entity.position, player.entity.yaw, p.size);
           const { total } = builder.startBuild(p.blocks, origin, p.size);
           bot.chat(`Construction de ${p.description.type_batiment} lancée (~${builder.estimateSeconds(total)} s, ${total} commandes). !status pour suivre, !undo pour annuler.`);
@@ -181,6 +191,11 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500, on
         return;
       }
 
+      if (cmd === '!note') {
+        bot.chat(`${username} : !note attend une note de 1 à 5, ex : !note 4`);
+        return;
+      }
+
       if (cmd.startsWith('!note ')) {
         const n = parseInt(cmd.slice(6).trim(), 10);
         if (!Number.isInteger(n) || n < 1 || n > 5) {
@@ -192,8 +207,12 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500, on
           bot.chat(`${username} : aucune construction récente à noter`);
           return;
         }
-        memory.updateNote(buildId, n);
-        bot.chat(`Note enregistrée : ${n}/5, merci !`);
+        Promise.resolve(memory.updateNote(buildId, n))
+          .then(() => bot.chat(`Note enregistrée : ${n}/5, merci !`))
+          .catch((err) => {
+            console.warn('[chat] updateNote échoué :', err.message);
+            bot.chat(`${username} : impossible d'enregistrer la note, réessaie.`);
+          });
         return;
       }
     } catch (err) {

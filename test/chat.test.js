@@ -18,7 +18,7 @@ function setup({ onBuild, ...builderOverrides } = {}) {
     computeOrigin: (...args) => { calls.push(['computeOrigin', args]); return { x: 0, y: -60, z: -9 }; },
     startBuild: (...args) => { calls.push(['startBuild', args]); return { total: 42 }; },
     undo: () => { calls.push(['undo']); return 'snapshot'; },
-    status: () => ({ active: true, done: 10, total: 42 }),
+    status: () => ({ active: false, done: 0, total: 0 }),
     estimateSeconds: () => 2
   };
   const builder = { ...defaultBuilder, ...builderOverrides };
@@ -88,7 +88,7 @@ test('!undo appelle builder.undo', () => {
 });
 
 test('!status affiche la progression', () => {
-  const { messages, handle } = setup();
+  const { messages, handle } = setup({ status: () => ({ active: true, done: 10, total: 42 }) });
   handle('Steve', '!status');
   assert.match(messages[0], /10\/42/);
 });
@@ -417,4 +417,76 @@ test('!build sans onBuild injecté répond message d\'erreur', () => {
   const { bot, handle } = setup({});  // pas d'onBuild
   handle('Steve', '!build chateau');
   assert.ok(bot.sent.some((m) => m.toLowerCase().includes('indisponible') || m.toLowerCase().includes('build')), `messages : ${bot.sent}`);
+});
+
+// === Corrections audit 27/07 (CORRECTIONS-chat.md) ===
+
+test('!go refusé si une construction est déjà en cours', () => {
+  const { messages, calls, pending, handle } = setup({ status: () => ({ active: true, done: 10, total: 42 }) });
+  pending.set('steve', { blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }], size: { x: 1, y: 1, z: 1 }, description: { type_batiment: 'cabane' } });
+  handle('Steve', '!go');
+  assert.match(messages[0], /déjà en cours.*10\/42/);
+  assert.ok(!calls.some(([name]) => name === 'startBuild'), 'startBuild ne doit pas être appelé');
+  assert.ok(pending.has('steve'), 'la proposition doit rester en attente');
+});
+
+test('!note sans argument → message d\'aide', () => {
+  const { messages, handle } = setup();
+  handle('Steve', '!note');
+  assert.match(messages[0], /1 à 5.*!note 4/);
+});
+
+test('!help liste les commandes (moins de 250 caractères)', () => {
+  const { messages, handle } = setup();
+  handle('Steve', '!help');
+  assert.match(messages[0], /!photo/);
+  assert.match(messages[0], /!build/);
+  assert.match(messages[0], /!note/);
+  assert.ok(messages[0].length <= 250, `message trop long : ${messages[0].length}`);
+});
+
+test('!note : échec updateNote → message d\'erreur, pas de crash', async () => {
+  const memory = require('../src/memory');
+  const origSave = memory.saveCase;
+  const origNote = memory.updateNote;
+  memory.saveCase = async () => '2026-01-01-abcd';
+  memory.updateNote = async () => { throw new Error('disque plein'); };
+  try {
+    const { messages, pending, handle } = setup();
+    pending.set('steve', {
+      blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }], size: { x: 1, y: 1, z: 1 },
+      description: { type_batiment: 'cabane' }, photo: Buffer.from('img'), code: 'x'
+    });
+    handle('Steve', '!go');
+    await new Promise((r) => setTimeout(r, 10));
+    handle('Steve', '!note 4');
+    await new Promise((r) => setTimeout(r, 10));
+    assert.ok(messages.some((m) => /impossible d'enregistrer la note/.test(m)), messages.join(' | '));
+  } finally {
+    memory.saveCase = origSave;
+    memory.updateNote = origNote;
+  }
+});
+
+test('!tourner après construction : photo et code conservés pour la mémoire', async () => {
+  const memory = require('../src/memory');
+  const saves = [];
+  const origSave = memory.saveCase;
+  memory.saveCase = async (args) => { saves.push(args); return '2026-01-01-abcd'; };
+  try {
+    const { pending, handle } = setup({ undo: () => 'snapshot' });
+    pending.set('steve', {
+      blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }], size: { x: 1, y: 1, z: 1 },
+      description: { type_batiment: 'cabane' }, photo: Buffer.from('img'), code: 'code v1'
+    });
+    handle('Steve', '!go');
+    await new Promise((r) => setTimeout(r, 10));
+    handle('Steve', '!tourner'); // récupère depuis lastBuilt
+    handle('Steve', '!go');
+    await new Promise((r) => setTimeout(r, 10));
+    assert.strictEqual(saves.length, 2, 'saveCase doit repartir après !tourner + !go');
+    assert.ok(saves[1].photo && saves[1].code, 'photo/code perdus dans lastBuilt');
+  } finally {
+    memory.saveCase = origSave;
+  }
 });

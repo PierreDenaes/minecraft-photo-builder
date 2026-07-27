@@ -34,14 +34,31 @@ function enforceSupport(blocks) {
   return { blocks: out, removed: blocks.length - out.length, guard: false };
 }
 
+// Rotation 90° horaire vue de dessus : est→nord→ouest→sud→est
+// (cohérent avec la transposition (x,z) → (z, maxX − x))
+const ROT_Y_DIR = { east: 'north', north: 'west', west: 'south', south: 'east' };
+function rotateBlockStateY(block) {
+  if (!block.includes('[')) return block;
+  return block
+    // facing des stairs, portes, wall_torch...
+    .replace(/facing=(north|south|east|west)/, (_, f) => `facing=${ROT_Y_DIR[f]}`)
+    // propriétés directionnelles booléennes (vine[south=true]...)
+    .replace(/\b(north|south|east|west)=/g, (_, d) => `${ROT_Y_DIR[d]}=`)
+    // axe des logs couchés
+    .replace(/axis=(x|z)/, (_, a) => `axis=${a === 'x' ? 'z' : 'x'}`);
+}
+
 // Pivot de 90° autour de la verticale : (x,z) → (z, maxX − x)
 function rotateY(blocks) {
   let maxX = 0;
   for (const b of blocks) if (b.x > maxX) maxX = b.x;
-  return blocks.map((b) => ({ ...b, x: b.z, z: maxX - b.x }));
+  return blocks.map((b) => ({ ...b, x: b.z, z: maxX - b.x, block: rotateBlockStateY(b.block) }));
 }
 
 // Redressement 90° autour de l'axe horizontal x : (y,z) → (z, maxY − y)
+// Limitation connue : les états de blocs (facing/half) ne sont pas réorientés
+// par la rotation verticale — acceptable, !redresser sert aux modèles scannés
+// dont les blocs n'ont pas d'états.
 function rotateX(blocks) {
   let maxY = 0;
   for (const b of blocks) if (b.y > maxY) maxY = b.y;

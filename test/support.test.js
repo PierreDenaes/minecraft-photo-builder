@@ -62,3 +62,35 @@ test('rotateX : redressement 90° autour de l\'axe horizontal', () => {
   assert.deepStrictEqual(turned.find((b) => b.block === 'stone'), { x: 1, y: 0, z: 4, block: 'stone' });
   assert.deepStrictEqual(turned.find((b) => b.block === 'dirt'), { x: 1, y: 2, z: 0, block: 'dirt' });
 });
+
+// === Corrections audit 27/07 (CORRECTIONS-chat.md point 1) ===
+
+test('rotateY réoriente les états de blocs (facing, faces booléennes, axis)', () => {
+  const r = rotateY([
+    { x: 0, y: 0, z: 0, block: 'oak_stairs[facing=east,half=bottom]' },
+    { x: 1, y: 0, z: 0, block: 'vine[south=true]' },
+    { x: 2, y: 0, z: 0, block: 'oak_log[axis=x]' },
+    { x: 3, y: 0, z: 0, block: 'stone' }
+  ]);
+  assert.strictEqual(r[0].block, 'oak_stairs[facing=north,half=bottom]');
+  assert.strictEqual(r[1].block, 'vine[east=true]');
+  assert.strictEqual(r[2].block, 'oak_log[axis=z]');
+  assert.strictEqual(r[3].block, 'stone');
+});
+
+test('rotateY : facing=north n\'est pas retouché par le replace des faces booléennes', () => {
+  const r = rotateY([{ x: 0, y: 0, z: 0, block: 'oak_door[facing=north,half=lower,hinge=left]' }]);
+  assert.strictEqual(r[0].block, 'oak_door[facing=west,half=lower,hinge=left]');
+});
+
+test('rotateY ×4 = identité (coordonnées ET états)', () => {
+  const initial = [
+    { x: 0, y: 0, z: 2, block: 'oak_stairs[facing=east,half=bottom]' },
+    { x: 3, y: 1, z: 0, block: 'vine[south=true]' },
+    { x: 1, y: 0, z: 1, block: 'oak_log[axis=x]' }
+  ];
+  let cur = initial;
+  for (let i = 0; i < 4; i++) cur = rotateY(cur);
+  const key = (a) => a.map((b) => `${b.x},${b.y},${b.z},${b.block}`).sort();
+  assert.deepStrictEqual(key(cur), key(initial));
+});
