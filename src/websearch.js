@@ -21,4 +21,33 @@ async function refineQuery(userText, { client }) {
   }
 }
 
-module.exports = { refineQuery };
+async function searchImages(refinedQuery, { apiKey, n = 8, fetchFn = fetch } = {}) {
+  if (!apiKey) throw new Error('searchImages : apiKey manquant (SERPAPI_KEY absente)');
+  const url = new URL('https://serpapi.com/search.json');
+  url.searchParams.set('engine', 'google_images');
+  url.searchParams.set('q', refinedQuery);
+  url.searchParams.set('api_key', apiKey);
+  url.searchParams.set('num', String(Math.max(n, 10)));
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  let response;
+  try {
+    response = await fetchFn(url.toString(), { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!response.ok) throw new Error(`SerpAPI HTTP ${response.status}`);
+  const json = await response.json();
+  const results = json.images_results || [];
+  return results
+    .filter((r) => r.original && !/\.(svg|gif)(\?|$)/i.test(r.original))
+    .slice(0, n)
+    .map((r) => ({
+      url: r.original,
+      thumbnail: r.thumbnail,
+      title: r.title || '',
+      source: r.source || ''
+    }));
+}
+
+module.exports = { refineQuery, searchImages };
