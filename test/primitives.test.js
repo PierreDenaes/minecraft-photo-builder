@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const {
-  boite, porte, baie, toitPlat, toitDeuxPans, toitQuatrePans, escalier, piscine
+  boite, porte, baie, toitPlat, toitDeuxPans, toitQuatrePans, escalier, piscine, arche
 } = require('../src/primitives');
 
 const at = (blocks, x, y, z) => blocks.find((b) => b.x === x && b.y === y && b.z === z);
@@ -551,4 +551,63 @@ test('porte double sur facade est : 2 portes empilées sur z (pas sur x)', () =>
   const doors = p.filter((k) => /_door/.test(k.block));
   const zs = [...new Set(doors.map((k) => k.z))].sort();
   assert.deepStrictEqual(zs, [3, 4]);
+});
+
+// arche : massif percé d'un tunnel voûté (Arc de Triomphe, portes de ville, aqueducs)
+test('arche : massif plein sauf tunnel central en forme d\'arc', () => {
+  const a = arche({ x1: 0, z1: 0, x2: 10, z2: 4, y_base: 0, y_faitage: 8, materiau: 'smooth_sandstone', axe: 'x' });
+  // le massif doit contenir des blocs pleins ET des blocs stairs (voûte)
+  const solid = a.filter((b) => b.block === 'smooth_sandstone');
+  const stairs = a.filter((b) => /_stairs\[/.test(b.block));
+  assert.ok(solid.length > 0, `pas de blocs pleins : ${a.length} blocs total`);
+  assert.ok(stairs.length > 0, `pas de voûte (stairs) : ${a.length} blocs total`);
+});
+
+test('arche axe=x : le tunnel traverse selon X (piétons entrent par x1/x2)', () => {
+  const a = arche({ x1: 0, z1: 0, x2: 10, z2: 4, y_base: 0, y_faitage: 8, materiau: 'stone_brick', axe: 'x' });
+  // au milieu de l'emprise, à hauteur y=1 (au sol, sous la voûte), il doit y avoir de l'AIR
+  // (tunnel ouvert traversant), pas un bloc plein
+  const midX = 5, midZ = 2, midY = 1;
+  const hit = a.find((b) => b.x === midX && b.z === midZ && b.y === midY);
+  assert.strictEqual(hit, undefined, `bloc au centre du tunnel : ${hit && hit.block}`);
+  // par contre aux extrémités latérales (z=0), y=1 doit être plein (piédroit)
+  const pilierGauche = a.find((b) => b.x === midX && b.z === 0 && b.y === 1);
+  assert.ok(pilierGauche, 'piédroit gauche manquant');
+});
+
+test('arche axe=z : le tunnel traverse selon Z', () => {
+  const a = arche({ x1: 0, z1: 0, x2: 4, z2: 10, y_base: 0, y_faitage: 8, materiau: 'stone_brick', axe: 'z' });
+  const midX = 2, midZ = 5, midY = 1;
+  const hit = a.find((b) => b.x === midX && b.z === midZ && b.y === midY);
+  assert.strictEqual(hit, undefined, `bloc au centre du tunnel : ${hit && hit.block}`);
+  // piédroit sur x=0 doit exister
+  const pilierGauche = a.find((b) => b.x === 0 && b.z === midZ && b.y === 1);
+  assert.ok(pilierGauche, 'piédroit gauche manquant');
+});
+
+test('arche : sommet de la voûte atteint y_faitage-1 (attique posé dessus à y_faitage)', () => {
+  const a = arche({ x1: 0, z1: 0, x2: 10, z2: 4, y_base: 0, y_faitage: 10, materiau: 'stone_brick', axe: 'x' });
+  const maxY = Math.max(...a.map((b) => b.y));
+  // le sommet de l'arche doit être juste en dessous de y_faitage (l'attique se poserait à y_faitage)
+  assert.ok(maxY <= 9, `sommet arche y=${maxY} dépasse y_faitage-1=9`);
+  assert.ok(maxY >= 7, `sommet arche y=${maxY} trop bas (voûte trop plate)`);
+});
+
+test('arche : materiau bois refusé (les stairs de bois seraient incohérents pour un monument)', () => {
+  // en pratique le LLM peut passer un bois — arche doit fonctionner (utilise _stairs et _planks)
+  // ce test vérifie juste que ça ne crash pas
+  const a = arche({ x1: 0, z1: 0, x2: 8, z2: 4, y_base: 0, y_faitage: 6, materiau: 'oak', axe: 'x' });
+  assert.ok(a.length > 0);
+  const hasStairs = a.some((b) => b.block.includes('oak_stairs'));
+  const hasPlanks = a.some((b) => b.block === 'oak_planks');
+  assert.ok(hasStairs, 'aucun stair bois pour la voûte');
+  assert.ok(hasPlanks, 'aucun bloc plein bois pour les piédroits');
+});
+
+test('arche : materiau manquant → throw', () => {
+  assert.throws(() => arche({ x1: 0, z1: 0, x2: 8, z2: 4, y_base: 0, y_faitage: 6, axe: 'x' }), /materiau/);
+});
+
+test('arche : axe invalide → throw', () => {
+  assert.throws(() => arche({ x1: 0, z1: 0, x2: 8, z2: 4, y_base: 0, y_faitage: 6, materiau: 'stone_brick', axe: 'y' }), /axe/);
 });

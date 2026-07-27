@@ -666,6 +666,81 @@ function cheminee({ x, z, y_base, y_haut, materiau }) {
   return out;
 }
 
+// arche : massif percé d'un tunnel voûté (Arc de Triomphe, portes de ville
+// médiévales, aqueducs romains). axe = direction de traversée du tunnel.
+// La voûte semi-circulaire est approximée avec des stairs half=top posés en
+// arc de cercle. Piédroits de 1 bloc de chaque côté du tunnel.
+function arche({ x1, z1, x2, z2, y_base, y_faitage, materiau, axe }) {
+  checkPositiveBox(x1, x2, z1, z2, y_base);
+  if (y_faitage <= y_base) throw new Error(`arche : y_faitage (${y_faitage}) doit être > y_base (${y_base})`);
+  if (!materiau) throw new Error('arche : materiau manquant');
+  if (axe !== 'x' && axe !== 'z') throw new Error(`arche : axe "${axe}" invalide (utilise "x" ou "z")`);
+  if (!/_stairs$/.test(materiau)) assertStairsExist(materiau, 'arche');
+  const stairsBase = /_stairs$/.test(materiau) ? materiau.replace(/_stairs$/, '') : materiau;
+  const stairs = `${stairsBase}_stairs`;
+  const plein = fillBlockFor(stairsBase);
+  const out = [];
+
+  // Section transverse : dimension perpendiculaire à l'axe de traversée
+  // axe=x → section selon z (largeur = z2-z1+1) ; axe=z → section selon x
+  const sectionMin = axe === 'x' ? z1 : x1;
+  const sectionMax = axe === 'x' ? z2 : x2;
+  const sectionSize = sectionMax - sectionMin + 1;
+  if (sectionSize < 3) throw new Error(`arche : section trop étroite (${sectionSize}), il faut ≥ 3 blocs pour piédroits + tunnel`);
+  // Piédroits = 1 bloc de chaque côté ; tunnel entre sectionMin+1 et sectionMax-1
+  const tunnelMin = sectionMin + 1;
+  const tunnelMax = sectionMax - 1;
+  const tunnelCenter = (tunnelMin + tunnelMax) / 2;
+  const tunnelHalfW = (tunnelMax - tunnelMin) / 2; // rayon voûte
+
+  // Hauteur totale du massif
+  const hMassif = y_faitage - y_base; // en blocs
+  // Naissance de la voûte : passage droit sur ~40% de la hauteur, voûte au-dessus
+  const hNaissance = Math.max(2, Math.floor(hMassif * 0.4));
+  // Sommet de la voûte : rayon = tunnelHalfW → hauteur max = hNaissance + rayon
+  const hSommet = Math.min(hMassif - 1, hNaissance + Math.ceil(tunnelHalfW));
+
+  // On parcourt le volume complet et on décide de chaque cellule
+  for (let x = x1; x <= x2; x++) {
+    for (let z = z1; z <= z2; z++) {
+      for (let y = y_base; y < y_faitage; y++) {
+        const s = axe === 'x' ? z : x;
+        const yLocal = y - y_base;
+        // hors emprise du tunnel (piédroit) → toujours plein
+        if (s < tunnelMin || s > tunnelMax) {
+          out.push({ x, y, z, block: plein });
+          continue;
+        }
+        // dans l'emprise du tunnel : ouverture sous la voûte
+        if (yLocal < hNaissance) {
+          // passage droit — air, on ne pose rien
+          continue;
+        }
+        if (yLocal <= hSommet) {
+          // zone de voûte : distance au centre de l'arc en coord (s, y-hNaissance)
+          const dy = yLocal - hNaissance;
+          const ds = s - tunnelCenter;
+          const dist = Math.sqrt(ds * ds + dy * dy);
+          if (dist < tunnelHalfW - 0.3) continue; // intérieur voûte = air
+          if (dist > tunnelHalfW + 0.5) { out.push({ x, y, z, block: plein }); continue; }
+          // frange de la voûte : on pose un stair orienté vers le centre du tunnel
+          // (half=top → marche inversée sous la corniche pour combler l'arc)
+          // facing = direction OPPOSÉE au centre (comme un débord de toit)
+          let facing;
+          if (ds < 0) facing = 'east';
+          else if (ds > 0) facing = 'west';
+          else facing = axe === 'x' ? 'north' : 'east'; // clef de voûte : orientation arbitraire cohérente
+          out.push({ x, y, z, block: `${stairs}[facing=${facing},half=top]` });
+          continue;
+        }
+        // au-dessus de la voûte : plein
+        out.push({ x, y, z, block: plein });
+      }
+    }
+  }
+  return out;
+}
+
 module.exports = { boite, porte, baie, toitPlat, toitDeuxPans, toitQuatrePans, escalier, piscine, tour,
   lampadaire, terrasse, pontonBois, haie, bordurePlantes, perron, gardeCorps,
-  colombages, lierre, avantCorps, berge, cheminee };
+  colombages, lierre, avantCorps, berge, cheminee, arche };

@@ -5,7 +5,7 @@ const { createClient, withRetry, stripCodeFences } = require('./llm');
 // Le surcoût (~5×) reste marginal sur ce projet (~1 photo par !photo). Le critique
 // compareToPhoto reste sur sonnet — la comparaison photo↔rendu n'a pas besoin
 // du raisonnement fin d'opus, et elle est appelée deux fois par pipeline.
-const MODEL_ANALYSE = 'claude-opus-4-7-thinking';
+const MODEL_ANALYSE = 'claude-opus-4-7';
 const MODEL_CRITIQUE = 'claude-sonnet-4-6';
 
 const STYLES = ['primitif', 'egyptien', 'antique', 'asiatique_japonais', 'asiatique_chinois', 'oriental',
@@ -54,6 +54,11 @@ Règles :
 - elements : mentionne aussi "balcon", "garde-corps", "marches_entree", "lampadaires", "terrasse_bois", "ponton", "berge_eau" (bâtiment au bord de l'eau), "colombages", "lierre_vegetation_murale" quand tu les vois.
 - cadrage : "sujet_seul" si l'image montre UN sujet principal sans environnement significatif (bâtiment isolé, objet, personne), "scene_complete" si le décor fait partie du sujet (paysage, terrain, jardin)
 - environnement : décris TOUJOURS la végétation (densité d'arbres : aucun/epars/dense, essences parmi chene/sapin/bouleau/acacia), la nature du sol et l'ambiance générale de la scène
+- MONUMENTS NON HABITABLES : identifie explicitement les cas suivants dans type_batiment quand tu les reconnais, car ils appellent des primitives spécifiques (arche, tour, colonnes) plutôt qu'un bâtiment habitable normal :
+  * arc_de_triomphe, arche, porte_de_ville, aqueduc → structure percée d'un tunnel voûté (l'arche EST la caractéristique principale, jamais un massif plein)
+  * tour_isolee, minaret, campanile, obelisque, colonne_commemorative → structure verticale étroite, silhouette élancée prime sur habitabilité
+  * statue_monumentale, sculpture → silhouette figurative, pas un bâtiment
+  Pour ces monuments : dimensions_estimees doit refléter la géométrie caractéristique (une arche = largeur ~2×hauteur, un obélisque = hauteur ~5×largeur), et elements doit mentionner explicitement "tunnel_voute" / "silhouette_elancee" / "sommet_pyramidal" selon le cas.
 - Si l'image ne contient aucun bâtiment identifiable, réponds : {"erreur": "raison courte"}${blocksRule}`;
 }
 
@@ -62,8 +67,14 @@ async function analyzeImage(imageBase64, mimeType, { client, maxSize = 64, valid
   const response = await withRetry(() =>
     c.messages.create({
       model: MODEL_ANALYSE,
-      max_tokens: 1500,
-      temperature: 0,
+      // thinking adaptatif : Opus 4.7 utilise le nouveau format `adaptive` +
+      // output_config.effort (low/medium/high). "high" = raisonnement approfondi,
+      // adapté à l'analyse spatiale fine d'une photo architecturale.
+      // Temperature doit rester à 1 quand thinking est activé.
+      max_tokens: 4096,
+      temperature: 1,
+      thinking: { type: 'adaptive' },
+      output_config: { effort: 'high' },
       system: [{ type: 'text', text: systemPrompt(maxSize, validBlocks), cache_control: { type: 'ephemeral' } }],
       messages: [{
         role: 'user',
@@ -74,7 +85,8 @@ async function analyzeImage(imageBase64, mimeType, { client, maxSize = 64, valid
       }]
     })
   );
-  // recomposition tolérante (accolade ouvrante parfois omise par le modèle)
+  // recomposition tolérante (accolade ouvrante parfois omise par le modèle) ;
+  // avec thinking activé, la réponse contient un bloc 'thinking' à ignorer
   const rawText = stripCodeFences(response.content.find((b) => b.type === 'text').text).trim();
   const text = rawText.startsWith('{') ? rawText : `{${rawText}`;
   let parsed;
