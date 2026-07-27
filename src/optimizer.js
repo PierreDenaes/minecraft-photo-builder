@@ -1,3 +1,6 @@
+// maxSize : nombre → limite unique pour x/y/z ; objet {x,y,z} → limites par axe.
+// La séparation par axe permet d'accepter des tours (Y grand, X/Z petit) ou des
+// piscines (X/Z grand, Y petit) sans gonfler artificiellement le budget global.
 function validateStructure(blocks, { maxSize, maxBlocks, validBlocks }) {
   const errors = [];
   if (!Array.isArray(blocks) || blocks.length === 0) {
@@ -26,9 +29,12 @@ function validateStructure(blocks, { maxSize, maxBlocks, validBlocks }) {
   }
   if (badCoord) errors.push('coordonnées invalides : entiers >= 0 requis');
   if (badNames.size > 0) errors.push(`blocs inconnus : ${[...badNames].join(', ')}`);
+  const limits = (typeof maxSize === 'object' && maxSize !== null)
+    ? { x: maxSize.x, y: maxSize.y, z: maxSize.z }
+    : { x: maxSize, y: maxSize, z: maxSize };
   for (const axis of ['x', 'y', 'z']) {
     const span = max[axis] - min[axis] + 1;
-    if (span > maxSize) errors.push(`dimension ${axis} trop grande : ${span} > ${maxSize} (max 64)`);
+    if (span > limits[axis]) errors.push(`dimension ${axis} trop grande : ${span} > ${limits[axis]}`);
   }
   return { ok: errors.length === 0, errors };
 }

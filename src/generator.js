@@ -39,7 +39,7 @@ Rien d'autre. Pas de balises markdown de code, pas de commentaire d'introduction
 
 ## Contrat
 - Définis une fonction generateStructure() qui retourne un tableau [{x, y, z, block}] — concatène simplement les résultats des primitives que tu appelles.
-- Coordonnées entières >= 0 ; x = largeur, y = hauteur (0 = sol), z = profondeur ; budget spatial 96×64×96 MAXIMUM.
+- Coordonnées entières >= 0 ; x = largeur, y = hauteur (0 = sol), z = profondeur ; budget spatial 96 en X et Z, 320 en Y MAXIMUM (pour tours élancées, gratte-ciels, cathédrales, monuments verticaux). Une maison normale reste sous 96 partout.
 - INTERDICTION FORMELLE : tu ne poses AUCUN bloc directement. Pas de push({x,y,z,block:...}). Pas de fonction \`place\`. Aucun nom de bloc hors des paramètres materiau/murs/fondation/etc. passés aux primitives.
 - Le sandbox n'expose QUE : les 8 primitives ci-dessous + Math. Toute autre référence (require, place, fs...) lève une ReferenceError.
 

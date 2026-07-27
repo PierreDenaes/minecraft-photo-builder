@@ -383,7 +383,7 @@ function createBot(cfg) {
     if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
     const meubles = blocks.concat(decor);
     return proposeStructure(username, meubles, description,
-      { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks },
+      { maxSize: { x: cfg.limits.max_size, y: cfg.limits.max_y, z: cfg.limits.max_size }, maxBlocks: cfg.limits.max_blocks },
       { photo: buffer, code });
   }
 
@@ -464,7 +464,7 @@ function createBot(cfg) {
     if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
     const meubles = blocks.concat(decor);
     return proposeStructure(username, meubles, description,
-      { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks },
+      { maxSize: { x: cfg.limits.max_size, y: cfg.limits.max_y, z: cfg.limits.max_size }, maxBlocks: cfg.limits.max_blocks },
       { photo: buffer, code });
   }
 

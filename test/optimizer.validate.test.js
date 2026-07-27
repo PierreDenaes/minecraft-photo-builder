@@ -79,3 +79,27 @@ test('états multiples nom[a=b,c=d] acceptés, crochet orphelin rejeté', () => 
   assert.strictEqual(ok('oak_stairs]'), false);
   assert.strictEqual(ok('oak_stairs[facing=north'), false);
 });
+
+test('maxSize objet {x,y,z} : accepte Y élancé (tour), refuse X excessif', () => {
+  const validBlocks = ['stone'];
+  const tour = [];
+  for (let y = 0; y < 300; y++) tour.push({ x: 0, y, z: 0, block: 'stone' });
+  tour.push({ x: 79, y: 0, z: 79, block: 'stone' });
+  const okTour = validateStructure(tour, { maxSize: { x: 96, y: 320, z: 96 }, maxBlocks: 500000, validBlocks });
+  assert.ok(okTour.ok, `tour élancée doit passer, erreurs : ${okTour.errors.join(', ')}`);
+
+  const large = [];
+  for (let x = 0; x < 100; x++) large.push({ x, y: 0, z: 0, block: 'stone' });
+  const badLarge = validateStructure(large, { maxSize: { x: 96, y: 320, z: 96 }, maxBlocks: 500000, validBlocks });
+  assert.ok(!badLarge.ok);
+  assert.ok(badLarge.errors.some((e) => /dimension x trop grande/.test(e)));
+});
+
+test('maxSize scalaire : ancienne API rétrocompatible (limite unique x/y/z)', () => {
+  const validBlocks = ['stone'];
+  const bad = [];
+  for (let y = 0; y < 100; y++) bad.push({ x: 0, y, z: 0, block: 'stone' });
+  const r = validateStructure(bad, { maxSize: 96, maxBlocks: 500000, validBlocks });
+  assert.ok(!r.ok);
+  assert.ok(r.errors.some((e) => /dimension y trop grande/.test(e)));
+});

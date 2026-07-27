@@ -11,6 +11,7 @@
   },
   "limits": {
     "max_size": 96,
+    "max_y": 320,
     "max_blocks": 500000,
     "sandbox_timeout_ms": 20000,
     "throttle_cmds_per_tick": 16,

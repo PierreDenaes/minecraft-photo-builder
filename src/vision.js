@@ -39,7 +39,7 @@ Schéma attendu :
 - 1 bloc Minecraft = 1 mètre. Estime les dimensions en mètres réels.
 - Repères : une porte ≈ 2 m de haut, un étage de bâtiment ≈ 3 à 4 m, une fenêtre ≈ 1 à 1,5 m, une voiture ≈ 4,5 m de long, un adulte ≈ 1,8 m
 - Cohérence obligatoire : hauteur ≈ etages × 4 + hauteur du toit
-- Dimensions maximales : ${maxSize} sur chaque axe ; si le bâtiment réel dépasse, réduis toutes les dimensions à l'échelle en conservant les proportions
+- Dimensions maximales : ${maxSize} en largeur/profondeur, jusqu'à 320 en hauteur (pour les monuments élancés : tour, gratte-ciel, cathédrale). Une Tour Eiffel = ~330 m dans la réalité, garde 300 en Y et ~80 en X/Z si la photo montre bien une tour. Une maison normale reste sous ${maxSize} sur tous les axes.
 
 Règles :
 - Tous les blocs doivent être des noms Minecraft 1.20 valides (snake_case, sans préfixe minecraft:)
