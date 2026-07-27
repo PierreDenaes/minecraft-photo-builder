@@ -541,7 +541,7 @@ test('champ block manquant ou vide → erreur explicite', () => {
   );
 });
 
-test('dedupeBlocks : dernier bloc posé à une coordonnée gagne', () => {
+test('dedupeBlocks : dernier bloc posé à une coordonnée gagne (blocs pleins)', () => {
   const { dedupeBlocks } = require('../src/generator');
   const out = dedupeBlocks([
     { x: 0, y: 0, z: 0, block: 'stone' },
@@ -550,6 +550,27 @@ test('dedupeBlocks : dernier bloc posé à une coordonnée gagne', () => {
   ]);
   assert.strictEqual(out.length, 2);
   assert.strictEqual(out.find((b) => b.x === 0 && b.y === 0 && b.z === 0).block, 'dirt');
+});
+
+test('dedupeBlocks : même règle que l\'optimizer — air/portes survivent aux blocs pleins', () => {
+  const { dedupeBlocks } = require('../src/generator');
+  // Ouverture creusée par arche/porte AVANT qu'une boite recouvre la case :
+  // le traversable doit survivre, sinon le tunnel serait rebouché au rendu
+  // et à l'audit alors que l'optimizer le garde ouvert à la construction
+  const out = dedupeBlocks([
+    { x: 0, y: 1, z: 0, block: 'air' },
+    { x: 1, y: 1, z: 0, block: 'oak_door[half=lower]' },
+    { x: 0, y: 1, z: 0, block: 'stone_bricks' },
+    { x: 1, y: 1, z: 0, block: 'stone_bricks' }
+  ]);
+  assert.strictEqual(out.find((b) => b.x === 0).block, 'air');
+  assert.strictEqual(out.find((b) => b.x === 1).block, 'oak_door[half=lower]');
+  // dans l'autre sens, l'air posé APRÈS creuse bien le bloc plein
+  const carve = dedupeBlocks([
+    { x: 0, y: 0, z: 0, block: 'stone' },
+    { x: 0, y: 0, z: 0, block: 'air' }
+  ]);
+  assert.strictEqual(carve[0].block, 'air');
 });
 
 test('generateStructure dédoublonne les coordonnées superposées', async () => {

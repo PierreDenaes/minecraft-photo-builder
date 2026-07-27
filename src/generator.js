@@ -282,11 +282,19 @@ function normalizeOrigin(blocks) {
   return blocks;
 }
 
-// Les primitives se chevauchent (murs + toit + cloisons) : on garde le
-// dernier bloc posé à chaque coordonnée, comme le ferait le jeu
+// Les primitives se chevauchent (murs + toit + cloisons) : on déduplique par
+// coordonnée avec la MÊME règle qu'optimizeToCommands (src/optimizer.js) :
+// un bloc traversable (air, porte) posé intentionnellement survit aux blocs
+// pleins posés ensuite à la même case. Sinon, dernier posé gagne.
 function dedupeBlocks(blocks) {
+  const isPassable = (blk) => blk === 'air' || /_door(\[|$)/.test(blk);
   const map = new Map();
-  for (const b of blocks) map.set(`${b.x},${b.y},${b.z}`, b);
+  for (const b of blocks) {
+    const k = `${b.x},${b.y},${b.z}`;
+    const prev = map.get(k);
+    if (prev && isPassable(prev.block) && !isPassable(b.block)) continue;
+    map.set(k, b);
+  }
   return [...map.values()];
 }
 

@@ -89,20 +89,31 @@ function normalizeOrigin(blocks) {
 }
 ```
 
-## 4. Dédoublonnage des coordonnées (dernier bloc posé gagne)
+## 4. Dédoublonnage des coordonnées (priorité aux blocs traversables)
 
 Fichier : `src/generator.js`.
 
+IMPORTANT : la règle de dedup doit être IDENTIQUE à celle d'`optimizeToCommands` dans src/optimizer.js (priorité air/portes), sinon les ouvertures creusées par les primitives arche/escalier/porte seraient rebouchées par les boites posées après dans le code LLM. Ne PAS faire un simple « dernier gagne ».
+
 Ajouter :
 ```js
-// Les primitives se chevauchent (murs + toit + cloisons) : on garde le
-// dernier bloc posé à chaque coordonnée, comme le ferait le jeu
+// Les primitives se chevauchent (murs + toit + cloisons) : on déduplique par
+// coordonnée avec la MÊME règle qu'optimizeToCommands (src/optimizer.js) :
+// un bloc traversable (air, porte) posé intentionnellement survit aux blocs
+// pleins posés ensuite à la même case. Sinon, dernier posé gagne.
 function dedupeBlocks(blocks) {
+  const isPassable = (blk) => blk === 'air' || /_door(\[|$)/.test(blk);
   const map = new Map();
-  for (const b of blocks) map.set(`${b.x},${b.y},${b.z}`, b);
+  for (const b of blocks) {
+    const k = `${b.x},${b.y},${b.z}`;
+    const prev = map.get(k);
+    if (prev && isPassable(prev.block) && !isPassable(b.block)) continue;
+    map.set(k, b);
+  }
   return [...map.values()];
 }
 ```
+Bénéfice supplémentaire : le rendu (`renderVoxels`) et l'audit d'habitabilité de la boucle de correction verront exactement la même structure que celle réellement construite par l'optimizer.
 
 Dans la boucle de tentatives de `generateStructure()`, remplacer :
 ```js
