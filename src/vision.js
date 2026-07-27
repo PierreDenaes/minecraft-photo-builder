@@ -1,6 +1,12 @@
 const { createClient, withRetry, stripCodeFences } = require('./llm');
 
-const MODEL = 'claude-sonnet-4-6';
+// Opus pour l'analyse principale : meilleure compréhension spatiale (proportions,
+// matériaux réels, détails architecturaux — colombages, moulures, textures).
+// Le surcoût (~5×) reste marginal sur ce projet (~1 photo par !photo). Le critique
+// compareToPhoto reste sur sonnet — la comparaison photo↔rendu n'a pas besoin
+// du raisonnement fin d'opus, et elle est appelée deux fois par pipeline.
+const MODEL_ANALYSE = 'claude-opus-5';
+const MODEL_CRITIQUE = 'claude-sonnet-4-6';
 
 const STYLES = ['primitif', 'egyptien', 'antique', 'asiatique_japonais', 'asiatique_chinois', 'oriental',
   'medieval', 'gothique', 'chateau_fort', 'renaissance', 'baroque_classique', 'haussmannien', 'victorien',
@@ -55,7 +61,7 @@ async function analyzeImage(imageBase64, mimeType, { client, maxSize = 64, valid
   const c = client || createClient();
   const response = await withRetry(() =>
     c.messages.create({
-      model: MODEL,
+      model: MODEL_ANALYSE,
       max_tokens: 1500,
       temperature: 0,
       system: [{ type: 'text', text: systemPrompt(maxSize, validBlocks), cache_control: { type: 'ephemeral' } }],
@@ -92,7 +98,7 @@ async function compareToPhoto(photoBase64, photoMime, renderBase64, { client } =
   try {
     const c = client || createClient();
     const response = await withRetry(() => c.messages.create({
-      model: MODEL,
+      model: MODEL_CRITIQUE,
       max_tokens: 600,
       temperature: 0,
       system: `Tu compares une PHOTO de référence (première image) et le RENDU voxel Minecraft généré à partir d'elle (seconde image).
