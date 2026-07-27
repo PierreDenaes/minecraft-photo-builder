@@ -8,13 +8,16 @@ const path = require('node:path');
 const IN = path.join(__dirname, '..', 'data', 'schem-refs.json');
 const OUT = path.join(__dirname, '..', 'data', 'schema-catalog.json');
 
+// Heuristique de type : les seuils sont ajustés selon les vrais schemas rencontrés.
+// Une maison bretonne ~40x20x35 (simple-dwelling) doit rester "maison", pas
+// être promue manoir juste parce qu'elle dépasse 30 de côté.
 function guessType(dims, style) {
   const vol = dims.x * dims.y * dims.z;
-  const w = Math.max(dims.x, dims.z); // emprise au sol
+  const w = Math.max(dims.x, dims.z);
   const h = dims.y;
-  if (vol > 40000) return 'manoir';
-  if (w > 30) return 'manoir';
-  if (h > 25 && w < 25) return 'tour';
+  if (vol > 80000 || w > 60) return 'manoir';
+  if (style === 'medieval' && (vol > 30000 || w > 35)) return 'chateau';
+  if (h > 30 && w < 20) return 'tour';
   if (style === 'moderne' && w >= 18) return 'villa';
   return 'maison';
 }
@@ -44,7 +47,9 @@ const ENV = new Set(['air', 'dirt', 'grass_block', 'coarse_dirt', 'gravel', 'san
 function extractMateriauxBase(topMateriaux) {
   const clean = topMateriaux
     .map((s) => s.replace(/\([^)]+\)/, ''))
-    .filter((n) => !ENV.has(n));
+    // exclut aussi les blocs internes (__reserved__, structure_block, jigsaw...)
+    // qui apparaissent parfois dans les schemas exportés
+    .filter((n) => !ENV.has(n) && !/^__|^structure_|^jigsaw|^light$|^barrier$/.test(n));
   return {
     murs_principaux: clean[0] || 'stone_bricks',
     accent: clean[1] || clean[0] || 'stone',

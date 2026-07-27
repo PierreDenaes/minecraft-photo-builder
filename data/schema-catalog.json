@@ -3,7 +3,7 @@
     "nom": "18812",
     "fichier": "18812.schem",
     "style": "moderne",
-    "type_batiment": "manoir",
+    "type_batiment": "villa",
     "emprise": {
       "x": 35,
       "y": 22,
@@ -130,7 +130,7 @@
     "nom": "26313",
     "fichier": "26313.schem",
     "style": "moderne",
-    "type_batiment": "manoir",
+    "type_batiment": "villa",
     "emprise": {
       "x": 30,
       "y": 19,
@@ -161,7 +161,7 @@
     "nom": "29464",
     "fichier": "29464.schem",
     "style": "moderne",
-    "type_batiment": "manoir",
+    "type_batiment": "villa",
     "emprise": {
       "x": 34,
       "y": 21,
@@ -317,7 +317,7 @@
     "nom": "30693",
     "fichier": "30693.schem",
     "style": "rustique_organique",
-    "type_batiment": "tour",
+    "type_batiment": "maison",
     "emprise": {
       "x": 23,
       "y": 35,
@@ -635,7 +635,7 @@
     "nom": "30737",
     "fichier": "30737.schem",
     "style": "moderne",
-    "type_batiment": "manoir",
+    "type_batiment": "villa",
     "emprise": {
       "x": 48,
       "y": 50,
@@ -801,7 +801,7 @@
     "nom": "30803",
     "fichier": "30803.schem",
     "style": "rustique_organique",
-    "type_batiment": "tour",
+    "type_batiment": "maison",
     "emprise": {
       "x": 24,
       "y": 29,
@@ -833,7 +833,7 @@
     "nom": "30804",
     "fichier": "30804.schem",
     "style": "rustique_organique",
-    "type_batiment": "manoir",
+    "type_batiment": "maison",
     "emprise": {
       "x": 35,
       "y": 60,
@@ -993,7 +993,7 @@
     "nom": "30853",
     "fichier": "30853.schem",
     "style": "moderne",
-    "type_batiment": "manoir",
+    "type_batiment": "villa",
     "emprise": {
       "x": 36,
       "y": 55,
@@ -1022,6 +1022,102 @@
     }
   },
   {
+    "nom": "casa-de-leador-jragkuhb",
+    "fichier": "casa-de-leador-jragkuhb.schem",
+    "style": "rustique_organique",
+    "type_batiment": "maison",
+    "emprise": {
+      "x": 39,
+      "y": 36,
+      "z": 25
+    },
+    "tags": [
+      "rustique_organique",
+      "grand",
+      "bois",
+      "pierre",
+      "detaille"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "stripped_oak_log",
+      "accent": "stripped_jungle_log",
+      "toit": "beehive",
+      "tous": [
+        "stripped_oak_log",
+        "stripped_jungle_log",
+        "beehive",
+        "oak_log",
+        "oak_trapdoor",
+        "spruce_trapdoor",
+        "polished_blackstone_bricks",
+        "blackstone"
+      ]
+    }
+  },
+  {
+    "nom": "casa-moderna-y-jjda2sk1",
+    "fichier": "casa-moderna-y-jjda2sk1.schem",
+    "style": "medieval",
+    "type_batiment": "manoir",
+    "emprise": {
+      "x": 76,
+      "y": 46,
+      "z": 118
+    },
+    "tags": [
+      "medieval",
+      "grand",
+      "beton",
+      "pierre"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "stone",
+      "accent": "mud",
+      "toit": "gray_wool",
+      "tous": [
+        "stone",
+        "mud",
+        "gray_wool",
+        "gray_concrete",
+        "light_gray_wool",
+        "stone_bricks",
+        "cracked_stone_bricks",
+        "cobblestone"
+      ]
+    }
+  },
+  {
+    "nom": "guarida-de-lava-yo8uggmb",
+    "fichier": "guarida-de-lava-yo8uggmb.schem",
+    "style": "desert",
+    "type_batiment": "manoir",
+    "emprise": {
+      "x": 56,
+      "y": 46,
+      "z": 61
+    },
+    "tags": [
+      "desert",
+      "grand",
+      "bois",
+      "detaille"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "white_terracotta",
+      "accent": "dark_oak_stairs",
+      "toit": "mangrove_log",
+      "tous": [
+        "white_terracotta",
+        "dark_oak_stairs",
+        "mangrove_log",
+        "dark_oak_slab",
+        "spruce_leaves",
+        "spruce_planks",
+        "stone"
+      ]
+    }
+  },
+  {
     "nom": "italian2",
     "fichier": "italian2.schem",
     "style": "desert",
@@ -1044,6 +1140,126 @@
         "oak_leaves",
         "smooth_sandstone",
         "andesite"
+      ]
+    }
+  },
+  {
+    "nom": "lumberhold-gyq9n6o1",
+    "fichier": "lumberhold-gyq9n6o1.schem",
+    "style": "rustique_organique",
+    "type_batiment": "manoir",
+    "emprise": {
+      "x": 108,
+      "y": 101,
+      "z": 106
+    },
+    "tags": [
+      "rustique_organique",
+      "grand",
+      "bois",
+      "detaille"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "spruce_leaves",
+      "accent": "oak_log",
+      "toit": "spruce_log",
+      "tous": [
+        "spruce_leaves",
+        "oak_log",
+        "spruce_log",
+        "stripped_spruce_log",
+        "spruce_planks"
+      ]
+    }
+  },
+  {
+    "nom": "refugio-rstico-nsuc328p",
+    "fichier": "refugio-rstico-nsuc328p.schem",
+    "style": "desert",
+    "type_batiment": "maison",
+    "emprise": {
+      "x": 32,
+      "y": 22,
+      "z": 42
+    },
+    "tags": [
+      "desert",
+      "moyen"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "stone",
+      "accent": "spruce_trapdoor",
+      "toit": "oak_slab",
+      "tous": [
+        "stone",
+        "spruce_trapdoor",
+        "oak_slab",
+        "spruce_slab",
+        "cobbled_deepslate",
+        "deepslate_bricks",
+        "white_terracotta"
+      ]
+    }
+  },
+  {
+    "nom": "restaurante-tac-5fpgq0bg",
+    "fichier": "restaurante-tac-5fpgq0bg.schem",
+    "style": "rustique_organique",
+    "type_batiment": "manoir",
+    "emprise": {
+      "x": 62,
+      "y": 79,
+      "z": 65
+    },
+    "tags": [
+      "rustique_organique",
+      "grand",
+      "bois"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "brown_terracotta",
+      "accent": "terracotta",
+      "toit": "oak_planks",
+      "tous": [
+        "brown_terracotta",
+        "terracotta",
+        "oak_planks",
+        "stripped_jungle_wood",
+        "bone_block",
+        "yellow_terracotta",
+        "smooth_sandstone_slab",
+        "andesite_wall"
+      ]
+    }
+  },
+  {
+    "nom": "simple-dwelling-iyhx4xpd",
+    "fichier": "simple-dwelling-iyhx4xpd.schem",
+    "style": "medieval",
+    "type_batiment": "chateau",
+    "emprise": {
+      "x": 47,
+      "y": 19,
+      "z": 40
+    },
+    "tags": [
+      "medieval",
+      "grand",
+      "bois",
+      "pierre",
+      "detaille"
+    ],
+    "materiaux_base": {
+      "murs_principaux": "cobblestone",
+      "accent": "tuff",
+      "toit": "spruce_trapdoor",
+      "tous": [
+        "cobblestone",
+        "tuff",
+        "spruce_trapdoor",
+        "diorite",
+        "spruce_planks",
+        "spruce_slab"
       ]
     }
   }

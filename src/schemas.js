@@ -137,8 +137,9 @@ async function chooseSchema(description) {
   // dans le type libre de la vision ("maison_bretonne_en_pierre" → "maison")
   const typeKeywords = {
     villa: ['villa'],
-    maison: ['maison', 'chaumiere', 'cottage'],
-    manoir: ['manoir', 'chateau', 'demeure', 'ferme', 'batisse'],
+    maison: ['maison', 'chaumiere', 'cottage', 'chalet'],
+    manoir: ['manoir', 'demeure', 'ferme', 'batisse'],
+    chateau: ['chateau', 'castle', 'castillo', 'forteresse', 'palais'],
     tour: ['tour', 'phare', 'donjon']
   };
   const matchType = (schemaType) => {
@@ -169,8 +170,9 @@ async function chooseSchemas(description, n = 3) {
   const style = (description.style || '').toLowerCase();
   const typeKeywords = {
     villa: ['villa'],
-    maison: ['maison', 'chaumiere', 'cottage'],
-    manoir: ['manoir', 'chateau', 'demeure', 'ferme', 'batisse'],
+    maison: ['maison', 'chaumiere', 'cottage', 'chalet'],
+    manoir: ['manoir', 'demeure', 'ferme', 'batisse'],
+    chateau: ['chateau', 'castle', 'castillo', 'forteresse', 'palais'],
     tour: ['tour', 'phare', 'donjon']
   };
   const matchType = (schemaType) => {

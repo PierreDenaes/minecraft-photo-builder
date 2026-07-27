@@ -80,7 +80,7 @@ async function extractOne(file) {
     const r = await extractOne(f);
     if (!r) { console.warn(`[schem] ${f} illisible ou vide — ignoré`); continue; }
     // écarte les monstres (>200 blocs de côté = scène entière, pas un bâtiment isolé)
-    if (Math.max(r.dims.x, r.dims.y, r.dims.z) > 200) {
+    if (Math.max(r.dims.x, r.dims.y, r.dims.z) > 250) {
       console.warn(`[schem] ${f} trop grand (${r.dims.x}×${r.dims.y}×${r.dims.z}) — ignoré`);
       continue;
     }
