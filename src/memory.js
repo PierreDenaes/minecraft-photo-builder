@@ -69,4 +69,23 @@ async function saveCase({ photo, description, code }) {
   return id;
 }
 
-module.exports = { CASES_DIR, INDEX_PATH, __ensureDirs, __generateId, warmup, __setEmbedder, __isReady, __embed, saveCase };
+function updateNote(id, note) {
+  if (!Number.isInteger(note) || note < 1 || note > 5) {
+    console.warn(`[memory] note invalide (${note}), ignorée`);
+    return;
+  }
+  const casePath = path.join(CASES_DIR, `${id}.json`);
+  if (!fs.existsSync(casePath)) {
+    console.warn(`[memory] cas ${id} introuvable, note ignorée`);
+    return;
+  }
+  const caseObj = JSON.parse(fs.readFileSync(casePath, 'utf8'));
+  caseObj.note = note;
+  fs.writeFileSync(casePath, JSON.stringify(caseObj, null, 2));
+  const index = JSON.parse(fs.readFileSync(INDEX_PATH, 'utf8'));
+  const entry = index.find((e) => e.id === id);
+  if (entry) entry.note = note;
+  fs.writeFileSync(INDEX_PATH, JSON.stringify(index, null, 2));
+}
+
+module.exports = { CASES_DIR, INDEX_PATH, __ensureDirs, __generateId, warmup, __setEmbedder, __isReady, __embed, saveCase, updateNote };

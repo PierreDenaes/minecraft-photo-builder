@@ -101,3 +101,30 @@ test('saveCase écrit l\'embedding en Float32Array (2048 bytes = 512*4)', async 
   const embBuf = fs.readFileSync(path.join(memory.CASES_DIR, `${id}.emb`));
   assert.strictEqual(embBuf.length, 512 * 4);
 });
+
+test('updateNote met à jour la note dans le JSON du cas et dans l\'index', async () => {
+  resetMemoryDir();
+  memory.__setEmbedder(fakeEmbedder());
+  const photo = fs.readFileSync(path.join(__dirname, 'fixtures/memory/photo-small.jpg'));
+  const id = await memory.saveCase({ photo, description: { style: 'medieval', type_batiment: 'maison' }, code: '' });
+  memory.updateNote(id, 4);
+  const caseJson = JSON.parse(fs.readFileSync(path.join(memory.CASES_DIR, `${id}.json`), 'utf8'));
+  assert.strictEqual(caseJson.note, 4);
+  const index = JSON.parse(fs.readFileSync(memory.INDEX_PATH, 'utf8'));
+  assert.strictEqual(index.find((e) => e.id === id).note, 4);
+});
+
+test('updateNote sur id inexistant : no-op silencieux (pas d\'exception)', () => {
+  resetMemoryDir();
+  assert.doesNotThrow(() => memory.updateNote('2020-01-01-ffff', 3));
+});
+
+test('updateNote rejette une note hors [1..5] silencieusement', async () => {
+  resetMemoryDir();
+  memory.__setEmbedder(fakeEmbedder());
+  const photo = fs.readFileSync(path.join(__dirname, 'fixtures/memory/photo-small.jpg'));
+  const id = await memory.saveCase({ photo, description: { style: 'medieval', type_batiment: 'maison' }, code: '' });
+  memory.updateNote(id, 7);
+  const caseJson = JSON.parse(fs.readFileSync(path.join(memory.CASES_DIR, `${id}.json`), 'utf8'));
+  assert.strictEqual(caseJson.note, null);
+});
