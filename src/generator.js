@@ -66,26 +66,35 @@ Rien d'autre. Pas de balises markdown de code, pas de commentaire d'introduction
 - berge({ x1, z1, x2, z2, y_sol, cote: 'nord'|'sud'|'est'|'ouest', profondeur_eau=2, sable='sand', bande=2 }) — divise l'emprise en 2 zones : terre au niveau y_sol + eau du côté indiqué, bande de sable au contact (rivage naturel, utilise si la photo montre le bâtiment au bord de l'eau)
 - cheminee({ x, z, y_base, y_haut, materiau }) — colonne 1×1 depuis y_base jusqu'à y_haut (dépassant le toit d'1 à 3 blocs) + chapeau slab. À placer sur le TOIT (y_base = niveau du toit, y_haut = 2-4 blocs plus haut). Si la vision décrit "cheminee" dans elements, tu DOIS en ajouter au moins UNE.
 - arche({ x1, z1, x2, z2, y_base, y_faitage, materiau, axe: 'x'|'z' }) — massif percé d'un TUNNEL VOÛTÉ traversant selon axe. C'est LA primitive pour Arc de Triomphe, Porta Nigra, portes de ville médiévales, aqueducs romains, arches monumentales. Section (perpendiculaire à axe) ≥ 3 blocs (piédroit + tunnel + piédroit). y_faitage - y_base ≥ 6 pour une voûte visible. axe = direction que le piéton emprunte pour traverser. Empile un attique dessus (boite y0=y_faitage, y1=y_faitage+attique_h) pour l'Arc de Triomphe qui a un couronnement. ATTENTION : arche EST le corps massif — n'ajoute PAS une boite pleine dans la même emprise (elle boucherait le tunnel). Structure Arc de Triomphe correcte = arche() + boite(attique au-dessus), point.
-- pyramideTronquee({ x, z, y_base, y_haut, base, sommet, materiau, ajouree=false }) — tronc de pyramide creux centré sur (x,z). La couche du bas fait "base" blocs de côté, celle du haut "sommet" blocs. Sommet <= base OBLIGATOIRE.
+- pyramideTronquee({ x, z, y_base, y_haut, base, sommet, materiau, ajouree=false, x_sommet, z_sommet }) — tronc de pyramide creux. La couche du bas fait "base" blocs de côté centrée sur (x,z), celle du haut "sommet" blocs centrée sur (x_sommet,z_sommet) — omis = frustum droit centré sur (x,z). Sommet <= base OBLIGATOIRE. x_sommet/z_sommet ≠ x/z → frustum INCLINÉ (le centre migre linéairement avec la hauteur) : c'est LA façon de faire des pieds convergents (Tour Eiffel), des contreforts, des tours penchées (Pise).
 
 RÈGLES OBLIGATOIRES pour empilement (souvent mal exécuté) :
-  1. Les pyramides successives DOIVENT partager LE MÊME (x, z) sinon l'étage supérieur "flotte" à côté de l'étage inférieur. Ce sont TOUJOURS les mêmes coordonnées x/z pour toutes les couches.
+  1. Les sections empilées d'un même fût DOIVENT partager LE MÊME (x, z) sinon l'étage supérieur "flotte" à côté de l'étage inférieur.
   2. y_base de la couche N+1 = y_haut de la couche N (contact vertical strict). Un GAP entre y_haut(N) et y_base(N+1) crée un vide où l'étage supérieur flotte visuellement.
   3. sommet de la couche N = base de la couche N+1 (continuité visuelle : le sommet évasé rejoint la base du niveau suivant).
   4. Si le résultat visuel doit ressembler à une seule silhouette continue (Tour Eiffel, Burj Khalifa, obélisque), on parle d'UNE structure — donc UN SEUL centre (x,z), pas plusieurs points de la carte.
+  5. PIEDS SÉPARÉS (Tour Eiffel, Tokyo Tower) : 4 pyramideTronquee INCLINÉES dont les (x,z) de base sont aux 4 coins de l'emprise et dont les (x_sommet,z_sommet) convergent vers les 4 coins de la section supérieure ; leur y_haut = y_base du tronc. NE JAMAIS simuler les pieds avec un seul grand frustum centré : ça donne une jupe pleine sans pieds.
 
 Exemple TOUR EIFFEL 300 blocs de haut, centrée sur x=40, z=40, matériau iron_bars ajouré :
-  const pieds = pyramideTronquee({ x:40, z:40, y_base:0,   y_haut:40,  base:80, sommet:40, materiau:'iron_bars', ajouree:true });
-  const tronc = pyramideTronquee({ x:40, z:40, y_base:40,  y_haut:180, base:40, sommet:15, materiau:'iron_bars', ajouree:true });
-  const antenne = pyramideTronquee({ x:40, z:40, y_base:180, y_haut:300, base:15, sommet:3,  materiau:'iron_bars', ajouree:true });
-  // 3 pyramides, MÊME (x,z), y_haut→y_base continus, sommet→base continus. Retour = concat des 3.
+  const blocks = [];
+  // 4 pieds inclinés : bases aux coins (40±30), sommets convergeant vers les coins du tronc (40±11)
+  for (const [sx, sz] of [[-1,-1],[-1,1],[1,-1],[1,1]]) {
+    blocks.push(...pyramideTronquee({
+      x: 40 + sx*30, z: 40 + sz*30, x_sommet: 40 + sx*8, z_sommet: 40 + sz*8,
+      y_base: 0, y_haut: 55, base: 20, sommet: 8, materiau: 'iron_bars', ajouree: true }));
+  }
+  // tronc effilé : sa base (24) couvre l'enveloppe des 4 sommets de pieds, même centre (40,40)
+  blocks.push(...pyramideTronquee({ x:40, z:40, y_base:55,  y_haut:180, base:24, sommet:10, materiau:'iron_bars', ajouree:true }));
+  // antenne fine au même centre : base = sommet du tronc (règle 3)
+  blocks.push(...pyramideTronquee({ x:40, z:40, y_base:180, y_haut:300, base:10, sommet:2,  materiau:'iron_bars', ajouree:true }));
+  // 4 pieds inclinés convergents + 2 sections empilées au MÊME (x,z), y_haut→y_base continus.
 
 Autres usages : pyramides d'Egypte (sommet=1), Burj Khalifa, toits de temples asiatiques, obélisques. ajouree=true remplace materiau par iron_bars pour un aspect treillis métallique (essentiel pour la Tour Eiffel, tours de télécommunications).
 
 ## Règles de composition
 - Une porte doit être dans un mur existant (même x/z que la façade de la boite).
 - CHAQUE bâtiment habitable a AU MOINS UNE porte en façade — le bâtiment principal en premier.
-- MONUMENTS NON HABITABLES : si type_batiment évoque un ARC (arc_de_triomphe, arche, porte_de_ville, aqueduc) → utilise la primitive "arche" comme corps principal (JAMAIS une simple boite pleine qui ressemblerait à une prison). Si type_batiment évoque une TOUR ÉLANCÉE MÉTALLIQUE (tour_eiffel, tour_de_tokyo, tour_de_télécom) → EMPILE plusieurs pyramideTronquee ajouree:true (pieds évasés + tronc rétréci + antenne fine), c'est la SEULE façon d'obtenir la silhouette évasée+treillis. Si type_batiment évoque une TOUR EN PIERRE (big_ben, tour_pise, minaret, campanile) → primitive "tour" avec toit_conique et créneaux. Si c'est un GRATTE-CIEL EFFILÉ (burj_khalifa, empire_state) → pyramideTronquee ajouree:false empilées. Si c'est une PYRAMIDE (pyramide_egypte, pyramide_maya) → une seule pyramideTronquee avec sommet=1. Si c'est un OBÉLISQUE / colonne / stèle → empile 2-3 boites étroites décroissantes ou une pyramideTronquee très fine. Pour ces monuments : PAS de porte, PAS de cloisons intérieures, PAS d'audit habitabilité applicable — la fidélité de la silhouette prime sur l'habitabilité.
+- MONUMENTS NON HABITABLES : si type_batiment évoque un ARC (arc_de_triomphe, arche, porte_de_ville, aqueduc) → utilise la primitive "arche" comme corps principal (JAMAIS une simple boite pleine qui ressemblerait à une prison). Si type_batiment évoque une TOUR ÉLANCÉE MÉTALLIQUE (tour_eiffel, tour_de_tokyo, tour_de_télécom) → 4 pieds pyramideTronquee INCLINÉES (x_sommet/z_sommet convergents, règle 5) + tronc + antenne empilés en pyramideTronquee ajouree:true, c'est la SEULE façon d'obtenir la silhouette pieds séparés + treillis. Si type_batiment évoque une TOUR EN PIERRE (big_ben, tour_pise, minaret, campanile) → primitive "tour" avec toit_conique et créneaux. Si c'est un GRATTE-CIEL EFFILÉ (burj_khalifa, empire_state) → pyramideTronquee ajouree:false empilées. Si c'est une PYRAMIDE (pyramide_egypte, pyramide_maya) → une seule pyramideTronquee avec sommet=1. Si c'est un OBÉLISQUE / colonne / stèle → empile 2-3 boites étroites décroissantes ou une pyramideTronquee très fine. Pour ces monuments : PAS de porte, PAS de cloisons intérieures, PAS d'audit habitabilité applicable — la fidélité de la silhouette prime sur l'habitabilité.
 - MARGE PORTE / BAIE : laisse AU MOINS 2 blocs d'écart entre la porte et la baie la plus proche sur la même façade (sinon les encadrements se chevauchent et la porte devient invisible). Une villa avec une porte à x=28 doit avoir ses baies à x ≤ 26 ou x ≥ 30.
 - Sur l'entrée principale d'une villa/manoir : préfère porte({double:true}) qui pose 2 battants — visuel de portail bien plus reconnaissable qu'une simple porte 1×2.
 - Pour les villas et maisons, prévois PLUSIEURS entrées : une porte principale sur la façade avant, et si la scène a une piscine/terrasse/jardin, une SECONDE porte donnant sur cet extérieur arrière (baie coulissante = utilise porte, pas baie). Une villa vraie a 2 à 3 accès.

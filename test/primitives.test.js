@@ -685,6 +685,146 @@ test('pyramideTronquee : base=sommet → cylindre (tronc droit, dégénéré val
   assert.strictEqual(bas.length, haut.length, 'base=sommet doit produire des couches identiques');
 });
 
+// Connectivité verticale : le contour EXTÉRIEUR de chaque couche doit reposer
+// intégralement sur la couche du dessous (remplissage « marche d'escalier »),
+// sinon les anneaux rétrécis sont en diagonale et flottent (bug Tour Eiffel en
+// iron_bars : strates déconnectées). NB : un appui sous chaque bloc est
+// impossible dans un frustum creux (l'anneau intérieur surplombe le vide) —
+// l'invariant porte sur les blocs extrémaux de chaque ligne/colonne, qui
+// forment exactement le contour extérieur de la couche.
+function assertCouchesConnectees(p, label) {
+  const parCouche = new Map();
+  for (const b of p) {
+    if (!parCouche.has(b.y)) parCouche.set(b.y, new Set());
+    parCouche.get(b.y).add(`${b.x},${b.z}`);
+  }
+  const ys = [...parCouche.keys()].sort((a, b) => a - b);
+  for (let i = 1; i < ys.length; i++) {
+    const dessous = parCouche.get(ys[i - 1]);
+    const couche = [...parCouche.get(ys[i])].map((c) => c.split(',').map(Number));
+    const parLigne = new Map(); // z → [xs], et x → [zs]
+    const parColonne = new Map();
+    for (const [cx, cz] of couche) {
+      if (!parLigne.has(cz)) parLigne.set(cz, []);
+      parLigne.get(cz).push(cx);
+      if (!parColonne.has(cx)) parColonne.set(cx, []);
+      parColonne.get(cx).push(cz);
+    }
+    const contourExt = new Set();
+    for (const [cz, xs] of parLigne) {
+      contourExt.add(`${Math.min(...xs)},${cz}`);
+      contourExt.add(`${Math.max(...xs)},${cz}`);
+    }
+    for (const [cx, zs] of parColonne) {
+      contourExt.add(`${cx},${Math.min(...zs)}`);
+      contourExt.add(`${cx},${Math.max(...zs)}`);
+    }
+    for (const c of contourExt) {
+      assert.ok(
+        dessous.has(c),
+        `${label} : contour extérieur (${c}) de la couche y=${ys[i]} sans appui sur y=${ys[i - 1]}`
+      );
+    }
+  }
+}
+
+test('pyramideTronquee : le contour extérieur de chaque couche repose sur la précédente', () => {
+  const p = pyramideTronquee({ x: 20, z: 20, y_base: 0, y_haut: 10, base: 12, sommet: 4, materiau: 'stone_bricks' });
+  assertCouchesConnectees(p, 'frustum droit');
+});
+
+test('pyramideTronquee : connectivité verticale même sur pente raide', () => {
+  const p = pyramideTronquee({ x: 0, z: 0, y_base: 0, y_haut: 5, base: 20, sommet: 2, materiau: 'sandstone' });
+  assertCouchesConnectees(p, 'pente raide');
+});
+
+// Frustum incliné : x_sommet/z_sommet font migrer le centre linéairement avec la
+// hauteur → 4 pieds convergents pour la Tour Eiffel, contreforts, tours penchées
+test('pyramideTronquee inclinée : le sommet est centré sur (x_sommet, z_sommet)', () => {
+  const p = pyramideTronquee({
+    x: 0, z: 0, x_sommet: 10, z_sommet: 6,
+    y_base: 0, y_haut: 12, base: 8, sommet: 3, materiau: 'iron_block',
+  });
+  const haut = p.filter((b) => b.y === 11);
+  const cx = haut.reduce((s, b) => s + b.x, 0) / haut.length;
+  const cz = haut.reduce((s, b) => s + b.z, 0) / haut.length;
+  assert.ok(Math.abs(cx - 10) <= 1, `centre X du sommet attendu ~10, obtenu ${cx}`);
+  assert.ok(Math.abs(cz - 6) <= 1, `centre Z du sommet attendu ~6, obtenu ${cz}`);
+  // la base, elle, reste centrée sur (x, z)
+  const bas = p.filter((b) => b.y === 0);
+  const bx = bas.reduce((s, b) => s + b.x, 0) / bas.length;
+  assert.ok(Math.abs(bx - 0) <= 1, `centre X de la base attendu ~0, obtenu ${bx}`);
+});
+
+// Invariant « structure jointe à chaque niveau » : l'intersection des empreintes
+// (x,z) de deux couches consécutives doit former un anneau FERMÉ qui encercle le
+// trou intérieur — chaque couche repose donc sur la précédente tout autour, pas
+// seulement sur une ou deux arêtes (bug Tour Eiffel : contact en L, strates en
+// diagonale). Valable aussi pour le frustum incliné, dont la face avant
+// surplombe par nature (comme les vrais pieds de la Tour Eiffel).
+function assertAnneauCommun(p, label) {
+  const parCouche = new Map();
+  for (const b of p) {
+    if (!parCouche.has(b.y)) parCouche.set(b.y, new Set());
+    parCouche.get(b.y).add(`${b.x},${b.z}`);
+  }
+  const ys = [...parCouche.keys()].sort((a, b) => a - b);
+  for (let i = 0; i < ys.length - 1; i++) {
+    const commun = new Set([...parCouche.get(ys[i])].filter((c) => parCouche.get(ys[i + 1]).has(c)));
+    const pts = [...commun].map((c) => c.split(',').map(Number));
+    assert.ok(pts.length > 0, `${label} : couches y=${ys[i]}/${ys[i + 1]} sans aucun bloc commun`);
+    const xMin = Math.min(...pts.map(([a]) => a)) - 1;
+    const xMax = Math.max(...pts.map(([a]) => a)) + 1;
+    const zMin = Math.min(...pts.map(([, b]) => b)) - 1;
+    const zMax = Math.max(...pts.map(([, b]) => b)) + 1;
+    // flood fill du complément depuis l'extérieur : s'il reste une cellule vide
+    // non atteinte, l'intersection encercle un trou → anneau fermé
+    const atteint = new Set([`${xMin},${zMin}`]);
+    const pile = [[xMin, zMin]];
+    while (pile.length) {
+      const [cx, cz] = pile.pop();
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = cx + dx, nz = cz + dz;
+        const k = `${nx},${nz}`;
+        if (nx < xMin || nx > xMax || nz < zMin || nz > zMax) continue;
+        if (commun.has(k) || atteint.has(k)) continue;
+        atteint.add(k);
+        pile.push([nx, nz]);
+      }
+    }
+    let enclos = 0;
+    for (let cx = xMin; cx <= xMax; cx++) {
+      for (let cz = zMin; cz <= zMax; cz++) {
+        const k = `${cx},${cz}`;
+        if (!commun.has(k) && !atteint.has(k)) enclos++;
+      }
+    }
+    assert.ok(
+      enclos > 0,
+      `${label} : couches y=${ys[i]}/${ys[i + 1]} — l'intersection n'encercle rien (contact partiel, pas un anneau fermé)`
+    );
+  }
+}
+
+test('pyramideTronquee inclinée : anneau fermé commun entre couches successives', () => {
+  const p = pyramideTronquee({
+    x: 0, z: 0, x_sommet: 12, z_sommet: 12,
+    y_base: 0, y_haut: 24, base: 9, sommet: 3, materiau: 'iron_block',
+  });
+  assertAnneauCommun(p, 'frustum incliné');
+});
+
+test('pyramideTronquee droite : anneau fermé commun entre couches successives', () => {
+  const p = pyramideTronquee({ x: 20, z: 20, y_base: 0, y_haut: 10, base: 12, sommet: 4, materiau: 'stone_bricks' });
+  assertAnneauCommun(p, 'frustum droit');
+});
+
+test('pyramideTronquee : x_sommet/z_sommet omis → comportement centré inchangé', () => {
+  const avec = pyramideTronquee({ x: 10, z: 10, x_sommet: 10, z_sommet: 10, y_base: 0, y_haut: 8, base: 8, sommet: 4, materiau: 'stone_bricks' });
+  const sans = pyramideTronquee({ x: 10, z: 10, y_base: 0, y_haut: 8, base: 8, sommet: 4, materiau: 'stone_bricks' });
+  assert.deepStrictEqual(avec, sans, 'x_sommet=x, z_sommet=z doit être identique au frustum droit');
+});
+
 // Normalisation tolérante : le LLM passe souvent le bloc plein (stone_bricks,
 // dark_oak_planks) au lieu du préfixe (stone_brick, dark_oak)
 test('arche accepte "stone_bricks" (pluriel) et le normalise en stone_brick_stairs', () => {

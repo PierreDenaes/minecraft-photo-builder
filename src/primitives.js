@@ -762,13 +762,16 @@ function arche({ x1, z1, x2, z2, y_base, y_faitage, materiau, axe }) {
   return out;
 }
 
-// Tronc de pyramide (frustum) creux, centré sur (x,z). Chaque couche est un
-// contour rectangulaire dont la taille décroît linéairement de `base` en bas
-// à `sommet` en haut. Usage : silhouettes effilées non couvertes par boite/tour :
-// Tour Eiffel (empilement pieds+tronc+antenne), pyramides d'Egypte (sommet=1
-// ou 2), Burj Khalifa, toits de temples asiatiques, obélisques.
+// Tronc de pyramide (frustum) creux. Chaque couche est un contour rectangulaire
+// dont la taille décroît linéairement de `base` en bas à `sommet` en haut, et
+// dont le centre migre linéairement de (x,z) vers (x_sommet,z_sommet) — omis =
+// frustum droit centré. Chaque couche remplit aussi l'anneau jusqu'au contour de
+// la couche suivante (« marche d'escalier ») : aucun bloc flottant, même en
+// ajouré ou incliné. Usage : silhouettes effilées non couvertes par boite/tour :
+// Tour Eiffel (4 pieds inclinés convergents + tronc + antenne), pyramides
+// d'Egypte (sommet=1 ou 2), Burj Khalifa, toits de temples, contreforts.
 // ajouree=true → iron_bars au lieu du matériau (aspect treillis métallique).
-function pyramideTronquee({ x, z, y_base, y_haut, base, sommet, materiau, ajouree = false }) {
+function pyramideTronquee({ x, z, y_base, y_haut, base, sommet, materiau, ajouree = false, x_sommet, z_sommet }) {
   if (!materiau) throw new Error('pyramideTronquee : materiau manquant');
   if (!Number.isInteger(y_base) || !Number.isInteger(y_haut) || y_haut <= y_base) {
     throw new Error(`pyramideTronquee : y_haut (${y_haut}) doit être > y_base (${y_base})`);
@@ -777,26 +780,41 @@ function pyramideTronquee({ x, z, y_base, y_haut, base, sommet, materiau, ajoure
     throw new Error(`pyramideTronquee : base (${base}) et sommet (${sommet}) doivent être > 0`);
   }
   if (sommet > base) throw new Error(`pyramideTronquee : sommet (${sommet}) doit être <= base (${base})`);
+  const xs = Number.isFinite(x_sommet) ? x_sommet : x;
+  const zs = Number.isFinite(z_sommet) ? z_sommet : z;
   const bloc = ajouree ? 'iron_bars' : materiau;
   const out = [];
   const hSteps = y_haut - y_base;
-  for (let dy = 0; dy < hSteps; dy++) {
+  const rectAt = (dy) => {
     const t = hSteps === 1 ? 0 : dy / (hSteps - 1);
     const size = Math.max(1, Math.round(base * (1 - t) + sommet * t));
+    const cx = Math.round(x * (1 - t) + xs * t);
+    const cz = Math.round(z * (1 - t) + zs * t);
     const half = Math.floor((size - 1) / 2);
-    const x1 = x - half;
-    const x2 = x + (size - 1 - half);
-    const z1 = z - half;
-    const z2 = z + (size - 1 - half);
+    return { x1: cx - half, x2: cx + (size - 1 - half), z1: cz - half, z2: cz + (size - 1 - half) };
+  };
+  for (let dy = 0; dy < hSteps; dy++) {
+    const r = rectAt(dy);
+    const n = dy < hSteps - 1 ? rectAt(dy + 1) : null;
     const y = y_base + dy;
-    // Contour creux : parois seulement (4 arêtes du rectangle)
-    for (let cx = x1; cx <= x2; cx++) {
-      out.push({ x: cx, y, z: z1, block: bloc });
-      if (z2 !== z1) out.push({ x: cx, y, z: z2, block: bloc });
+    const cells = new Set();
+    for (let cx = r.x1; cx <= r.x2; cx++) {
+      for (let cz = r.z1; cz <= r.z2; cz++) {
+        const surContour = cx === r.x1 || cx === r.x2 || cz === r.z1 || cz === r.z2;
+        // anneau : tout bloc de la couche hors de l'intérieur strict de la suivante
+        const dansInterieurSuivant = n && cx > n.x1 && cx < n.x2 && cz > n.z1 && cz < n.z2;
+        if (surContour || (n && !dansInterieurSuivant)) cells.add(`${cx},${cz}`);
+      }
     }
-    for (let cz = z1 + 1; cz < z2; cz++) {
-      out.push({ x: x1, y, z: cz, block: bloc });
-      if (x2 !== x1) out.push({ x: x2, y, z: cz, block: bloc });
+    if (n) {
+      // le contour de la couche suivante est aussi posé ici : en incliné il peut
+      // déborder du rectangle courant, on garantit ainsi son appui vertical
+      for (let cx = n.x1; cx <= n.x2; cx++) { cells.add(`${cx},${n.z1}`); cells.add(`${cx},${n.z2}`); }
+      for (let cz = n.z1; cz <= n.z2; cz++) { cells.add(`${n.x1},${cz}`); cells.add(`${n.x2},${cz}`); }
+    }
+    for (const c of cells) {
+      const [cx, cz] = c.split(',').map(Number);
+      out.push({ x: cx, y, z: cz, block: bloc });
     }
   }
   return out;
