@@ -108,14 +108,20 @@ async function pickBest(candidates, { client, fetchFn = fetch } = {}) {
   userContent.push({ type: 'text', text: 'Choisis.' });
   const response = await client.messages.create({
     model: PICK_MODEL,
-    max_tokens: 20,
+    // 100 tokens : Haiku ajoute parfois markdown/justification ("**2**\n\nLa photo 2 est...")
+    // malgré la consigne. Parsing tolérant en aval récupère le premier nombre.
+    max_tokens: 100,
     temperature: 0,
     system: PICK_SYSTEM,
     messages: [{ role: 'user', content: userContent }]
   });
   const raw = response.content.find((b) => b.type === 'text').text.trim().toLowerCase();
-  if (raw === 'aucune') return null;
-  const num = parseInt(raw, 10);
+  // Parsing tolérant : Haiku ajoute parfois du markdown (**2**) ou justifie sa réponse
+  // ("2\nLa photo 2 est..."). On extrait le premier nombre trouvé, ou "aucune" si présent.
+  if (/\baucune\b/.test(raw)) return null;
+  const match = raw.match(/\d+/);
+  if (!match) return null;
+  const num = parseInt(match[0], 10);
   if (!Number.isInteger(num) || num < 1 || num > images.length) return null;
   return survivors[num - 1];
 }

@@ -129,6 +129,17 @@ test('pickBest retourne null si sortie non-parsable', async () => {
   assert.strictEqual(idx, null);
 });
 
+test('pickBest parse la réponse Haiku avec markdown ("**2**\\n\\nLa photo 2 est...")', async () => {
+  // Haiku ajoute parfois du markdown et une justification malgré la consigne "UNIQUEMENT le NUMÉRO"
+  const result = await pickBest(CANDS, { client: fakeVisionClient('**2**\n\nLa photo 2 est la meilleure candidate pour une reconstruction Minecraft'), fetchFn: fakeThumbFetch() });
+  assert.deepStrictEqual(result, CANDS[1]);
+});
+
+test('pickBest parse la réponse Haiku qui commence par un nombre ("2\\nParce que...")', async () => {
+  const result = await pickBest(CANDS, { client: fakeVisionClient('2\nParce que sujet centré'), fetchFn: fakeThumbFetch() });
+  assert.deepStrictEqual(result, CANDS[1]);
+});
+
 test('pickBest retourne null si index hors bornes', async () => {
   const idx = await pickBest(CANDS, { client: fakeVisionClient('99'), fetchFn: fakeThumbFetch() });
   assert.strictEqual(idx, null);
