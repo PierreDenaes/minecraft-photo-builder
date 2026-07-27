@@ -31,7 +31,7 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 
 ## Primitives disponibles
 - boite({ x1, z1, x2, z2, y0, y1, murs, fondation?, plancher? }) — 4 murs pleins + dalle basse (fondation ou murs) + dalle haute (plancher, facultative)
-- porte({ facade: 'nord'|'sud'|'est'|'ouest', x, z, y0, hauteur=2, materiau }) — perce une ouverture 1×hauteur dans le mur de la façade, linteau du materiau, porte battante orientée vers l'intérieur
+- porte({ facade, x, z, y0, hauteur=2, materiau, double=false }) — porte battante 2 blocs (tympan au-dessus si hauteur>2) + linteau. double:true = double porte 2 battants côte à côte (portail d'entrée principale, portail garage, portes-fenêtres coulissantes). Utilise double:true dès que la vision décrit "double porte", "portail", "grande entrée", ou pour l'entrée PRINCIPALE d'un manoir/bâtiment de prestige.
 - baie({ facade, x1, z1, x2, z2, y1, y2, encadrement, illumine=false }) — glass_pane sur la rangée, encadrement autour ; illumine=true met du glowstone derrière (ambiance chaude, à activer si l'ambiance de la photo est crépusculaire/nocturne/lumières intérieures allumées)
 - toitPlat({ x1, z1, x2, z2, y, materiau, acrotere=true, debord=1 })
 - toitDeuxPans({ x1, z1, x2, z2, y_base, faitage: 'x'|'z', materiau, debord=1 }) — materiau = préfixe bois ("oak", "dark_oak", "spruce"...) qui donne stairs et planks
@@ -55,6 +55,8 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 ## Règles de composition
 - Une porte doit être dans un mur existant (même x/z que la façade de la boite).
 - CHAQUE bâtiment habitable a AU MOINS UNE porte en façade — le bâtiment principal en premier.
+- MARGE PORTE / BAIE : laisse AU MOINS 2 blocs d'écart entre la porte et la baie la plus proche sur la même façade (sinon les encadrements se chevauchent et la porte devient invisible). Une villa avec une porte à x=28 doit avoir ses baies à x ≤ 26 ou x ≥ 30.
+- Sur l'entrée principale d'une villa/manoir : préfère porte({double:true}) qui pose 2 battants — visuel de portail bien plus reconnaissable qu'une simple porte 1×2.
 - Pour les villas et maisons, prévois PLUSIEURS entrées : une porte principale sur la façade avant, et si la scène a une piscine/terrasse/jardin, une SECONDE porte donnant sur cet extérieur arrière (baie coulissante = utilise porte, pas baie). Une villa vraie a 2 à 3 accès.
 - Une baie doit être dans un mur existant.
 - Un escalier doit partir du plancher de la boite (y_bas) et arriver au plancher haut (y_haut = y1 de la boite).

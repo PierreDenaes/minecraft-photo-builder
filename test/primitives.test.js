@@ -530,3 +530,25 @@ test('cheminee : cobblestone → cobblestone_slab (déjà correct)', () => {
   const c = cheminee({ x: 0, z: 0, y_base: 5, y_haut: 8, materiau: 'cobblestone' });
   assert.strictEqual(c.find((k) => k.y === 9).block, 'cobblestone_slab');
 });
+
+test('porte double : 2 portes côte à côte (2 blocs de large), facing cohérent', () => {
+  const p = porte({ facade: 'sud', x: 5, z: 0, y0: 0, hauteur: 2, materiau: 'stone_bricks', double: true });
+  // 4 blocs de porte au total (2 lower + 2 upper à x=5 ET x=6)
+  const doors = p.filter((k) => /_door/.test(k.block));
+  assert.strictEqual(doors.length, 4);
+  const xs = [...new Set(doors.map((k) => k.x))].sort();
+  assert.deepStrictEqual(xs, [5, 6]);
+  // les 2 battants doivent s'ouvrir vers l'extérieur, symétriquement
+  // (hinge=left à gauche, hinge=right à droite — sinon ils se cognent)
+  const left = doors.filter((k) => k.x === 5 && /half=lower/.test(k.block))[0];
+  const right = doors.filter((k) => k.x === 6 && /half=lower/.test(k.block))[0];
+  assert.match(left.block, /hinge=left/);
+  assert.match(right.block, /hinge=right/);
+});
+
+test('porte double sur facade est : 2 portes empilées sur z (pas sur x)', () => {
+  const p = porte({ facade: 'est', x: 8, z: 3, y0: 0, materiau: 'stone', double: true });
+  const doors = p.filter((k) => /_door/.test(k.block));
+  const zs = [...new Set(doors.map((k) => k.z))].sort();
+  assert.deepStrictEqual(zs, [3, 4]);
+});

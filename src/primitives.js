@@ -60,18 +60,26 @@ function boite({ x1, z1, x2, z2, y0, y1, murs, fondation, plancher }) {
 
 // Perce un mur : ouverture 1×hauteur + linteau, plus la porte battante orientée
 // vers l'intérieur du bâtiment (facing = direction dans laquelle la porte s'ouvre).
-function porte({ facade, x, z, y0 = 0, hauteur = 2, materiau }) {
+function porte({ facade, x, z, y0 = 0, hauteur = 2, materiau, double = false }) {
   if (!(facade in OPPOSITE)) throw new Error(`porte : facade "${facade}" inconnue (nord|sud|est|ouest)`);
   if (!materiau) throw new Error('porte : materiau manquant');
   const out = [];
   const facing = OPPOSITE[facade];
-  // La porte battante fait TOUJOURS 2 blocs (contrainte Minecraft). Si le LLM
-  // demande hauteur > 2 (arche haute), on remplit AU-DESSUS avec le matériau
-  // (tympan) — sinon on aurait une brèche 1×N invisible dans le mur.
-  out.push({ x, y: y0 + 1, z, block: `oak_door[facing=${facing},half=lower]` });
-  out.push({ x, y: y0 + 2, z, block: `oak_door[facing=${facing},half=upper]` });
-  for (let dy = 3; dy <= hauteur; dy++) out.push({ x, y: y0 + dy, z, block: materiau });
-  out.push({ x, y: y0 + Math.max(hauteur, 2) + 1, z, block: materiau }); // linteau
+  const h = Math.max(hauteur, 2);
+  // Double porte : 2 battants côte à côte perpendiculairement à la façade
+  // (axe X pour nord/sud, axe Z pour est/ouest). hinge=left à gauche, right
+  // à droite → les battants s'ouvrent en s'éloignant l'un de l'autre.
+  const spans = double
+    ? (facade === 'nord' || facade === 'sud'
+      ? [{ x, z, hinge: 'left' }, { x: x + 1, z, hinge: 'right' }]
+      : [{ x, z, hinge: 'left' }, { x, z: z + 1, hinge: 'right' }])
+    : [{ x, z, hinge: 'left' }];
+  for (const span of spans) {
+    out.push({ x: span.x, y: y0 + 1, z: span.z, block: `oak_door[facing=${facing},half=lower,hinge=${span.hinge}]` });
+    out.push({ x: span.x, y: y0 + 2, z: span.z, block: `oak_door[facing=${facing},half=upper,hinge=${span.hinge}]` });
+    for (let dy = 3; dy <= h; dy++) out.push({ x: span.x, y: y0 + dy, z: span.z, block: materiau });
+    out.push({ x: span.x, y: y0 + h + 1, z: span.z, block: materiau }); // linteau
+  }
   return out;
 }
 
