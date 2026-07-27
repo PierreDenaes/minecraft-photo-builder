@@ -65,3 +65,10 @@ npm run server:reset  # réinitialise le monde
 ```
 
 Architecture dans `src/` (un module par responsabilité : vision, generator, voxelizer, meshvoxelizer, palette, terrain, subsurface, support, decorator, habitability, portrait, builder, optimizer, chat, webserver). Spécifications des itérations dans `docs/superpowers/specs/`, pistes d'amélioration dans `docs/audit-ameliorations-2026-07-19.md` (FAWE + schematics, détourage BiRefNet, simplification GLB, TripoSR).
+
+## Mémoire
+
+Le bot mémorise chaque construction confirmée (`!go`) et le joueur peut la noter avec `!note N` (N ∈ [1..5]). Les cas bien notés sont réutilisés en inspiration lors des générations suivantes.
+
+Stockage : `data/memoire/cases/`.
+Effacer la mémoire : `rm -rf data/memoire/`.

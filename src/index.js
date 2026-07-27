@@ -65,6 +65,8 @@ function createBot(cfg) {
     builder.bot = bot;
     const handleChat = createChatHandler({ bot, builder, config: cfg, pending });
 
+    memory.warmup().catch((err) => console.warn('[memory] warmup échoué :', err.message));
+
     bot.on('spawn', () => console.log('[bot] connecté et apparu en jeu'));
     bot.on('message', (m) => {
       const t = m.toString();
