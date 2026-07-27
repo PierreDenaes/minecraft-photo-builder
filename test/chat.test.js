@@ -2,13 +2,17 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const { createChatHandler } = require('../src/chat');
 
-function setup(builderOverrides = {}) {
+function setup({ onBuild, ...builderOverrides } = {}) {
   const messages = [];
   const bot = {
     username: 'BuilderBot',
     chat: (m) => messages.push(m),
+    sent: [],
     players: { Steve: { entity: { position: { x: 0.5, y: -60, z: 0.5 }, yaw: 0 } } }
   };
+  // Keep bot.sent in sync with bot.chat for compatibility with !build tests
+  const origChat = bot.chat;
+  bot.chat = (m) => { origChat(m); bot.sent.push(m); };
   const calls = [];
   const defaultBuilder = {
     computeOrigin: (...args) => { calls.push(['computeOrigin', args]); return { x: 0, y: -60, z: -9 }; },
@@ -20,7 +24,7 @@ function setup(builderOverrides = {}) {
   const builder = { ...defaultBuilder, ...builderOverrides };
   const pending = new Map();
   const config = { web: { port: 3000, public_host: 'localhost' }, limits: { max_size: 64, max_blocks: 100000 } };
-  const handle = createChatHandler({ bot, builder, config, pending, tpDelayMs: 30 });
+  const handle = createChatHandler({ bot, builder, config, pending, tpDelayMs: 30, onBuild });
   return { messages, calls, pending, handle, bot };
 }
 
@@ -378,4 +382,39 @@ test('!note sans build et valeur invalide répond erreur de validation', () => {
   const { messages, handle } = setup();
   handle('Steve', '!note 0');
   assert.match(messages.join(' '), /note attendue entre 1 et 5/i);
+});
+
+// ── Task 5 : commande !build ───────────────────────────────────────────────────
+
+test('!build sans texte répond message d\'erreur', () => {
+  const buildCalls = [];
+  const { bot, handle } = setup({ onBuild: async (u, t) => { buildCalls.push({ u, t }); } });
+  handle('Steve', '!build');
+  assert.strictEqual(buildCalls.length, 0);
+  assert.ok(bot.sent.some((m) => m.includes('!build attend une description')), `messages envoyés : ${bot.sent}`);
+});
+
+test('!build <texte> appelle onBuild avec le texte extrait', async () => {
+  const buildCalls = [];
+  const { handle } = setup({ onBuild: async (u, t) => { buildCalls.push({ u, t }); } });
+  handle('Steve', '!build chateau de disney');
+  // laisser la microtask se résoudre
+  await new Promise((r) => setTimeout(r, 10));
+  assert.strictEqual(buildCalls.length, 1);
+  assert.strictEqual(buildCalls[0].u, 'Steve');
+  assert.strictEqual(buildCalls[0].t, 'chateau de disney');
+});
+
+test('!build trim les espaces autour du texte', async () => {
+  const buildCalls = [];
+  const { handle } = setup({ onBuild: async (u, t) => { buildCalls.push({ u, t }); } });
+  handle('Steve', '!build   tour eiffel   ');
+  await new Promise((r) => setTimeout(r, 10));
+  assert.strictEqual(buildCalls[0].t, 'tour eiffel');
+});
+
+test('!build sans onBuild injecté répond message d\'erreur', () => {
+  const { bot, handle } = setup({});  // pas d'onBuild
+  handle('Steve', '!build chateau');
+  assert.ok(bot.sent.some((m) => m.toLowerCase().includes('indisponible') || m.toLowerCase().includes('build')), `messages : ${bot.sent}`);
 });

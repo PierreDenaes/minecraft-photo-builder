@@ -36,7 +36,7 @@ function sizeOf(blocks) {
   return s2;
 }
 
-function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) {
+function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500, onBuild }) {
   const lastBuilt = new Map(); // pseudo (minuscules) → dernière proposition construite
   const lastBuildId = new Map(); // pseudo (minuscules) → buildId retourné par memory.saveCase
   return function handle(username, message) {
@@ -66,6 +66,22 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
 
       if (cmd === '!schema') {
         bot.chat(`${username} : bâtiment fidèle depuis la bibliothèque de schemas → http://${config.web.public_host}:${config.web.port}/upload/${username}?mode=schema`);
+        return;
+      }
+
+      if (cmd.startsWith('!build ') || cmd === '!build') {
+        const userText = cmd === '!build' ? '' : cmd.slice(7).trim();
+        if (!userText) {
+          bot.chat(`${username} : !build attend une description, ex: !build chateau de disney`);
+          return;
+        }
+        if (!onBuild) {
+          bot.chat(`${username} : commande !build indisponible dans cet environnement`);
+          return;
+        }
+        Promise.resolve(onBuild(username, userText)).catch((err) => {
+          bot.chat(`${username} : erreur !build : ${err.message}`);
+        });
         return;
       }
 
