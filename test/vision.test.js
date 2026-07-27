@@ -136,13 +136,16 @@ test('STYLES exporte les 22 styles de l\'almanach + autre', () => {
   assert.ok(TOIT_FORMES.includes('mansarde'));
 });
 
-test('réglages API vision : temperature 0, cache_control, recomposition JSON tolérante', async () => {
+test('réglages API vision : thinking adaptatif effort=high, cache_control, recomposition JSON tolérante', async () => {
   let captured = null;
   // le modèle répond SANS l'accolade ouvrante (prefill assistant)
   const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: '"type_batiment":"grange"}' }] }; } } };
   const r = await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
   assert.strictEqual(r.type_batiment, 'grange');
-  assert.strictEqual(captured.temperature, 0);
+  // thinking mode adaptatif : temperature doit être 1 (contrainte API), effort high pour l'analyse fine
+  assert.strictEqual(captured.temperature, 1);
+  assert.deepStrictEqual(captured.thinking, { type: 'adaptive' });
+  assert.deepStrictEqual(captured.output_config, { effort: 'high' });
   assert.ok(Array.isArray(captured.system));
   assert.deepStrictEqual(captured.system[0].cache_control, { type: 'ephemeral' });
   // les modèles 4.x refusent le prefill assistant : la conversation DOIT finir par un message user

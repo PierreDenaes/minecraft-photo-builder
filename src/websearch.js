@@ -60,18 +60,28 @@ Inutilisable : dessin, plan technique, screenshot de jeu vidéo, photo de nuit s
 async function pickBest(candidates, { client, fetchFn = fetch } = {}) {
   if (!candidates || candidates.length === 0) return null;
   if (!client) throw new Error('pickBest : client Anthropic manquant');
-  // télécharge chaque thumbnail en base64 ; survivors garde la correspondance image → candidate
-  const images = [];
-  const survivors = [];
-  for (const c of candidates) {
+  // Téléchargement parallèle des thumbnails avec timeout individuel 5 s :
+  // séquentiel + sans timeout bloquait indéfiniment sur Google Images (undici
+  // finit par abort avec "This operation was aborted", propagé à l'utilisateur).
+  async function downloadOne(c) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 5000);
     try {
-      const resp = await fetchFn(c.thumbnail);
-      if (!resp.ok) continue;
+      const resp = await fetchFn(c.thumbnail, { signal: ctrl.signal });
+      if (!resp.ok) return null;
       const buf = Buffer.from(await resp.arrayBuffer());
       const mimeType = resp.headers.get('content-type') || 'image/jpeg';
-      images.push({ base64: buf.toString('base64'), mimeType });
-      survivors.push(c);
-    } catch { /* ignore, on continue avec les autres */ }
+      return { image: { base64: buf.toString('base64'), mimeType }, candidate: c };
+    } catch { return null; }
+    finally { clearTimeout(t); }
+  }
+  const results = await Promise.all(candidates.map(downloadOne));
+  const images = [];
+  const survivors = [];
+  for (const r of results) {
+    if (!r) continue;
+    images.push(r.image);
+    survivors.push(r.candidate);
   }
   if (images.length === 0) return null;
   const userContent = images.map((img) => ({

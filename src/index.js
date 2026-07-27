@@ -66,7 +66,9 @@ function createBot(cfg) {
     builder.bot = bot;
     const handleChat = createChatHandler({ bot, builder, config: cfg, pending, onBuild });
 
-    memory.warmup().catch((err) => console.warn('[memory] warmup échoué :', err.message));
+    // memory.warmup() désactivé : onnxruntime-node cause un SIGSEGV au chargement
+    // CLIP sur macOS ARM64 (exit 139). La mémoire fonctionne en fallback métadonnées.
+    // memory.warmup().catch((err) => console.warn('[memory] warmup échoué :', err.message));
 
     bot.on('spawn', () => console.log('[bot] connecté et apparu en jeu'));
     bot.on('message', (m) => {
