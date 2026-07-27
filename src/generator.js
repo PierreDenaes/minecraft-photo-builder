@@ -66,7 +66,21 @@ Rien d'autre. Pas de balises markdown de code, pas de commentaire d'introduction
 - berge({ x1, z1, x2, z2, y_sol, cote: 'nord'|'sud'|'est'|'ouest', profondeur_eau=2, sable='sand', bande=2 }) — divise l'emprise en 2 zones : terre au niveau y_sol + eau du côté indiqué, bande de sable au contact (rivage naturel, utilise si la photo montre le bâtiment au bord de l'eau)
 - cheminee({ x, z, y_base, y_haut, materiau }) — colonne 1×1 depuis y_base jusqu'à y_haut (dépassant le toit d'1 à 3 blocs) + chapeau slab. À placer sur le TOIT (y_base = niveau du toit, y_haut = 2-4 blocs plus haut). Si la vision décrit "cheminee" dans elements, tu DOIS en ajouter au moins UNE.
 - arche({ x1, z1, x2, z2, y_base, y_faitage, materiau, axe: 'x'|'z' }) — massif percé d'un TUNNEL VOÛTÉ traversant selon axe. C'est LA primitive pour Arc de Triomphe, Porta Nigra, portes de ville médiévales, aqueducs romains, arches monumentales. Section (perpendiculaire à axe) ≥ 3 blocs (piédroit + tunnel + piédroit). y_faitage - y_base ≥ 6 pour une voûte visible. axe = direction que le piéton emprunte pour traverser. Empile un attique dessus (boite y0=y_faitage, y1=y_faitage+attique_h) pour l'Arc de Triomphe qui a un couronnement. ATTENTION : arche EST le corps massif — n'ajoute PAS une boite pleine dans la même emprise (elle boucherait le tunnel). Structure Arc de Triomphe correcte = arche() + boite(attique au-dessus), point.
-- pyramideTronquee({ x, z, y_base, y_haut, base, sommet, materiau, ajouree=false }) — tronc de pyramide creux centré sur (x,z). La couche du bas fait "base" blocs de côté, celle du haut "sommet" blocs. Sommet <= base OBLIGATOIRE. Usage : silhouettes effilées non couvertes par boite/tour — Tour Eiffel (EMPILE 3 pyramides : pieds x=40, z=40, y_base=0, y_haut=40, base=80, sommet=40 + tronc y_base=40, y_haut=180, base=40, sommet=15 + antenne y_base=180, y_haut=300, base=15, sommet=3), pyramides d'Egypte (sommet=1), Burj Khalifa, toits de temples asiatiques, obélisques. ajouree=true remplace materiau par iron_bars pour un aspect treillis métallique (essentiel pour la Tour Eiffel, tours de télécommunications).
+- pyramideTronquee({ x, z, y_base, y_haut, base, sommet, materiau, ajouree=false }) — tronc de pyramide creux centré sur (x,z). La couche du bas fait "base" blocs de côté, celle du haut "sommet" blocs. Sommet <= base OBLIGATOIRE.
+
+RÈGLES OBLIGATOIRES pour empilement (souvent mal exécuté) :
+  1. Les pyramides successives DOIVENT partager LE MÊME (x, z) sinon l'étage supérieur "flotte" à côté de l'étage inférieur. Ce sont TOUJOURS les mêmes coordonnées x/z pour toutes les couches.
+  2. y_base de la couche N+1 = y_haut de la couche N (contact vertical strict). Un GAP entre y_haut(N) et y_base(N+1) crée un vide où l'étage supérieur flotte visuellement.
+  3. sommet de la couche N = base de la couche N+1 (continuité visuelle : le sommet évasé rejoint la base du niveau suivant).
+  4. Si le résultat visuel doit ressembler à une seule silhouette continue (Tour Eiffel, Burj Khalifa, obélisque), on parle d'UNE structure — donc UN SEUL centre (x,z), pas plusieurs points de la carte.
+
+Exemple TOUR EIFFEL 300 blocs de haut, centrée sur x=40, z=40, matériau iron_bars ajouré :
+  const pieds = pyramideTronquee({ x:40, z:40, y_base:0,   y_haut:40,  base:80, sommet:40, materiau:'iron_bars', ajouree:true });
+  const tronc = pyramideTronquee({ x:40, z:40, y_base:40,  y_haut:180, base:40, sommet:15, materiau:'iron_bars', ajouree:true });
+  const antenne = pyramideTronquee({ x:40, z:40, y_base:180, y_haut:300, base:15, sommet:3,  materiau:'iron_bars', ajouree:true });
+  // 3 pyramides, MÊME (x,z), y_haut→y_base continus, sommet→base continus. Retour = concat des 3.
+
+Autres usages : pyramides d'Egypte (sommet=1), Burj Khalifa, toits de temples asiatiques, obélisques. ajouree=true remplace materiau par iron_bars pour un aspect treillis métallique (essentiel pour la Tour Eiffel, tours de télécommunications).
 
 ## Règles de composition
 - Une porte doit être dans un mur existant (même x/z que la façade de la boite).
