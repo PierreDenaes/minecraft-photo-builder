@@ -33,12 +33,10 @@ test('propage une erreur métier {erreur}', async () => {
   assert.match(result.erreur, /bâtiment/);
 });
 
-test('lance une Error si réponse non-JSON', async () => {
+test('réponse non-JSON → {erreur} (chemin d\'erreur propre d\'index.js, plus de throw)', async () => {
   const client = fakeClient('Voici une belle maison !');
-  await assert.rejects(
-    () => analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 }),
-    /JSON/
-  );
+  const r = await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
+  assert.match(r.erreur, /non exploitable/);
 });
 
 test('injecte la liste des blocs autorisés dans le prompt système', async () => {
@@ -202,4 +200,40 @@ test('compareToPhoto n\'envoie aucun paramètre de sampling (opus-4-7 les rejett
   await compareToPhoto('UEhPVE8=', 'image/jpeg', 'UkVORFU=', { client });
   assert.ok(!('temperature' in captured.params), 'temperature interdit sur claude-opus-4-7');
   assert.ok(!('top_p' in captured.params) && !('top_k' in captured.params));
+});
+
+// === Corrections audit 27/07 (CORRECTIONS-vision.md) ===
+
+test('analyzeImage : réponse sans bloc texte → {erreur}, pas de TypeError', async () => {
+  const client = { messages: { create: async () => ({ stop_reason: 'end_turn', content: [{ type: 'thinking', thinking: '' }] }) } };
+  const r = await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
+  assert.match(r.erreur, /vide/);
+});
+
+test('analyzeImage : stop_reason max_tokens → {erreur} tronquée', async () => {
+  const client = { messages: { create: async () => ({ stop_reason: 'max_tokens', content: [{ type: 'text', text: '{"type_bat' }] }) } };
+  const r = await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
+  assert.match(r.erreur, /tronquée/);
+});
+
+test('analyzeImage : texte préfixé avant le JSON → extrait et parsé', async () => {
+  const client = fakeClient('Voici l\'analyse demandée : ' + JSON.stringify(fixture) + ' Bonne construction !');
+  const r = await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
+  assert.strictEqual(r.type_batiment, 'maison à colombages');
+});
+
+test('compareToPhoto : réponse sans bloc texte → null (pas de correction)', async () => {
+  const client = { messages: { create: async () => ({ stop_reason: 'end_turn', content: [] }) } };
+  const r = await compareToPhoto('UEhPVE8=', 'image/jpeg', 'UkVORFU=', { client });
+  assert.strictEqual(r, null);
+});
+
+test('schéma du prompt : palette accents/menuiseries/exterieur et travees présents', async () => {
+  const { client, captured } = captureClient(JSON.stringify(fixture));
+  await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
+  const sys = sysText(captured.params.system);
+  assert.ok(sys.includes('"accents": "bloc"'), 'accents absent du schéma');
+  assert.ok(sys.includes('"menuiseries": "bloc"'), 'menuiseries absent du schéma');
+  assert.ok(sys.includes('"exterieur": "bloc"'), 'exterieur absent du schéma');
+  assert.ok(sys.includes('"travees"'), 'travees absent du schéma');
 });

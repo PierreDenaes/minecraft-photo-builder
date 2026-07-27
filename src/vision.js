@@ -1,10 +1,9 @@
 const { createClient, withRetry, stripCodeFences } = require('./llm');
 
-// Opus pour l'analyse principale : meilleure compréhension spatiale (proportions,
-// matériaux réels, détails architecturaux — colombages, moulures, textures).
-// Le surcoût (~5×) reste marginal sur ce projet (~1 photo par !photo). Le critique
-// compareToPhoto reste sur sonnet — la comparaison photo↔rendu n'a pas besoin
-// du raisonnement fin d'opus, et elle est appelée deux fois par pipeline.
+// Analyse principale sur fable-5 (compréhension spatiale + coût contenu).
+// Critique compareToPhoto sur opus-4-7 : le verdict photo↔rendu conditionne
+// les tours de correction, on privilégie la fiabilité du jugement malgré
+// les 2 appels par pipeline.
 const MODEL_ANALYSE = 'claude-fable-5';
 const MODEL_CRITIQUE = 'claude-opus-4-7';
 
@@ -29,7 +28,8 @@ Schéma attendu :
   "etages": N,
   "toit": { "forme": "${TOIT_FORMES.join('|')}", "materiau_suggere": "bloc_minecraft" },
   "elements": ["..."],
-  "palette_blocs": { "murs": "bloc", "toit": "bloc", "fondation": "bloc" },
+  "palette_blocs": { "murs": "bloc", "toit": "bloc", "fondation": "bloc", "accents": "bloc", "menuiseries": "bloc", "exterieur": "bloc" },
+  "travees": { "facade_principale": N, "autres_facades": N },
   "zone_batiment": { "x": N, "y": N, "largeur": N, "hauteur": N },
   "cadrage": "sujet_seul|scene_complete",
   "environnement": { "vegetation": "...", "arbres": "aucun|epars|dense", "types_arbres": ["chene","sapin","bouleau","acacia"], "sol": "...", "ambiance": "..." }
@@ -84,15 +84,33 @@ async function analyzeImage(imageBase64, mimeType, { client, maxSize = 64, valid
       }]
     })
   );
-  // recomposition tolérante (accolade ouvrante parfois omise par le modèle) ;
+  if (response.stop_reason === 'max_tokens') {
+    console.warn('[vision] analyse tronquée (max_tokens)');
+    return { erreur: 'analyse tronquée — photo trop complexe' };
+  }
   // avec thinking activé, la réponse contient un bloc 'thinking' à ignorer
-  const rawText = stripCodeFences(response.content.find((b) => b.type === 'text').text).trim();
-  const text = rawText.startsWith('{') ? rawText : `{${rawText}`;
+  const textBlock = response.content.find((b) => b.type === 'text');
+  if (!textBlock) {
+    console.warn(`[vision] réponse sans bloc texte (stop_reason: ${response.stop_reason})`);
+    return { erreur: 'réponse vision vide' };
+  }
+  const rawText = stripCodeFences(textBlock.text).trim();
+  // Extraction robuste : on isole le premier objet {...} ; repli sur l'ancienne
+  // tolérance « accolade ouvrante omise »
+  const start = rawText.indexOf('{');
+  const end = rawText.lastIndexOf('}');
+  const text = start >= 0 && end > start
+    ? rawText.slice(start, end + 1)
+    : (rawText.startsWith('{') ? rawText : `{${rawText}`);
   let parsed;
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error(`réponse vision non-JSON : ${text.slice(0, 200)}`);
+    console.warn('[vision] réponse non-JSON :', text.slice(0, 200));
+    return { erreur: 'réponse vision non exploitable' };
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { erreur: 'réponse vision non exploitable' };
   }
   // vocabulaires fermés : repli si le modèle sort de l'enum
   if (parsed && !parsed.erreur) {
@@ -149,7 +167,12 @@ Exemples d'items :
         ]
       }]
     }), { retries: 1 });
-    const rawText = stripCodeFences(response.content.find((b) => b.type === 'text').text).trim();
+    const textBlock = response.content.find((b) => b.type === 'text');
+    if (!textBlock) {
+      console.warn(`[vision] critic sans bloc texte (stop_reason: ${response.stop_reason})`);
+      return null;
+    }
+    const rawText = stripCodeFences(textBlock.text).trim();
     let parsed;
     try {
       parsed = JSON.parse(rawText);
