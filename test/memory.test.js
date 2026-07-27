@@ -22,3 +22,26 @@ test('__generateId retourne des ids uniques sur 10 appels', () => {
   for (let i = 0; i < 10; i++) ids.add(memory.__generateId());
   assert.strictEqual(ids.size, 10);
 });
+
+test('avant warmup et sans injection : __isReady est false', () => {
+  memory.__setEmbedder(null);  // reset
+  assert.strictEqual(memory.__isReady(), false);
+});
+
+test('après __setEmbedder : __isReady est true et __embed retourne Float32Array 512', async () => {
+  const fake = (buf) => {
+    const out = new Float32Array(512);
+    for (let i = 0; i < 512; i++) out[i] = (buf[i % buf.length] || 0) / 255;
+    return out;
+  };
+  memory.__setEmbedder(fake);
+  assert.strictEqual(memory.__isReady(), true);
+  const emb = await memory.__embed(Buffer.from([1, 2, 3]));
+  assert.ok(emb instanceof Float32Array);
+  assert.strictEqual(emb.length, 512);
+});
+
+test('__embed sans embedder → throw explicite', async () => {
+  memory.__setEmbedder(null);
+  await assert.rejects(memory.__embed(Buffer.from([1])), /embedder non disponible/);
+});
