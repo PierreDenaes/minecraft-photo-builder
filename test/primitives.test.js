@@ -29,12 +29,12 @@ test('boite : dimensions invalides → erreur claire', () => {
 });
 
 // ---- porte ----
-test('porte : ouverture 1×2 dans le mur sud, linteau, oak_door orientée', () => {
+test('porte : porte battante 2 blocs + linteau, oak_door orientée', () => {
   const murs = boite({ x1: 0, z1: 0, x2: 6, z2: 4, y0: 0, y1: 4, murs: 'stone_bricks', fondation: 'stone' });
   const p = porte({ facade: 'sud', x: 3, z: 0, y0: 0, hauteur: 2, materiau: 'oak_log' });
-  // sud = z minimum du bâtiment (z=0)
-  assert.strictEqual(at(p, 3, 1, 0)?.block, 'air');
-  assert.strictEqual(at(p, 3, 2, 0)?.block, 'air');
+  // porte battante à y=1,2 (2 blocs oak_door)
+  assert.ok(/oak_door.*half=lower/.test(at(p, 3, 1, 0)?.block));
+  assert.ok(/oak_door.*half=upper/.test(at(p, 3, 2, 0)?.block));
   assert.strictEqual(at(p, 3, 3, 0)?.block, 'oak_log'); // linteau
   // porte battante orientée vers l'intérieur (sud → facing=north pour ouvrir vers +z)
   const door = p.filter((b) => /oak_door/.test(b.block));
@@ -457,4 +457,18 @@ test('escalier + boite empilée : la trémie survit à un plancher au-dessus (or
     const finalAt = at(t.x, t.y, t.z);
     assert.strictEqual(finalAt?.block, 'air', `case trémie (${t.x},${t.y},${t.z}) rebouchée par ${finalAt?.block}`);
   }
+});
+
+test('porte hauteur > 2 : tympan plein au-dessus de la porte battante (pas 5 blocs d\'air)', () => {
+  const p = porte({ facade: 'sud', x: 3, z: 0, y0: 0, hauteur: 5, materiau: 'stone_bricks' });
+  // porte battante à y=1,2 (comme d'habitude)
+  assert.ok(p.some((b) => b.y === 1 && /oak_door.*half=lower/.test(b.block)));
+  assert.ok(p.some((b) => b.y === 2 && /oak_door.*half=upper/.test(b.block)));
+  // AU-DESSUS de la porte, matériau plein (tympan), PAS air
+  for (let y = 3; y <= 5; y++) {
+    const above = p.find((b) => b.y === y && b.z === 0 && b.x === 3);
+    assert.strictEqual(above?.block, 'stone_bricks', `y=${y} devrait être stone_bricks, est ${above?.block}`);
+  }
+  // linteau tout en haut
+  assert.strictEqual(p.find((b) => b.y === 6)?.block, 'stone_bricks');
 });

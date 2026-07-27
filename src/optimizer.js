@@ -38,15 +38,15 @@ function validateStructure(blocks, { maxSize, maxBlocks, validBlocks }) {
 const cmdBlock = (name) => (name.endsWith('_leaves') ? `${name}[persistent=true]` : name);
 
 function optimizeToCommands(blocks, origin) {
-  // Dedup avec priorité à l'air : si le LLM a intentionnellement placé un air
-  // (trémie d'escalier, ouverture de porte), il DOIT survivre même si un
-  // plancher/mur d'une boite postérieure vient recouvrir la case. On émet
-  // ensuite un /setblock ... air explicite pour garantir le vide en jeu.
+  // Dedup avec priorité aux blocs "traversables" (air, portes) : si le LLM a
+  // intentionnellement placé une ouverture, elle DOIT survivre même si un
+  // plancher/mur d'une boite postérieure vient recouvrir la case.
   const byCoord = new Map();
+  const isPassable = (blk) => blk === 'air' || /_door(\[|$)/.test(blk);
   for (const b of blocks) {
     const k = `${b.x},${b.y},${b.z}`;
     const prev = byCoord.get(k);
-    if (prev && prev.block === 'air' && b.block !== 'air') continue;
+    if (prev && isPassable(prev.block) && !isPassable(b.block)) continue;
     byCoord.set(k, b);
   }
   const rows = new Map();

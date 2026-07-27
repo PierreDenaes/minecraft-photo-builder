@@ -9,12 +9,15 @@ const MIN_CLEARANCE = 3;
 // description (optionnelle) : la sortie vision, pour les attentes déclarées (baies...)
 function auditHabitability(blocks, description = {}) {
   if (!Array.isArray(blocks) || blocks.length === 0) return [];
-  // dédoublonnage par position : l'air (ouverture) prime sur tout bloc superposé
+  // dédoublonnage par position : air ET portes (traversables) priment sur tout
+  // bloc plein superposé — sinon un mur émis avant la porte au même endroit
+  // masque l'entrée aux yeux de l'audit
   const dedup = new Map();
+  const isPassable = (blk) => blk === 'air' || /_door(\[|$)/.test(blk);
   for (const b of blocks) {
     const k = `${b.x},${b.y},${b.z}`;
     const prev = dedup.get(k);
-    if (!prev || (b.block === 'air' && prev.block !== 'air')) dedup.set(k, b);
+    if (!prev || (isPassable(b.block) && !isPassable(prev.block))) dedup.set(k, b);
   }
   blocks = [...dedup.values()];
   const occ = new Set();

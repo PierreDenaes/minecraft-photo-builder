@@ -64,12 +64,14 @@ function porte({ facade, x, z, y0 = 0, hauteur = 2, materiau }) {
   if (!(facade in OPPOSITE)) throw new Error(`porte : facade "${facade}" inconnue (nord|sud|est|ouest)`);
   if (!materiau) throw new Error('porte : materiau manquant');
   const out = [];
-  const facing = OPPOSITE[facade]; // nord → south, sud → north...
-  for (let dy = 1; dy <= hauteur; dy++) out.push({ x, y: y0 + dy, z, block: 'air' });
-  out.push({ x, y: y0 + hauteur + 1, z, block: materiau }); // linteau
-  // porte battante 2 blocs (la primitive pose un oak_door par défaut ; le materiau ne s'applique qu'au linteau)
+  const facing = OPPOSITE[facade];
+  // La porte battante fait TOUJOURS 2 blocs (contrainte Minecraft). Si le LLM
+  // demande hauteur > 2 (arche haute), on remplit AU-DESSUS avec le matériau
+  // (tympan) — sinon on aurait une brèche 1×N invisible dans le mur.
   out.push({ x, y: y0 + 1, z, block: `oak_door[facing=${facing},half=lower]` });
   out.push({ x, y: y0 + 2, z, block: `oak_door[facing=${facing},half=upper]` });
+  for (let dy = 3; dy <= hauteur; dy++) out.push({ x, y: y0 + dy, z, block: materiau });
+  out.push({ x, y: y0 + Math.max(hauteur, 2) + 1, z, block: materiau }); // linteau
   return out;
 }
 

@@ -42,7 +42,7 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 - lampadaire({ x, z, y0, hauteur=5, materiau='dark_oak_fence' }) — poteau vertical de fences + lanterne au sommet
 - terrasse({ x1, z1, x2, z2, y, materiau, bordure? }) — dalle horizontale au sol + bordure murée optionnelle sur le pourtour
 - pontonBois({ x1, z1, x2, z2, y, materiau='oak_planks', pilotis=true }) — planches surélevées + pilotis aux coins descendant jusqu'à y=0
-- haie({ x1, z1, x2, z2, y, essence='oak_leaves', hauteur=2 }) — rangée de feuilles persistantes
+- haie({ x1, z1, x2, z2, y, essence='oak_leaves', hauteur=2 }) — rangée de feuilles persistantes. À placer À CÔTÉ du bâtiment, JAMAIS collée aux murs : si ta boite va de x=0 à x=25, la haie latérale gauche va à x=-2 ou x=-1 (extérieur), pas à x=0.
 - bordurePlantes({ x1, z1, x2, z2, y, materiau='azalea_leaves' }) — 1 rangée basse de plantes (bordure de terrasse/piscine)
 - perron({ x, z, y0=0, largeur=3, marches=2, materiau, facing }) — marches ascendantes devant une porte (facing = direction où se trouve la porte)
 - gardeCorps({ x1, z1, x2, z2, y, materiau='iron_bars' }) — rangée sur le pourtour d'une terrasse/balcon
