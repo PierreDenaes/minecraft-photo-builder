@@ -140,13 +140,39 @@ function toitPlat({ x1, z1, x2, z2, y, materiau, acrotere = true, debord = 1 }) 
   return out;
 }
 
+// Déduit le nom du bloc plein correspondant à un préfixe stairs. Bois → _planks
+// (oak → oak_planks). Maçonnerie → nom du bloc de base (stone_brick → stone_bricks,
+// deepslate_brick → deepslate_bricks, brick → bricks — le vrai bloc plein est au pluriel).
+const MASONRY_BASE = {
+  stone_brick: 'stone_bricks',
+  mossy_stone_brick: 'mossy_stone_bricks',
+  cracked_stone_brick: 'cracked_stone_bricks',
+  brick: 'bricks',
+  mud_brick: 'mud_bricks',
+  deepslate_brick: 'deepslate_bricks',
+  deepslate_tile: 'deepslate_tiles',
+  end_stone_brick: 'end_stone_bricks',
+  polished_blackstone_brick: 'polished_blackstone_bricks',
+  quartz_brick: 'quartz_bricks',
+  prismarine_brick: 'prismarine_bricks',
+  nether_brick: 'nether_bricks',
+  red_nether_brick: 'red_nether_bricks'
+};
+function fillBlockFor(materiau) {
+  if (WOOD_PREFIX.has(materiau)) return `${materiau}_planks`;
+  if (materiau in MASONRY_BASE) return MASONRY_BASE[materiau];
+  // fallback : matériau plein directement (stone, cobblestone, sandstone...
+  // → utilisés tels quels comme bloc de remplissage)
+  return materiau;
+}
+
 function toitDeuxPans({ x1, z1, x2, z2, y_base, faitage, materiau, debord = 1 }) {
   checkPositiveBox(x1, x2, z1, z2, y_base);
   if (faitage !== 'x' && faitage !== 'z') throw new Error('toitDeuxPans : faitage doit être "x" ou "z"');
   if (!materiau) throw new Error('toitDeuxPans : materiau manquant');
   assertStairsExist(materiau, 'toitDeuxPans');
   const stairs = `${materiau}_stairs`;
-  const planks = `${materiau}_planks`;
+  const planks = fillBlockFor(materiau);
   const out = [];
   if (faitage === 'x') {
     const zMid = (z1 + z2) / 2;
@@ -226,7 +252,7 @@ function toitQuatrePans({ x1, z1, x2, z2, y_base, materiau, debord = 1 }) {
   if (!materiau) throw new Error('toitQuatrePans : materiau manquant');
   assertStairsExist(materiau, 'toitQuatrePans');
   const stairs = `${materiau}_stairs`;
-  const planks = `${materiau}_planks`;
+  const planks = fillBlockFor(materiau);
   const out = [];
   const rayon = Math.min(Math.floor((x2 - x1) / 2), Math.floor((z2 - z1) / 2));
   for (let i = 0; i <= rayon; i++) {
@@ -267,7 +293,7 @@ function escalier({ x, z, y_bas, y_haut, facing, materiau, tremie = true, largeu
   const [dx, dz] = STAIR_STEP[facing];
   assertStairsExist(materiau, 'escalier');
   const stairs = `${materiau}_stairs`;
-  const planks = `${materiau}_planks`;
+  const planks = fillBlockFor(materiau);
   const out = [];
   for (let i = 1; i <= gap; i++) {
     const cx = x + dx * (i - 1);

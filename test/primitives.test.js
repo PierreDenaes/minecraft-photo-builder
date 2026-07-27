@@ -497,3 +497,20 @@ test('cheminee : y_haut <= y_base → erreur', () => {
 test('cheminee : materiau manquant → erreur', () => {
   assert.throws(() => cheminee({ x: 0, z: 0, y_base: 0, y_haut: 5 }), /materiau/i);
 });
+
+test('toitDeuxPans : matériau de maçonnerie (stone_brick) — pignons pleins avec le materiau, stairs existent', () => {
+  const t = toitDeuxPans({ x1: 0, z1: 0, x2: 6, z2: 6, y_base: 4, faitage: 'x', materiau: 'stone_brick' });
+  // AUCUN bloc stone_brick_planks (n'existe pas)
+  assert.ok(!t.some((b) => b.block === 'stone_brick_planks'), `stone_brick_planks présent : ${t.find(b => b.block === 'stone_brick_planks')}`);
+  // pignons pleins avec stone_bricks (pluriel — vrai nom du bloc)
+  const pignon = t.find((b) => b.x === 0 && b.block === 'stone_bricks');
+  assert.ok(pignon, 'pignon en stone_bricks attendu');
+  // stairs correctement dérivés (stone_brick_stairs existe)
+  assert.ok(t.some((b) => /stone_brick_stairs/.test(b.block)));
+});
+
+test('toitQuatrePans : deepslate_brick fonctionne (existe stairs+pignon en deepslate_bricks)', () => {
+  const t = toitQuatrePans({ x1: 0, z1: 0, x2: 6, z2: 6, y_base: 4, materiau: 'deepslate_brick' });
+  assert.ok(!t.some((b) => b.block === 'deepslate_brick_planks'));
+  assert.ok(t.some((b) => /deepslate_brick_stairs/.test(b.block)));
+});
