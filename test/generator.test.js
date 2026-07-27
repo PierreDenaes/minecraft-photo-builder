@@ -417,3 +417,38 @@ test('generateStructure avec inspiration.memoryCases injecte les cas dans le pro
   assert.match(systemText, /similarité 0.85/);
   assert.match(systemText, /function generateStructure/);
 });
+
+test('memoryCases apparaît UNE SEULE fois dans le prompt combiné (pas de double-injection)', async () => {
+  let capturedArgs = null;
+  const client = {
+    messages: {
+      create: async (args) => {
+        capturedArgs = args;
+        return { content: [{ type: 'text', text: 'function generateStructure() { return []; } // FIN_STRUCTURE' }] };
+      }
+    }
+  };
+  await generateStructure(
+    { type_batiment: 'maison', style: 'medieval' },
+    {
+      mode: 'primitives',
+      client,
+      inspiration: {
+        memoryCases: [
+          { id: 'test-2', similarity: 0.9, note: 4, description: { style: 'medieval' }, code: 'function generateStructure() { return []; }' }
+        ]
+      }
+    }
+  );
+  // Combiner system (tous les blocs) + user message en une seule chaîne
+  const systemStr = Array.isArray(capturedArgs.system)
+    ? capturedArgs.system.map((b) => (typeof b === 'string' ? b : b.text || '')).join('\n')
+    : (capturedArgs.system || '');
+  const userContent = capturedArgs.messages[0].content;
+  const userStr = typeof userContent === 'string'
+    ? userContent
+    : userContent.map((b) => (b.type === 'text' ? b.text : '')).join('\n');
+  const combined = systemStr + '\n' + userStr;
+  const occurrences = (combined.match(/Cas passés similaires/g) || []).length;
+  assert.strictEqual(occurrences, 1, `"Cas passés similaires" devrait apparaître exactement 1 fois, trouvé ${occurrences}`);
+});

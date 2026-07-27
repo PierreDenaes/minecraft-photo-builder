@@ -3,9 +3,20 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const sharp = require('sharp');
 
-const ROOT = path.join(__dirname, '..', 'data', 'memoire');
-const CASES_DIR = path.join(ROOT, 'cases');
-const INDEX_PATH = path.join(ROOT, 'index.json');
+let _root = path.join(__dirname, '..', 'data', 'memoire');
+let _casesDir = path.join(_root, 'cases');
+let _indexPath = path.join(_root, 'index.json');
+
+// Getters dynamiques utilisés par toutes les fonctions internes
+function getCasesDir() { return _casesDir; }
+function getIndexPath() { return _indexPath; }
+
+// Pour les tests : rereoute tous les chemins vers un répertoire temporaire
+function __setRootDir(dir) {
+  _root = dir;
+  _casesDir = path.join(dir, 'cases');
+  _indexPath = path.join(dir, 'index.json');
+}
 
 let embedder = null;  // fonction (buffer) → Promise<Float32Array>
 
@@ -17,22 +28,28 @@ async function __embed(buffer) {
   return embedder(buffer);
 }
 
+let warmupPromise = null;
 async function warmup() {
-  try {
-    const { pipeline } = require('@xenova/transformers');
-    const extractor = await pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32');
-    embedder = async (buffer) => {
-      const result = await extractor(buffer, { pooling: 'mean', normalize: true });
-      return new Float32Array(result.data);
-    };
-    console.log('[memory] CLIP prêt');
-  } catch (err) {
-    console.warn('[memory] CLIP indispo :', err.message);
-  }
+  if (warmupPromise) return warmupPromise;
+  warmupPromise = (async () => {
+    try {
+      const { pipeline } = require('@xenova/transformers');
+      const extractor = await pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32');
+      embedder = async (buffer) => {
+        const result = await extractor(buffer, { pooling: 'mean', normalize: true });
+        return new Float32Array(result.data);
+      };
+      console.log('[memory] CLIP prêt');
+    } catch (err) {
+      warmupPromise = null;
+      console.warn('[memory] CLIP indispo :', err.message);
+    }
+  })();
+  return warmupPromise;
 }
 
 function __ensureDirs() {
-  fs.mkdirSync(CASES_DIR, { recursive: true });
+  fs.mkdirSync(getCasesDir(), { recursive: true });
 }
 
 function __generateId() {
@@ -45,12 +62,14 @@ function __generateId() {
 async function saveCase({ photo, description, code }) {
   __ensureDirs();
   const id = __generateId();
+  const casesDir = getCasesDir();
+  const indexPath = getIndexPath();
   // miniature 256px max côté long
   const thumbBuf = await sharp(photo).resize({ width: 256, height: 256, fit: 'inside' }).jpeg({ quality: 80 }).toBuffer();
-  fs.writeFileSync(path.join(CASES_DIR, `${id}.jpg`), thumbBuf);
+  fs.writeFileSync(path.join(casesDir, `${id}.jpg`), thumbBuf);
   // embedding (calculé sur la miniature pour cohérence et rapidité)
   const emb = await __embed(thumbBuf);
-  fs.writeFileSync(path.join(CASES_DIR, `${id}.emb`), Buffer.from(emb.buffer));
+  fs.writeFileSync(path.join(casesDir, `${id}.emb`), Buffer.from(emb.buffer));
   // json
   const caseObj = {
     id,
@@ -61,11 +80,11 @@ async function saveCase({ photo, description, code }) {
     code,
     note: null
   };
-  fs.writeFileSync(path.join(CASES_DIR, `${id}.json`), JSON.stringify(caseObj, null, 2));
+  fs.writeFileSync(path.join(casesDir, `${id}.json`), JSON.stringify(caseObj, null, 2));
   // index (créé si absent)
-  const index = fs.existsSync(INDEX_PATH) ? JSON.parse(fs.readFileSync(INDEX_PATH, 'utf8')) : [];
+  const index = fs.existsSync(indexPath) ? JSON.parse(fs.readFileSync(indexPath, 'utf8')) : [];
   index.push({ id, date: caseObj.date, style: caseObj.style, type_batiment: caseObj.type_batiment, note: null });
-  fs.writeFileSync(INDEX_PATH, JSON.stringify(index, null, 2));
+  fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
   return id;
 }
 
@@ -74,7 +93,7 @@ function updateNote(id, note) {
     console.warn(`[memory] note invalide (${note}), ignorée`);
     return;
   }
-  const casePath = path.join(CASES_DIR, `${id}.json`);
+  const casePath = path.join(getCasesDir(), `${id}.json`);
   if (!fs.existsSync(casePath)) {
     console.warn(`[memory] cas ${id} introuvable, note ignorée`);
     return;
@@ -82,10 +101,11 @@ function updateNote(id, note) {
   const caseObj = JSON.parse(fs.readFileSync(casePath, 'utf8'));
   caseObj.note = note;
   fs.writeFileSync(casePath, JSON.stringify(caseObj, null, 2));
-  const index = JSON.parse(fs.readFileSync(INDEX_PATH, 'utf8'));
+  const indexPath = getIndexPath();
+  const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
   const entry = index.find((e) => e.id === id);
   if (entry) entry.note = note;
-  fs.writeFileSync(INDEX_PATH, JSON.stringify(index, null, 2));
+  fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
 }
 
 function cosineSimilarity(a, b) {
@@ -99,16 +119,17 @@ function cosineSimilarity(a, b) {
 }
 
 function loadIndex() {
-  return fs.existsSync(INDEX_PATH) ? JSON.parse(fs.readFileSync(INDEX_PATH, 'utf8')) : [];
+  const indexPath = getIndexPath();
+  return fs.existsSync(indexPath) ? JSON.parse(fs.readFileSync(indexPath, 'utf8')) : [];
 }
 
 function loadCase(id) {
-  const p = path.join(CASES_DIR, `${id}.json`);
+  const p = path.join(getCasesDir(), `${id}.json`);
   return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
 }
 
 function loadEmbedding(id) {
-  const p = path.join(CASES_DIR, `${id}.emb`);
+  const p = path.join(getCasesDir(), `${id}.emb`);
   if (!fs.existsSync(p)) return null;
   const buf = fs.readFileSync(p);
   return new Float32Array(buf.buffer, buf.byteOffset, buf.length / 4);
@@ -146,4 +167,9 @@ async function findSimilar(photo, description, opts = {}) {
   return scored.sort((a, b) => b.similarity - a.similarity).slice(0, n);
 }
 
-module.exports = { CASES_DIR, INDEX_PATH, __ensureDirs, __generateId, warmup, __setEmbedder, __isReady, __embed, saveCase, updateNote, findSimilar };
+const _exports = { __ensureDirs, __generateId, __setRootDir, warmup, __setEmbedder, __isReady, __embed, saveCase, updateNote, findSimilar };
+// CASES_DIR et INDEX_PATH exposés comme getters dynamiques pour que les tests
+// qui reroutent via __setRootDir voient les nouveaux chemins sans réimporter
+Object.defineProperty(_exports, 'CASES_DIR', { get: getCasesDir, enumerable: true });
+Object.defineProperty(_exports, 'INDEX_PATH', { get: getIndexPath, enumerable: true });
+module.exports = _exports;

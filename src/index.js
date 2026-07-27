@@ -346,7 +346,7 @@ function createBot(cfg) {
         ? `Défauts structurels MESURÉS sur la première version — corrige-les impérativement :\n- ${defauts.join('\n- ')}`
         : '';
       if (critique || defautsText) {
-        ({ blocks } = await generateStructure(description, {
+        ({ blocks, code } = await generateStructure(description, {
           ...genOpts,
           correction: { codeV1: code, critique: critique || '', defauts: defautsText }
         }));
@@ -419,7 +419,7 @@ function createBot(cfg) {
         ? `Défauts structurels MESURÉS sur la première version — corrige-les impérativement :\n- ${defauts.join('\n- ')}`
         : '';
       if (critique || defautsText) {
-        ({ blocks } = await generateStructure(description, {
+        ({ blocks, code } = await generateStructure(description, {
           ...genOpts,
           correction: { codeV1: code, critique: critique || '', defauts: defautsText }
         }));

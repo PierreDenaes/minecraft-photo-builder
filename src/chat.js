@@ -81,16 +81,19 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
           bot.chat(`Construction de ${p.description.type_batiment} lancée (~${builder.estimateSeconds(total)} s, ${total} commandes). !status pour suivre, !undo pour annuler.`);
           bot.chat(`Emprise : (${origin.x},${origin.z}) → (${origin.x + p.size.x - 1},${origin.z + p.size.z - 1}), centre (${origin.x + Math.floor(p.size.x / 2)},${origin.z + Math.floor(p.size.z / 2)})`);
           // Capture mémoire en arrière-plan (fire-and-forget, ne bloque pas la construction)
-          Promise.resolve(memory.saveCase({
-            photo: p.photo,
-            description: p.description,
-            code: p.code
-          })).then((buildId) => {
-            lastBuildId.set(pkey, buildId);
-            console.log(`[chat] cas mémoire enregistré : ${buildId}`);
-          }).catch((err) => {
-            console.warn('[chat] saveCase échoué :', err.message);
-          });
+          // Guard : seulement si photo ET code sont disponibles (portrait/diorama/statue/model n'en ont pas)
+          if (p.photo && p.code) {
+            Promise.resolve(memory.saveCase({
+              photo: p.photo,
+              description: p.description,
+              code: p.code
+            })).then((buildId) => {
+              lastBuildId.set(pkey, buildId);
+              console.log(`[chat] cas mémoire enregistré : ${buildId}`);
+            }).catch((err) => {
+              console.warn('[chat] saveCase échoué :', err.message);
+            });
+          }
         };
         const player = bot.players[username];
         if (player && player.entity) { launch(player); return; }

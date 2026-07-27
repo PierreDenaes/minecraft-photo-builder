@@ -260,8 +260,9 @@ ${c.code}`);
 
 function formatInspiration(inspiration) {
   // Nouveau format objet { schemas?, memoryCases? }
+  // memoryCases est injecté séparément dans systemBlocks (bloc hors cache) — ne pas le doubler ici
   if (inspiration && !Array.isArray(inspiration) && typeof inspiration === 'object') {
-    return formatSchemas(inspiration.schemas) + formatMemoryCases(inspiration.memoryCases);
+    return formatSchemas(inspiration.schemas);
   }
   // Ancien format : tableau brut de schemas (rétrocompatibilité)
   return formatSchemas(inspiration);

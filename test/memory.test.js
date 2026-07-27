@@ -1,12 +1,27 @@
-const { test } = require('node:test');
+const { test, before, after, describe } = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const memory = require('../src/memory');
 
-test('__ensureDirs crée data/memoire/cases/ si absent', () => {
-  // nettoyer avant
-  if (fs.existsSync(memory.CASES_DIR)) fs.rmSync(path.dirname(memory.CASES_DIR), { recursive: true });
+// ---- Suite principale : chemins reroutés vers un répertoire temporaire ----
+// Évite d'écraser data/memoire/ de production à chaque npm test
+
+let tmpDir;
+
+before(() => {
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mem-i19-'));
+  memory.__setRootDir(tmpDir);
+});
+
+after(() => {
+  if (tmpDir && fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true });
+  // Remettre le chemin prod pour ne pas polluer d'autres suites si rechargé
+  memory.__setRootDir(path.join(__dirname, '..', 'data', 'memoire'));
+});
+
+test('__ensureDirs crée cases/ dans le répertoire rerouté', () => {
   memory.__ensureDirs();
   assert.ok(fs.existsSync(memory.CASES_DIR));
   assert.ok(fs.existsSync(path.dirname(memory.INDEX_PATH)));
@@ -50,6 +65,7 @@ test('__embed sans embedder → throw explicite', async () => {
 const { rmSync } = require('node:fs');
 
 function resetMemoryDir() {
+  // Nettoyer uniquement le répertoire temporaire rerouté (jamais le prod)
   if (fs.existsSync(memory.CASES_DIR)) rmSync(path.dirname(memory.CASES_DIR), { recursive: true });
   memory.__ensureDirs();
 }
@@ -174,4 +190,50 @@ test('findSimilar sans CLIP : fallback métadonnées (filtre style, tri note des
   assert.ok(res.length >= 1);
   assert.strictEqual(res[0].id, id1);  // note 5 en tête
   assert.ok(res.every((r) => r.description.style === 'medieval'));
+});
+
+// ---- IMPORTANT 4 : test minSimilarity=0.5 avec embeddings vraiment différents ----
+
+test('findSimilar avec minSimilarity=0.99 exclut un cas visuellement très différent', async () => {
+  resetMemoryDir();
+  // Embedder déterministe basé sur la somme des bytes du buffer :
+  // deux buffers très différents donnent des vecteurs très différents
+  const variableEmbedder = (buf) => {
+    const seed = buf.reduce((s, b) => s + b, 0);
+    const out = new Float32Array(512);
+    for (let i = 0; i < 512; i++) out[i] = Math.sin(seed + i) * 0.5 + 0.5;
+    // normaliser
+    const norm = Math.sqrt(out.reduce((s, v) => s + v * v, 0));
+    for (let i = 0; i < 512; i++) out[i] /= norm;
+    return out;
+  };
+  memory.__setEmbedder(variableEmbedder);
+
+  // Cas 1 : buffer "clair" (valeurs 50)
+  const bufClair = Buffer.from(new Uint8Array(100).fill(50));
+  const thumbClair = await require('sharp')(bufClair, { raw: { width: 10, height: 10, channels: 1 } })
+    .jpeg({ quality: 80 }).toBuffer();
+  const id1 = await memory.saveCase({
+    photo: thumbClair,
+    description: { style: 'moderne', type_batiment: 'villa' },
+    code: 'A'
+  });
+  memory.updateNote(id1, 5);
+
+  // Cas 2 : buffer très différent "sombre" (valeurs 200)
+  const bufSombre = Buffer.from(new Uint8Array(100).fill(200));
+  const thumbSombre = await require('sharp')(bufSombre, { raw: { width: 10, height: 10, channels: 1 } })
+    .jpeg({ quality: 80 }).toBuffer();
+  const id2 = await memory.saveCase({
+    photo: thumbSombre,
+    description: { style: 'moderne', type_batiment: 'villa' },
+    code: 'B'
+  });
+  memory.updateNote(id2, 5);
+
+  // Requête avec un buffer proche de bufClair : seul id1 devrait passer minSimilarity=0.99
+  const res = await memory.findSimilar(thumbClair, { style: 'moderne', type_batiment: 'villa' }, { minSimilarity: 0.99, minNote: 3 });
+  assert.ok(res.every((r) => r.id !== id2), `id2 (buffer très différent) ne devrait pas passer minSimilarity=0.99`);
+  assert.ok(res.length >= 1, 'id1 (même buffer) devrait être retourné');
+  assert.strictEqual(res[0].id, id1);
 });
