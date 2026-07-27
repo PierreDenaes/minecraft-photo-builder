@@ -363,7 +363,8 @@ function createBot(cfg) {
     if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
     const meubles = blocks.concat(decor);
     return proposeStructure(username, meubles, description,
-      { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks });
+      { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks },
+      { photo: buffer, code });
   }
 
   async function onPortrait(username, buffer) {
@@ -427,7 +428,9 @@ function createBot(cfg) {
     const decor = await decorateInterior(blocks, description, { client: apiClient, timeoutMs: cfg.limits.sandbox_timeout_ms });
     if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
     const meubles = blocks.concat(decor);
-    return proposeStructure(username, meubles, description, { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks });
+    return proposeStructure(username, meubles, description,
+      { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks },
+      { photo: buffer, code });
   }
 
   const app = createWebServer({ onPhoto, onDiorama, onModel, onPortrait, onSchema });

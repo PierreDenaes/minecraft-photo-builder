@@ -306,3 +306,76 @@ test('!schema donne le lien mode=schema', () => {
   handle('Steve', '!schema');
   assert.match(messages[0], /upload\/Steve\?mode=schema/);
 });
+
+// ── Task 7 : mémoire intégrée au chat ─────────────────────────────────────────
+
+test('!go capture un cas mémoire avec photo+description+code', async () => {
+  const memory = require('../src/memory');
+  const saves = [];
+  const origSave = memory.saveCase;
+  memory.saveCase = async (args) => { saves.push(args); return '2026-01-01-abcd'; };
+  try {
+    const { pending, handle } = setup();
+    pending.set('steve', {
+      blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }],
+      size: { x: 1, y: 1, z: 1 },
+      description: { type_batiment: 'cabane' },
+      photo: Buffer.from('fake-image'),
+      code: 'function generateStructure(){return [];}'
+    });
+    handle('Steve', '!go');
+    // saveCase est async : laisser la microtask se résoudre
+    await new Promise((r) => setTimeout(r, 10));
+    assert.strictEqual(saves.length, 1);
+    assert.ok(saves[0].photo, 'photo manquante dans saveCase');
+    assert.ok(saves[0].description, 'description manquante dans saveCase');
+    assert.ok(saves[0].code, 'code manquant dans saveCase');
+  } finally {
+    memory.saveCase = origSave;
+  }
+});
+
+test('!note 4 met à jour la note du dernier build', async () => {
+  const memory = require('../src/memory');
+  const notes = [];
+  const origSave = memory.saveCase;
+  const origNote = memory.updateNote;
+  memory.saveCase = async () => 'build-test-id-1234';
+  memory.updateNote = (id, n) => { notes.push({ id, n }); };
+  try {
+    const { pending, handle } = setup();
+    pending.set('steve', {
+      blocks: [{ x: 0, y: 0, z: 0, block: 'stone' }],
+      size: { x: 1, y: 1, z: 1 },
+      description: { type_batiment: 'cabane' },
+      photo: Buffer.from('fake-image'),
+      code: 'function generateStructure(){return [];}'
+    });
+    handle('Steve', '!go');
+    await new Promise((r) => setTimeout(r, 10));
+    handle('Steve', '!note 4');
+    assert.strictEqual(notes.length, 1, 'updateNote non appelée');
+    assert.deepStrictEqual(notes[0], { id: 'build-test-id-1234', n: 4 });
+  } finally {
+    memory.saveCase = origSave;
+    memory.updateNote = origNote;
+  }
+});
+
+test('!note sans build récent répond "aucune construction"', () => {
+  const { messages, handle } = setup();
+  handle('Steve', '!note 4');
+  assert.match(messages.join(' '), /aucune construction/i);
+});
+
+test('!note avec valeur hors [1..5] rejette et prévient dans le chat', () => {
+  const { messages, handle } = setup();
+  handle('Steve', '!note 9');
+  assert.match(messages.join(' '), /note attendue entre 1 et 5/i);
+});
+
+test('!note sans build et valeur invalide répond erreur de validation', () => {
+  const { messages, handle } = setup();
+  handle('Steve', '!note 0');
+  assert.match(messages.join(' '), /note attendue entre 1 et 5/i);
+});

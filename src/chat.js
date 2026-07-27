@@ -1,4 +1,5 @@
 const { rotateY, rotateX } = require('./support');
+const memory = require('./memory');
 
 // Applique une rotation à la proposition ; si elle a un socle, seul le corps tourne
 // et le socle est régénéré à plat sous la nouvelle emprise
@@ -37,6 +38,7 @@ function sizeOf(blocks) {
 
 function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) {
   const lastBuilt = new Map(); // pseudo (minuscules) → dernière proposition construite
+  const lastBuildId = new Map(); // pseudo (minuscules) → buildId retourné par memory.saveCase
   return function handle(username, message) {
     if (username === bot.username) return;
     try {
@@ -78,6 +80,17 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
           const { total } = builder.startBuild(p.blocks, origin, p.size);
           bot.chat(`Construction de ${p.description.type_batiment} lancée (~${builder.estimateSeconds(total)} s, ${total} commandes). !status pour suivre, !undo pour annuler.`);
           bot.chat(`Emprise : (${origin.x},${origin.z}) → (${origin.x + p.size.x - 1},${origin.z + p.size.z - 1}), centre (${origin.x + Math.floor(p.size.x / 2)},${origin.z + Math.floor(p.size.z / 2)})`);
+          // Capture mémoire en arrière-plan (fire-and-forget, ne bloque pas la construction)
+          Promise.resolve(memory.saveCase({
+            photo: p.photo,
+            description: p.description,
+            code: p.code
+          })).then((buildId) => {
+            lastBuildId.set(pkey, buildId);
+            console.log(`[chat] cas mémoire enregistré : ${buildId}`);
+          }).catch((err) => {
+            console.warn('[chat] saveCase échoué :', err.message);
+          });
         };
         const player = bot.players[username];
         if (player && player.entity) { launch(player); return; }
@@ -146,6 +159,22 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500 }) 
         const s = builder.status();
         if (s.total === 0) bot.chat('Aucune construction en cours.');
         else bot.chat(`Avancement : ${s.done}/${s.total} commandes${s.active ? '' : ' (terminé)'}.`);
+        return;
+      }
+
+      if (cmd.startsWith('!note ')) {
+        const n = parseInt(cmd.slice(6).trim(), 10);
+        if (!Number.isInteger(n) || n < 1 || n > 5) {
+          bot.chat(`${username} : note attendue entre 1 et 5, ex : !note 4`);
+          return;
+        }
+        const buildId = lastBuildId.get(username.toLowerCase());
+        if (!buildId) {
+          bot.chat(`${username} : aucune construction récente à noter`);
+          return;
+        }
+        memory.updateNote(buildId, n);
+        bot.chat(`Note enregistrée : ${n}/5, merci !`);
         return;
       }
     } catch (err) {
