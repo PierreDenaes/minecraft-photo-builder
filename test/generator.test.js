@@ -478,3 +478,31 @@ test('generator reste rétrocompatible : code sans balises <code> (ancien format
   );
   assert.strictEqual(blocks.length, 1);
 });
+
+test('generator isMonument:true injecte la règle "pas de porte/baie/cloison/décor" dans le prompt', async () => {
+  const rawReply = 'function generateStructure() { return [{x:0,y:0,z:0,block:"stone"}]; }\n// FIN_STRUCTURE';
+  let captured = null;
+  const client = { messages: { create: async (req) => { captured = req; return { stop_reason: 'end_turn', content: [{ type: 'text', text: rawReply }] }; } } };
+  await generateStructure(
+    { type_batiment: 'arc_de_triomphe', style: 'antique', palette_blocs: { murs: 'smooth_sandstone' } },
+    { mode: 'primitives', client, timeoutMs: 5000, existingBlocks: ['stone'], isMonument: true }
+  );
+  const rawContent = captured.messages[0].content;
+  const userText = typeof rawContent === 'string' ? rawContent : rawContent.filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+  assert.match(userText, /MONUMENT NON HABITABLE/);
+  assert.match(userText, /INTERDICTION.*porte/);
+  assert.match(userText, /INTERDICTION.*baie/);
+});
+
+test('generator isMonument:false (défaut) n\'injecte PAS la règle monument', async () => {
+  const rawReply = 'function generateStructure() { return [{x:0,y:0,z:0,block:"stone"}]; }\n// FIN_STRUCTURE';
+  let captured = null;
+  const client = { messages: { create: async (req) => { captured = req; return { stop_reason: 'end_turn', content: [{ type: 'text', text: rawReply }] }; } } };
+  await generateStructure(
+    { type_batiment: 'maison', style: 'medieval', palette_blocs: { murs: 'stone' } },
+    { mode: 'primitives', client, timeoutMs: 5000, existingBlocks: ['stone'] }
+  );
+  const rawContent = captured.messages[0].content;
+  const userText = typeof rawContent === 'string' ? rawContent : rawContent.filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+  assert.doesNotMatch(userText, /MONUMENT NON HABITABLE/);
+});

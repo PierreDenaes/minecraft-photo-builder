@@ -299,7 +299,7 @@ function formatInspiration(inspiration) {
   return formatSchemas(inspiration);
 }
 
-async function generateStructure(description, { client, timeoutMs = 5000, validBlocks, existingBlocks, structuralSummary, image, correction, mode, inspiration } = {}) {
+async function generateStructure(description, { client, timeoutMs = 5000, validBlocks, existingBlocks, structuralSummary, image, correction, mode, inspiration, isMonument = false } = {}) {
   const usingPrimitives = mode === 'primitives';
   const activePrompt = usingPrimitives ? PRIMITIVES_PROMPT : SYSTEM_PROMPT;
   const sandbox = usingPrimitives ? PRIMITIVES_SANDBOX : {};
@@ -325,9 +325,12 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
         if (description.cadrage === 'scene_complete') refIds.push(9);
         return `\n\nRéférentiel de construction (applique ces règles) :\n${getSections([1])}\n\nFiche toit :\n${getFicheToit(description.toit?.forme)}\n\nFiche style :\n${getFicheStyle(description.style)}\n\n${getSections(refIds)}`;
       })();
+  const monumentRule = isMonument
+    ? '\n\n⚠ SUJET = MONUMENT NON HABITABLE. Règles strictes :\n- INTERDICTION formelle d\'appeler porte() — un monument n\'a pas de porte battante praticable\n- INTERDICTION d\'appeler baie() — pas de vitrage type villa\n- INTERDICTION de créer des cloisons intérieures\n- INTERDICTION d\'ajouter mobilier/décor (lampadaires, terrasses, gardeCorps, haies décoratives)\n- La silhouette EXTÉRIEURE prime — concentre-toi UNIQUEMENT sur la géométrie visible (arche, pyramideTronquee, tour, boites empilées)\n- Aucune règle d\'habitabilité, aucune hauteur d\'étage minimum, aucun escalier\n'
+    : '';
   const userText = correction
-    ? `Voici le code de la PREMIÈRE version générée :\n\n<code_v1>\n${correction.codeV1}\n</code_v1>\n\nCette version a été comparée à la photo de référence (jointe). Écarts et défauts constatés :\n\n${correction.critique || ''}\n${correction.defauts || ''}\n\nMODIFIE ce code pour corriger TOUS les écarts listés.\n- **CONSERVE INTÉGRALEMENT** tout ce qui n'est PAS critiqué : mêmes boite, mêmes toit, MÊMES piscine/lampadaires/terrasse/ponton s'ils existent, mêmes baies déjà présentes. TOUS les returns et TOUS les spread ...xxx du code v1 doivent se retrouver dans le code corrigé.\n- Ne repars JAMAIS de zéro.\n- Chaque écart listé doit avoir UNE addition ou modification ciblée (nouvelle baie pour "0 vitre", nouveau matériau pour "façade uniforme"...), pas une réécriture globale.\n- Si un défaut dit "0 vitre" alors qu'il y avait des baies : elles ont probablement été omises — RÉINTÈGRE-les et ajoute-en si nécessaire.\nRéponds UNIQUEMENT avec le code complet corrigé, terminé par ${SENTINEL}.${referentiel}`
-    : `Description du bâtiment :\n${JSON.stringify(description, null, 2)}${summarySection}${blocksSection}${imageSection}${referentiel}${formatInspiration(inspiration)}\n\nÉcris generateStructure().`;
+    ? `Voici le code de la PREMIÈRE version générée :\n\n<code_v1>\n${correction.codeV1}\n</code_v1>\n\nCette version a été comparée à la photo de référence (jointe). Écarts et défauts constatés :\n\n${correction.critique || ''}\n${correction.defauts || ''}\n${monumentRule}\nMODIFIE ce code pour corriger TOUS les écarts listés.\n- **CONSERVE INTÉGRALEMENT** tout ce qui n'est PAS critiqué : mêmes boite, mêmes toit, MÊMES piscine/lampadaires/terrasse/ponton s'ils existent, mêmes baies déjà présentes. TOUS les returns et TOUS les spread ...xxx du code v1 doivent se retrouver dans le code corrigé.\n- Ne repars JAMAIS de zéro.\n- Chaque écart listé doit avoir UNE addition ou modification ciblée (nouvelle baie pour "0 vitre", nouveau matériau pour "façade uniforme"...), pas une réécriture globale.\n- Si un défaut dit "0 vitre" alors qu'il y avait des baies : elles ont probablement été omises — RÉINTÈGRE-les et ajoute-en si nécessaire.\nRéponds UNIQUEMENT avec le code complet corrigé, terminé par ${SENTINEL}.${referentiel}`
+    : `Description du bâtiment :\n${JSON.stringify(description, null, 2)}${summarySection}${blocksSection}${imageSection}${monumentRule}${referentiel}${formatInspiration(inspiration)}\n\nÉcris generateStructure().`;
   const content = image
     ? [
       { type: 'image', source: { type: 'base64', media_type: image.mimeType, data: image.base64 } },

@@ -38,6 +38,15 @@ const validBlocks = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../data/valid_blocks.json'), 'utf8')
 );
 
+// Monuments non habitables : silhouette prime sur habitabilité. Skip audit
+// habitabilité, décoration intérieure, et règles portes/cloisons. Reconnus par
+// mots-clés dans type_batiment (fourni par la vision LLM).
+const MONUMENT_KEYWORDS = /^(arc|arche|arc_de_triomphe|porte_de_ville|aqueduc|tour_eiffel|tour_isolee|tour_de_tokyo|tour_de_telecom|minaret|campanile|obelisque|colonne|colonne_commemorative|stele|statue|statue_monumentale|sculpture|pyramide|pyramide_egypte|pyramide_maya|burj_khalifa|empire_state|gratte_ciel|gratte-ciel|monument|monument_commemoratif)$/i;
+function isMonument(description) {
+  if (!description || !description.type_batiment) return false;
+  return MONUMENT_KEYWORDS.test(String(description.type_batiment).replace(/[\s-]+/g, '_'));
+}
+
 function structureSize(blocks) {
   const max = { x: 0, y: 0, z: 0 };
   for (const b of blocks) {
@@ -368,6 +377,13 @@ function createBot(cfg) {
         break;
       }
     }
+    // Monuments non habitables : silhouette prime — skip audit habitabilité + décoration
+    if (isMonument(description)) {
+      bot.chat(`Monument (${description.type_batiment}) — audit habitabilité et décoration ignorés (silhouette prime).`);
+      return proposeStructure(username, blocks, description,
+        { maxSize: { x: cfg.limits.max_size, y: cfg.limits.max_y, z: cfg.limits.max_size }, maxBlocks: cfg.limits.max_blocks },
+        { photo: buffer, code });
+    }
     // Vérifications structurelles finales
     const checks = auditChecks(blocks, description);
     const line = checks.map((c) => `${c.name} ${c.passed ? '✓' : '✗'}`).join(' · ');
@@ -413,13 +429,17 @@ function createBot(cfg) {
     if (memoryCases.length > 0) {
       bot.chat(`${memoryCases.length} construction(s) passée(s) similaire(s) injectée(s) en inspiration.`);
     }
+    if (isMonument(description)) {
+      bot.chat(`Sujet identifié comme MONUMENT (${description.type_batiment}) — pas de portes, cloisons, ni décoration.`);
+    }
     const genOpts = {
       timeoutMs: cfg.limits.sandbox_timeout_ms,
       validBlocks: realisticMaterials(materiaux, description),
       existingBlocks: validBlocks,
       image: { base64, mimeType },
       mode: 'primitives',
-      inspiration: { memoryCases }
+      inspiration: { memoryCases },
+      isMonument: isMonument(description)
     };
     let { blocks, code } = await generateStructure(description, genOpts);
     bot.chat('Étape 3/4 : correction itérative (jusqu\'à 2 tours) selon les écarts photo↔rendu...');
@@ -449,6 +469,13 @@ function createBot(cfg) {
         console.warn(`[photo] correction tour ${round} ignorée :`, err.message);
         break;
       }
+    }
+    // Monuments non habitables : silhouette prime — skip audit habitabilité + décoration
+    if (isMonument(description)) {
+      bot.chat(`Monument (${description.type_batiment}) — audit habitabilité et décoration ignorés (silhouette prime).`);
+      return proposeStructure(username, blocks, description,
+        { maxSize: { x: cfg.limits.max_size, y: cfg.limits.max_y, z: cfg.limits.max_size }, maxBlocks: cfg.limits.max_blocks },
+        { photo: buffer, code });
     }
     const checks = auditChecks(blocks, description);
     const line = checks.map((c) => `${c.name} ${c.passed ? '✓' : '✗'}`).join(' · ');
