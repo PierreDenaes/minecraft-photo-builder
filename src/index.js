@@ -66,8 +66,12 @@ function createBot(cfg) {
     builder.bot = bot;
     const handleChat = createChatHandler({ bot, builder, config: cfg, pending, onBuild });
 
-    // memory.warmup() désactivé : onnxruntime-node cause un SIGSEGV au chargement
-    // CLIP sur macOS ARM64 (exit 139). La mémoire fonctionne en fallback métadonnées.
+    // memory.warmup() désactivé sur macOS ARM64 : SIGSEGV natif (onnxruntime +
+    // sharp/libvips) au chargement CLIP dans le contexte complet (mineflayer +
+    // @enginehub/schematicjs + onnxruntime-node global). Isolé ça marche.
+    // Cause upstream probable. La mémoire I19 fonctionne en fallback métadonnées
+    // (filtre style + type_batiment, tri par note desc — sans similarité visuelle).
+    // Pour l'activer : décommenter la ligne suivante et tester sur Linux/Windows.
     // memory.warmup().catch((err) => console.warn('[memory] warmup échoué :', err.message));
 
     bot.on('spawn', () => console.log('[bot] connecté et apparu en jeu'));
