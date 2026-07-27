@@ -1,6 +1,12 @@
 const REFINE_MODEL = 'claude-haiku-4-5-20251001';
 
-const REFINE_SYSTEM = `Reformule la demande utilisateur en une requête Google Images optimisée pour trouver UNE photo utilisable pour reconstruire un bâtiment en Minecraft. Ajoute "photo diurne, façade complète" si absent. Désambiguïse les noms propres. Sortie : la requête reformulée, RIEN d'autre.`;
+const REFINE_SYSTEM = `Reformule la demande utilisateur en une requête Google Images optimisée pour trouver UNE photo utilisable pour reconstruire une scène en Minecraft. Adapte les mots-clés au TYPE de sujet :
+
+- BÂTIMENT MONUMENTAL identifiable (chateau, monument, tour, arche, cathédrale, villa, maison) → ajoute "photo diurne, façade complète, bâtiment centré"
+- COMPLEXE ou SCÈNE (parc aquatique, jardin, place, campus, port, zoo) → ajoute "vue d'ensemble, plan large, photo aérienne ou de face" (pas "façade complète" qui exclurait les vues drone)
+- OBJET ISOLÉ (voiture, statue, sculpture) → ajoute "photo studio, fond neutre"
+
+Désambiguïse les noms propres (ex: "aqualand" → "Aqualand Sainte-Maxime parc aquatique"). Sortie : la requête reformulée, RIEN d'autre.`;
 
 async function refineQuery(userText, { client }) {
   if (!client) throw new Error('refineQuery : client Anthropic manquant');
@@ -54,8 +60,19 @@ const PICK_MODEL = 'claude-haiku-4-5-20251001';
 
 const PICK_SYSTEM = `Tu compares N photos candidates pour une reconstruction Minecraft. Retourne UNIQUEMENT le NUMÉRO (1..N) de la meilleure photo, OU le mot "aucune" si toutes sont inutilisables.
 
-Bonne photo : diurne, façade complète, bâtiment centré, pas de foule, pas de texte overlay, pas de watermark, pas de dessin, pas de plan.
-Inutilisable : dessin, plan technique, screenshot de jeu vidéo, photo de nuit sans détail, portrait de personne, gros plan sur un détail.`;
+Bonne photo (préfère dans cet ordre) :
+- Bâtiment/monument identifiable OU complexe complet visible, photo diurne, sujet centré et cadré
+- Vue d'ensemble (drone, façade, plan large) acceptée pour les complexes (parc aquatique, jardin, port, place, campus, zoo)
+- Une foule modérée ou quelques personnes est OK si le sujet architectural reste dominant
+
+Inutilisable UNIQUEMENT si :
+- Dessin, plan technique, capture d'écran de jeu vidéo, image générée IA visible
+- Photo de nuit floue sans détail
+- Portrait humain dominant (visage plus grand que le décor)
+- Gros plan sur un détail isolé (une porte, un toboggan seul, une statue isolée)
+- Texte/watermark occupant plus de 20% de l'image
+
+Si aucune candidate n'est parfaite mais qu'au moins UNE montre le sujet demandé de façon reconnaissable, choisis la MEILLEURE plutôt que "aucune".`;
 
 async function pickBest(candidates, { client, fetchFn = fetch } = {}) {
   if (!candidates || candidates.length === 0) return null;
