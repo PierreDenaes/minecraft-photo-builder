@@ -712,8 +712,11 @@ function arche({ x1, z1, x2, z2, y_base, y_faitage, materiau, axe }) {
           continue;
         }
         // dans l'emprise du tunnel : ouverture sous la voûte
+        // On pose EXPLICITEMENT 'air' pour effacer toute boite plus vaste que
+        // le LLM aurait pu poser (le dedup air-priority de l'optimizer fait
+        // que 'air' écrase les blocs pleins présents à la même coord).
         if (yLocal < hNaissance) {
-          // passage droit — air, on ne pose rien
+          out.push({ x, y, z, block: 'air' });
           continue;
         }
         if (yLocal <= hSommet) {
@@ -721,7 +724,7 @@ function arche({ x1, z1, x2, z2, y_base, y_faitage, materiau, axe }) {
           const dy = yLocal - hNaissance;
           const ds = s - tunnelCenter;
           const dist = Math.sqrt(ds * ds + dy * dy);
-          if (dist < tunnelHalfW - 0.3) continue; // intérieur voûte = air
+          if (dist < tunnelHalfW - 0.3) { out.push({ x, y, z, block: 'air' }); continue; }
           if (dist > tunnelHalfW + 0.5) { out.push({ x, y, z, block: plein }); continue; }
           // frange de la voûte : on pose un stair orienté vers le centre du tunnel
           // (half=top → marche inversée sous la corniche pour combler l'arc)

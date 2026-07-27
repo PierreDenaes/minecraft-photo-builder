@@ -566,23 +566,23 @@ test('arche : massif plein sauf tunnel central en forme d\'arc', () => {
 test('arche axe=x : le tunnel traverse selon X (piétons entrent par x1/x2)', () => {
   const a = arche({ x1: 0, z1: 0, x2: 10, z2: 4, y_base: 0, y_faitage: 8, materiau: 'stone_brick', axe: 'x' });
   // au milieu de l'emprise, à hauteur y=1 (au sol, sous la voûte), il doit y avoir de l'AIR
-  // (tunnel ouvert traversant), pas un bloc plein
+  // (tunnel ouvert traversant : soit air explicite, soit rien — jamais un bloc plein)
   const midX = 5, midZ = 2, midY = 1;
   const hit = a.find((b) => b.x === midX && b.z === midZ && b.y === midY);
-  assert.strictEqual(hit, undefined, `bloc au centre du tunnel : ${hit && hit.block}`);
+  assert.ok(!hit || hit.block === 'air', `attendu air ou absent au centre du tunnel, obtenu : ${hit && hit.block}`);
   // par contre aux extrémités latérales (z=0), y=1 doit être plein (piédroit)
   const pilierGauche = a.find((b) => b.x === midX && b.z === 0 && b.y === 1);
-  assert.ok(pilierGauche, 'piédroit gauche manquant');
+  assert.ok(pilierGauche && pilierGauche.block !== 'air', 'piédroit gauche manquant');
 });
 
 test('arche axe=z : le tunnel traverse selon Z', () => {
   const a = arche({ x1: 0, z1: 0, x2: 4, z2: 10, y_base: 0, y_faitage: 8, materiau: 'stone_brick', axe: 'z' });
   const midX = 2, midZ = 5, midY = 1;
   const hit = a.find((b) => b.x === midX && b.z === midZ && b.y === midY);
-  assert.strictEqual(hit, undefined, `bloc au centre du tunnel : ${hit && hit.block}`);
+  assert.ok(!hit || hit.block === 'air', `attendu air ou absent au centre du tunnel, obtenu : ${hit && hit.block}`);
   // piédroit sur x=0 doit exister
   const pilierGauche = a.find((b) => b.x === 0 && b.z === midZ && b.y === 1);
-  assert.ok(pilierGauche, 'piédroit gauche manquant');
+  assert.ok(pilierGauche && pilierGauche.block !== 'air', 'piédroit gauche manquant');
 });
 
 test('arche : sommet de la voûte atteint y_faitage-1 (attique posé dessus à y_faitage)', () => {
@@ -610,4 +610,13 @@ test('arche : materiau manquant → throw', () => {
 
 test('arche : axe invalide → throw', () => {
   assert.throws(() => arche({ x1: 0, z1: 0, x2: 8, z2: 4, y_base: 0, y_faitage: 6, materiau: 'stone_brick', axe: 'y' }), /axe/);
+});
+
+test('arche pose air EXPLICITE dans le tunnel (nécessaire pour écraser une boite postérieure)', () => {
+  // Le LLM combine parfois arche() avec une boite() de même emprise ; l'air explicite
+  // du tunnel doit survivre au dedup optimizer (priorité air) et effacer les blocs
+  // pleins de la boite. Sans air explicite, le tunnel resterait bouché.
+  const a = arche({ x1: 0, z1: 0, x2: 10, z2: 4, y_base: 0, y_faitage: 8, materiau: 'stone_brick', axe: 'x' });
+  const airBlocks = a.filter((b) => b.block === 'air');
+  assert.ok(airBlocks.length > 0, `aucun air explicite posé dans le tunnel (${a.length} blocs total)`);
 });
