@@ -1,0 +1,45 @@
+{
+  "images_results": [
+    {
+      "position": 1,
+      "original": "https://example.com/chateau1.jpg",
+      "thumbnail": "https://example.com/thumb1.jpg",
+      "title": "Château de Versailles",
+      "source": "wikipedia.org",
+      "original_width": 1600,
+      "original_height": 900
+    },
+    {
+      "position": 2,
+      "original": "https://example.com/chateau2.png",
+      "thumbnail": "https://example.com/thumb2.jpg",
+      "title": "Château fort médiéval",
+      "source": "flickr.com",
+      "original_width": 1200,
+      "original_height": 800
+    },
+    {
+      "position": 3,
+      "original": "https://example.com/dessin.svg",
+      "thumbnail": "https://example.com/dessin-thumb.jpg",
+      "title": "Dessin château",
+      "source": "clipart.com"
+    },
+    {
+      "position": 4,
+      "original": "https://example.com/anim.gif",
+      "thumbnail": "https://example.com/anim-thumb.jpg",
+      "title": "GIF château animé",
+      "source": "giphy.com"
+    },
+    {
+      "position": 5,
+      "original": "https://example.com/chateau5.jpg",
+      "thumbnail": "https://example.com/thumb5.jpg",
+      "title": "Château de Chambord",
+      "source": "unsplash.com",
+      "original_width": 2000,
+      "original_height": 1333
+    }
+  ]
+}
