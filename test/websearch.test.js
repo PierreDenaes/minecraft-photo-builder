@@ -114,9 +114,9 @@ const CANDS = [
   { url: 'https://a.com/3.jpg', thumbnail: 'https://a.com/t3.jpg', title: 'c', source: 'a.com' }
 ];
 
-test('pickBest retourne l\'index parsé (Claude répond "2")', async () => {
-  const idx = await pickBest(CANDS, { client: fakeVisionClient('2'), fetchFn: fakeThumbFetch() });
-  assert.strictEqual(idx, 2);
+test('pickBest retourne le candidate correspondant à l\'index (Claude répond "2")', async () => {
+  const result = await pickBest(CANDS, { client: fakeVisionClient('2'), fetchFn: fakeThumbFetch() });
+  assert.deepStrictEqual(result, CANDS[1]);
 });
 
 test('pickBest retourne null si Claude répond "aucune"', async () => {
@@ -137,4 +137,22 @@ test('pickBest retourne null si index hors bornes', async () => {
 test('pickBest avec candidates vides retourne null', async () => {
   const idx = await pickBest([], { client: fakeVisionClient('1'), fetchFn: fakeThumbFetch() });
   assert.strictEqual(idx, null);
+});
+
+test('pickBest : si un thumbnail échoue au download, l\'index Claude est mappé sur les SURVIVANTS (pas la liste originale)', async () => {
+  // fetchFn : réussit sur t1 et t3, échoue sur t2
+  let n = 0;
+  const partialFetch = async () => {
+    n++;
+    const ok = n !== 2; // 2e appel échoue
+    return {
+      ok,
+      status: ok ? 200 : 404,
+      headers: { get: () => 'image/jpeg' },
+      arrayBuffer: async () => Buffer.from([0xff]).buffer
+    };
+  };
+  // Claude reçoit 2 survivants (t1 et t3) et répond "2" → doit retourner CANDS[2] (le 3e original)
+  const chosen = await pickBest(CANDS, { client: fakeVisionClient('2'), fetchFn: partialFetch });
+  assert.deepStrictEqual(chosen, CANDS[2]);
 });

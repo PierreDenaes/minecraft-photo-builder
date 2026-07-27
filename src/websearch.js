@@ -60,8 +60,9 @@ Inutilisable : dessin, plan technique, screenshot de jeu vidéo, photo de nuit s
 async function pickBest(candidates, { client, fetchFn = fetch } = {}) {
   if (!candidates || candidates.length === 0) return null;
   if (!client) throw new Error('pickBest : client Anthropic manquant');
-  // télécharge chaque thumbnail en base64
+  // télécharge chaque thumbnail en base64 ; survivors garde la correspondance image → candidate
   const images = [];
+  const survivors = [];
   for (const c of candidates) {
     try {
       const resp = await fetchFn(c.thumbnail);
@@ -69,6 +70,7 @@ async function pickBest(candidates, { client, fetchFn = fetch } = {}) {
       const buf = Buffer.from(await resp.arrayBuffer());
       const mimeType = resp.headers.get('content-type') || 'image/jpeg';
       images.push({ base64: buf.toString('base64'), mimeType });
+      survivors.push(c);
     } catch { /* ignore, on continue avec les autres */ }
   }
   if (images.length === 0) return null;
@@ -88,7 +90,7 @@ async function pickBest(candidates, { client, fetchFn = fetch } = {}) {
   if (raw === 'aucune') return null;
   const num = parseInt(raw, 10);
   if (!Number.isInteger(num) || num < 1 || num > images.length) return null;
-  return num;
+  return survivors[num - 1];
 }
 
 module.exports = { refineQuery, searchImages, pickBest };

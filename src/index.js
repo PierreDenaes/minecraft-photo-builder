@@ -466,12 +466,11 @@ function createBot(cfg) {
       bot.chat(`${username} : aucune image trouvée pour "${userText}". Réessaie avec une description plus précise.`);
       return;
     }
-    const bestIdx = await pickBest(candidates, { client: apiClient });
-    if (bestIdx === null) {
+    const chosen = await pickBest(candidates, { client: apiClient });
+    if (chosen === null) {
       bot.chat(`${username} : aucune photo utilisable parmi les ${candidates.length} résultats. Réessaie plus précis, ex: "chateau disneyland paris facade jour".`);
       return;
     }
-    const chosen = candidates[bestIdx - 1];
     bot.chat(`Photo trouvée : ${chosen.url}`);
     bot.chat('Analyse en cours (~1 min)...');
     const controller = new AbortController();
