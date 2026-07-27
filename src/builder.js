@@ -32,7 +32,12 @@ class Builder {
     const dz = -Math.cos(yaw);
     const px = Math.floor(playerPos.x);
     const pz = Math.floor(playerPos.z);
-    const y = this.groundLevelAt(playerPos);
+    // origin.y = y du bloc de sol lui-même (que la dalle du LLM va REMPLACER).
+    // Ainsi la dalle (LLM y=0 → world origin.y) reste flush avec le sol extérieur :
+    // top dalle = origin.y + 1 = top du grass_block environnant, et l'entrée est
+    // au même niveau à l'intérieur qu'à l'extérieur. groundLevelAt renvoie la
+    // surface (première case d'air) donc -1 pour retomber sur le bloc solide.
+    const y = this.groundLevelAt(playerPos) - 1;
     if (Math.abs(dx) > Math.abs(dz)) {
       const sign = Math.sign(dx);
       return {
@@ -52,26 +57,32 @@ class Builder {
   flattenCommands(origin, size) {
     const x1 = origin.x - 1, x2 = origin.x + size.x;
     const z1 = origin.z - 1, z2 = origin.z + size.z;
-    const cmds = [`/fill ${x1} ${origin.y - 1} ${z1} ${x2} ${origin.y - 1} ${z2} dirt`];
-    for (let y = origin.y; y < origin.y + size.y; y++) {
+    // origin.y = y du bloc de sol lui-même. On pose du dirt exactement à ce
+    // niveau (remplace bumps/trous par une surface horizontale) puis on vide
+    // tout ce qui est au-dessus jusqu'à origin.y+size.y. La dalle LLM à y=0
+    // (world origin.y) écrasera ensuite le dirt, restant flush avec le sol.
+    const cmds = [`/fill ${x1} ${origin.y} ${z1} ${x2} ${origin.y} ${z2} dirt`];
+    for (let y = origin.y + 1; y <= origin.y + size.y; y++) {
       cmds.push(`/fill ${x1} ${y} ${z1} ${x2} ${y} ${z2} air`);
     }
     return cmds;
   }
 
   takeSnapshot(origin, size) {
+    // origin.y = bloc de sol lui-même (nouveau contrat). On sauvegarde de
+    // origin.y (grass_block écrasé par la dalle) à origin.y+size.y (top structure).
     const volume = (size.x + 2) * (size.y + 1) * (size.z + 2);
     if (volume > this.maxBlocks) return null;
     const saved = [];
     for (let x = origin.x - 1; x <= origin.x + size.x; x++) {
-      for (let y = origin.y - 1; y < origin.y + size.y; y++) {
+      for (let y = origin.y; y <= origin.y + size.y; y++) {
         for (let z = origin.z - 1; z <= origin.z + size.z; z++) {
           const block = this.bot.blockAt(new Vec3(x, y, z));
-          saved.push({ x: x - origin.x + 1, y: y - origin.y + 1, z: z - origin.z + 1, block: block ? block.name : 'air' });
+          saved.push({ x: x - origin.x + 1, y: y - origin.y, z: z - origin.z + 1, block: block ? block.name : 'air' });
         }
       }
     }
-    return { origin: { x: origin.x - 1, y: origin.y - 1, z: origin.z - 1 }, blocks: saved };
+    return { origin: { x: origin.x - 1, y: origin.y, z: origin.z - 1 }, blocks: saved };
   }
 
   startBuild(blocks, origin, size) {
@@ -108,10 +119,12 @@ class Builder {
     const x1 = origin.x - 1, x2 = origin.x + size.x;
     const z1 = origin.z - 1, z2 = origin.z + size.z;
     const cmds = [];
-    for (let y = origin.y; y < origin.y + size.y; y++) {
+    // vide tout au-dessus du sol (là où la dalle et la structure étaient posées)
+    for (let y = origin.y + 1; y <= origin.y + size.y; y++) {
       cmds.push(`/fill ${x1} ${y} ${z1} ${x2} ${y} ${z2} air`);
     }
-    cmds.push(`/fill ${x1} ${origin.y - 1} ${z1} ${x2} ${origin.y - 1} ${z2} grass_block`);
+    // reforme le grass_block AU niveau du sol (origin.y = ancien bloc de sol)
+    cmds.push(`/fill ${x1} ${origin.y} ${z1} ${x2} ${origin.y} ${z2} grass_block`);
     return cmds;
   }
 

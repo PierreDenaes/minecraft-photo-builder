@@ -44,7 +44,7 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 - pontonBois({ x1, z1, x2, z2, y, materiau='oak_planks', pilotis=true }) — planches surélevées + pilotis aux coins descendant jusqu'à y=0
 - haie({ x1, z1, x2, z2, y, essence='oak_leaves', hauteur=2 }) — rangée de feuilles persistantes. À placer À CÔTÉ du bâtiment, JAMAIS collée aux murs : si ta boite va de x=0 à x=25, la haie latérale gauche va à x=-2 ou x=-1 (extérieur), pas à x=0.
 - bordurePlantes({ x1, z1, x2, z2, y, materiau='azalea_leaves' }) — 1 rangée basse de plantes (bordure de terrasse/piscine)
-- perron({ x, z, y0=0, largeur=3, marches=2, materiau, facing }) — marches ascendantes devant une porte (facing = direction où se trouve la porte)
+- perron({ x, z, y0=0, largeur=3, marches=1, materiau, facing }) — marche(s) ascendante(s) devant une porte. IMPORTANT : la dalle de la boite (LLM y=0) est déjà flush avec le sol extérieur → un perron marches=1 avec y0=0 pose UNE stair au niveau du sol, purement décorative pour marquer l'entrée. Ne mets marches=2 QUE si la boite est SURÉLEVÉE (fondation/y0>=1) — sinon la deuxième marche ferait un bump sur la dalle.
 - gardeCorps({ x1, z1, x2, z2, y, materiau='iron_bars' }) — rangée sur le pourtour d'une terrasse/balcon
 - colombages({ facade, x1, x2, z, y1, y2, materiau='dark_oak_log', espacement=3 }) — logs verticaux EN SAILLIE devant une façade, régulièrement espacés ; casse le mur plat (essentiel pour manoirs, colombages, cottage)
 - lierre({ facade, x1, x2, z1, z2, y1, y2, densite=0.5 }) — cases de vine dispersées sur un mur (patine végétale, sur des façades exposées)
