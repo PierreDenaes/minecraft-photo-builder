@@ -45,3 +45,59 @@ test('__embed sans embedder → throw explicite', async () => {
   memory.__setEmbedder(null);
   await assert.rejects(memory.__embed(Buffer.from([1])), /embedder non disponible/);
 });
+
+// Helpers for saveCase tests
+const { rmSync } = require('node:fs');
+
+function resetMemoryDir() {
+  if (fs.existsSync(memory.CASES_DIR)) rmSync(path.dirname(memory.CASES_DIR), { recursive: true });
+  memory.__ensureDirs();
+}
+
+function fakeEmbedder() {
+  return (buf) => {
+    const out = new Float32Array(512);
+    for (let i = 0; i < 512; i++) out[i] = (buf[i % buf.length] || 0) / 255;
+    return out;
+  };
+}
+
+test('saveCase crée les 3 fichiers (.json, .jpg, .emb) et met à jour index.json', async () => {
+  resetMemoryDir();
+  memory.__setEmbedder(fakeEmbedder());
+  const photo = fs.readFileSync(path.join(__dirname, 'fixtures/memory/photo-small.jpg'));
+  const id = await memory.saveCase({
+    photo,
+    description: { style: 'medieval', type_batiment: 'maison', palette_blocs: {} },
+    code: 'function generateStructure() { return []; }'
+  });
+  assert.match(id, /^\d{4}-\d{2}-\d{2}-[0-9a-f]{4}$/);
+  assert.ok(fs.existsSync(path.join(memory.CASES_DIR, `${id}.json`)));
+  assert.ok(fs.existsSync(path.join(memory.CASES_DIR, `${id}.jpg`)));
+  assert.ok(fs.existsSync(path.join(memory.CASES_DIR, `${id}.emb`)));
+  const index = JSON.parse(fs.readFileSync(memory.INDEX_PATH, 'utf8'));
+  assert.strictEqual(index.length, 1);
+  assert.strictEqual(index[0].id, id);
+  assert.strictEqual(index[0].style, 'medieval');
+  assert.strictEqual(index[0].type_batiment, 'maison');
+  assert.strictEqual(index[0].note, null);
+});
+
+test('saveCase produit une miniature <= 256px côté long', async () => {
+  resetMemoryDir();
+  memory.__setEmbedder(fakeEmbedder());
+  const photo = fs.readFileSync(path.join(__dirname, 'fixtures/memory/photo-small.jpg'));
+  const id = await memory.saveCase({ photo, description: { style: 'moderne', type_batiment: 'villa' }, code: '' });
+  const thumb = fs.readFileSync(path.join(memory.CASES_DIR, `${id}.jpg`));
+  const meta = await require('sharp')(thumb).metadata();
+  assert.ok(Math.max(meta.width, meta.height) <= 256);
+});
+
+test('saveCase écrit l\'embedding en Float32Array (2048 bytes = 512*4)', async () => {
+  resetMemoryDir();
+  memory.__setEmbedder(fakeEmbedder());
+  const photo = fs.readFileSync(path.join(__dirname, 'fixtures/memory/photo-small.jpg'));
+  const id = await memory.saveCase({ photo, description: { style: 'moderne', type_batiment: 'villa' }, code: '' });
+  const embBuf = fs.readFileSync(path.join(memory.CASES_DIR, `${id}.emb`));
+  assert.strictEqual(embBuf.length, 512 * 4);
+});

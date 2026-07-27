@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const sharp = require('sharp');
 
 const ROOT = path.join(__dirname, '..', 'data', 'memoire');
 const CASES_DIR = path.join(ROOT, 'cases');
@@ -41,4 +42,31 @@ function __generateId() {
   return `${date}-${rand}`;
 }
 
-module.exports = { CASES_DIR, INDEX_PATH, __ensureDirs, __generateId, warmup, __setEmbedder, __isReady, __embed };
+async function saveCase({ photo, description, code }) {
+  __ensureDirs();
+  const id = __generateId();
+  // miniature 256px max côté long
+  const thumbBuf = await sharp(photo).resize({ width: 256, height: 256, fit: 'inside' }).jpeg({ quality: 80 }).toBuffer();
+  fs.writeFileSync(path.join(CASES_DIR, `${id}.jpg`), thumbBuf);
+  // embedding (calculé sur la miniature pour cohérence et rapidité)
+  const emb = await __embed(thumbBuf);
+  fs.writeFileSync(path.join(CASES_DIR, `${id}.emb`), Buffer.from(emb.buffer));
+  // json
+  const caseObj = {
+    id,
+    date: new Date().toISOString(),
+    style: description.style || 'autre',
+    type_batiment: description.type_batiment || 'inconnu',
+    description,
+    code,
+    note: null
+  };
+  fs.writeFileSync(path.join(CASES_DIR, `${id}.json`), JSON.stringify(caseObj, null, 2));
+  // index (créé si absent)
+  const index = fs.existsSync(INDEX_PATH) ? JSON.parse(fs.readFileSync(INDEX_PATH, 'utf8')) : [];
+  index.push({ id, date: caseObj.date, style: caseObj.style, type_batiment: caseObj.type_batiment, note: null });
+  fs.writeFileSync(INDEX_PATH, JSON.stringify(index, null, 2));
+  return id;
+}
+
+module.exports = { CASES_DIR, INDEX_PATH, __ensureDirs, __generateId, warmup, __setEmbedder, __isReady, __embed, saveCase };
