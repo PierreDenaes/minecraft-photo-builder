@@ -74,9 +74,10 @@ function porte({ facade, x, z, y0 = 0, hauteur = 2, materiau, double = false }) 
       ? [{ x, z, hinge: 'left' }, { x: x + 1, z, hinge: 'right' }]
       : [{ x, z, hinge: 'left' }, { x, z: z + 1, hinge: 'right' }])
     : [{ x, z, hinge: 'left' }];
+  const door = `${doorWoodFor(materiau)}_door`;
   for (const span of spans) {
-    out.push({ x: span.x, y: y0 + 1, z: span.z, block: `oak_door[facing=${facing},half=lower,hinge=${span.hinge}]` });
-    out.push({ x: span.x, y: y0 + 2, z: span.z, block: `oak_door[facing=${facing},half=upper,hinge=${span.hinge}]` });
+    out.push({ x: span.x, y: y0 + 1, z: span.z, block: `${door}[facing=${facing},half=lower,hinge=${span.hinge}]` });
+    out.push({ x: span.x, y: y0 + 2, z: span.z, block: `${door}[facing=${facing},half=upper,hinge=${span.hinge}]` });
     for (let dy = 3; dy <= h; dy++) out.push({ x: span.x, y: y0 + dy, z: span.z, block: materiau });
     out.push({ x: span.x, y: y0 + h + 1, z: span.z, block: materiau }); // linteau
   }
@@ -139,9 +140,13 @@ function toitPlat({ x1, z1, x2, z2, y, materiau, acrotere = true, debord = 1 }) 
   const Z2 = z2 + debord;
   for (let x = X1; x <= X2; x++) for (let z = Z1; z <= Z2; z++) out.push({ x, y, z, block: materiau });
   if (acrotere) {
-    const wall = /_bricks$|_planks$/.test(materiau)
-      ? materiau.replace(/_planks$|_bricks$/, (m) => m === '_planks' ? '_wall' : '_brick_wall')
-      : 'cobblestone_wall';
+    // planks → fence de la même essence (les planks n'ont PAS de variante wall) ;
+    // bricks → brick_wall ; sinon repli cobblestone_wall
+    const wall = /_planks$/.test(materiau)
+      ? materiau.replace(/_planks$/, '_fence')
+      : /_bricks$/.test(materiau)
+        ? materiau.replace(/_bricks$/, '_brick_wall')
+        : 'cobblestone_wall';
     for (let x = X1; x <= X2; x++) { out.push({ x, y: y + 1, z: Z1, block: wall }); out.push({ x, y: y + 1, z: Z2, block: wall }); }
     for (let z = Z1 + 1; z < Z2; z++) { out.push({ x: X1, y: y + 1, z, block: wall }); out.push({ x: X2, y: y + 1, z, block: wall }); }
   }
@@ -196,6 +201,10 @@ function toitDeuxPans({ x1, z1, x2, z2, y_base, faitage, materiau, debord = 1 })
   const stairs = `${materiau}_stairs`;
   const planks = fillBlockFor(materiau);
   const out = [];
+  // Index d'occupation : évite le out.some(...) O(n²) du remplissage des pignons
+  const occ = new Set();
+  const push = (b) => { occ.add(`${b.x},${b.y},${b.z}`); out.push(b); };
+  const has = (x, y, z) => occ.has(`${x},${y},${z}`);
   if (faitage === 'x') {
     const zMid = (z1 + z2) / 2;
     const halfZ = Math.floor((z2 - z1) / 2);
@@ -207,14 +216,14 @@ function toitDeuxPans({ x1, z1, x2, z2, y_base, faitage, materiau, debord = 1 })
       const xa = x1 - (i === 0 ? debord : 0);
       const xb = x2 + (i === 0 ? debord : 0);
       for (let x = xa; x <= xb; x++) {
-        out.push({ x, y, z: zNord, block: `${stairs}[facing=south,half=bottom]` });
-        if (zSud !== zNord) out.push({ x, y, z: zSud, block: `${stairs}[facing=north,half=bottom]` });
+        push({ x, y, z: zNord, block: `${stairs}[facing=south,half=bottom]` });
+        if (zSud !== zNord) push({ x, y, z: zSud, block: `${stairs}[facing=north,half=bottom]` });
       }
       // pignons remplis en dessous du versant à chaque rang
       for (let x of [x1, x2]) {
         for (let yy = y_base; yy < y; yy++) {
-          if (!out.some((b) => b.x === x && b.y === yy && b.z === zNord)) out.push({ x, y: yy, z: zNord, block: planks });
-          if (zSud !== zNord && !out.some((b) => b.x === x && b.y === yy && b.z === zSud)) out.push({ x, y: yy, z: zSud, block: planks });
+          if (!has(x, yy, zNord)) push({ x, y: yy, z: zNord, block: planks });
+          if (zSud !== zNord && !has(x, yy, zSud)) push({ x, y: yy, z: zSud, block: planks });
         }
       }
     }
@@ -222,14 +231,14 @@ function toitDeuxPans({ x1, z1, x2, z2, y_base, faitage, materiau, debord = 1 })
     if ((z2 - z1) % 2 === 0) {
       const zM = z1 + halfZ;
       const y = y_base + halfZ;
-      for (let x = x1; x <= x2; x++) out.push({ x, y: y + 1, z: zM, block: planks });
+      for (let x = x1; x <= x2; x++) push({ x, y: y + 1, z: zM, block: planks });
     }
     // remplissage pignons entre les versants (colonnes x=x1 et x=x2)
     for (const x of [x1, x2]) {
       for (let z = z1 + 1; z < z2; z++) {
         const dz = Math.min(z - z1, z2 - z);
         for (let y = y_base; y < y_base + dz; y++) {
-          out.push({ x, y, z, block: planks });
+          push({ x, y, z, block: planks });
         }
       }
     }
@@ -243,26 +252,26 @@ function toitDeuxPans({ x1, z1, x2, z2, y_base, faitage, materiau, debord = 1 })
       const za = z1 - (i === 0 ? debord : 0);
       const zb = z2 + (i === 0 ? debord : 0);
       for (let z = za; z <= zb; z++) {
-        out.push({ x: xNord, y, z, block: `${stairs}[facing=east,half=bottom]` });
-        if (xSud !== xNord) out.push({ x: xSud, y, z, block: `${stairs}[facing=west,half=bottom]` });
+        push({ x: xNord, y, z, block: `${stairs}[facing=east,half=bottom]` });
+        if (xSud !== xNord) push({ x: xSud, y, z, block: `${stairs}[facing=west,half=bottom]` });
       }
       // pignons remplis sous les versants aux extrémités z=z1 et z=z2
       for (const z of [z1, z2]) {
         for (let yy = y_base; yy < y; yy++) {
-          if (!out.some((b) => b.x === xNord && b.y === yy && b.z === z)) out.push({ x: xNord, y: yy, z, block: planks });
-          if (xSud !== xNord && !out.some((b) => b.x === xSud && b.y === yy && b.z === z)) out.push({ x: xSud, y: yy, z, block: planks });
+          if (!has(xNord, yy, z)) push({ x: xNord, y: yy, z, block: planks });
+          if (xSud !== xNord && !has(xSud, yy, z)) push({ x: xSud, y: yy, z, block: planks });
         }
       }
     }
     if ((x2 - x1) % 2 === 0) {
       const xM = x1 + halfX;
       const y = y_base + halfX;
-      for (let z = z1; z <= z2; z++) out.push({ x: xM, y: y + 1, z, block: planks });
+      for (let z = z1; z <= z2; z++) push({ x: xM, y: y + 1, z, block: planks });
     }
     for (const z of [z1, z2]) {
       for (let x = x1 + 1; x < x2; x++) {
         const dx = Math.min(x - x1, x2 - x);
-        for (let y = y_base; y < y_base + dx; y++) out.push({ x, y, z, block: planks });
+        for (let y = y_base; y < y_base + dx; y++) push({ x, y, z, block: planks });
       }
     }
   }
@@ -370,6 +379,19 @@ function piscine({ x1, z1, x2, z2, y_surface, profondeur = 2, bordure }) {
 // Préfixes bois connus : le materiau se décline en _planks (dalles) et _log (paroi)
 const WOOD_PREFIX = new Set(['oak', 'spruce', 'birch', 'jungle', 'acacia', 'dark_oak', 'mangrove', 'cherry', 'crimson', 'warped']);
 
+// Essence de porte déduite du materiau : préfixe bois le plus LONG d'abord
+// (dark_oak avant oak, sinon dark_oak_log matcherait oak). Repli : oak.
+// Déclaré ici car WOOD_PREFIX n'est pas hoisté ; porte() l'appelle à l'exécution.
+const WOOD_BY_LENGTH = [...WOOD_PREFIX].sort((a, b) => b.length - a.length);
+function doorWoodFor(materiau) {
+  if (typeof materiau === 'string') {
+    for (const w of WOOD_BY_LENGTH) {
+      if (materiau === w || materiau.startsWith(`${w}_`)) return w;
+    }
+  }
+  return 'oak';
+}
+
 function tour({ x, z, rayon, y_bas, y_haut, materiau, toit_conique = true, creneaux = false }) {
   if (!materiau) throw new Error('tour : materiau manquant');
   if (rayon < 1) throw new Error(`tour : rayon>=1 requis (${rayon})`);
@@ -418,18 +440,19 @@ function tour({ x, z, rayon, y_bas, y_haut, materiau, toit_conique = true, crene
     }
     shellCells.sort((a, b) => a.angle - b.angle);
     const placed = new Set();
+    let lastKey = null; // dernier merlon posé, sans recopier le Set à chaque tour
     // parcours angulaire : on pose un merlon si aucun voisin 4-connecté déjà posé
     for (const c of shellCells) {
       const key = `${c.dx},${c.dz}`;
       const adj = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dz]) => placed.has(`${c.dx + dx},${c.dz + dz}`));
       if (adj) continue;
       // on saute aussi le voisin angulaire immédiat (pour aérer)
-      if (placed.size > 0) {
-        const last = [...placed].pop();
-        const [lx, lz] = last.split(',').map(Number);
+      if (lastKey) {
+        const [lx, lz] = lastKey.split(',').map(Number);
         if (Math.abs(c.dx - lx) + Math.abs(c.dz - lz) === 1) continue;
       }
       placed.add(key);
+      lastKey = key;
       out.push({ x: x + c.dx, y: y_haut + 1, z: z + c.dz, block: dalle });
     }
   }
@@ -580,7 +603,9 @@ function lierre({ facade, x, x1, x2, z, z1, z2, y1, y2, densite = 0.5 }) {
   for (let cx = cx1; cx <= cx2; cx++) for (let cz = cz1; cz <= cz2; cz++) for (let y = y1; y <= y2; y++) {
     const h = ((cx * 73856093) ^ (cz * 19349663) ^ (y * 83492791)) >>> 0;
     if ((h % 1000) / 1000 < densite) {
-      out.push({ x: cx - dx, y, z: cz - dz, block: 'vine' });
+      // face d'accrochage = direction du mur porteur vu depuis la vine,
+      // qui est exactement OPPOSITE[facade] (nord → south, est → west...)
+      out.push({ x: cx - dx, y, z: cz - dz, block: `vine[${OPPOSITE[facade]}=true]` });
     }
   }
   return out;
@@ -747,10 +772,18 @@ function arche({ x1, z1, x2, z2, y_base, y_faitage, materiau, axe }) {
           // frange de la voûte : on pose un stair orienté vers le centre du tunnel
           // (half=top → marche inversée sous la corniche pour combler l'arc)
           // facing = direction OPPOSÉE au centre (comme un débord de toit)
+          // ds est mesuré sur l'axe de SECTION (z quand axe='x', x quand axe='z') :
+          // le facing doit suivre ce même axe
           let facing;
-          if (ds < 0) facing = 'east';
-          else if (ds > 0) facing = 'west';
-          else facing = axe === 'x' ? 'north' : 'east'; // clef de voûte : orientation arbitraire cohérente
+          if (axe === 'x') {
+            if (ds < 0) facing = 'south';
+            else if (ds > 0) facing = 'north';
+            else facing = 'north'; // clef de voûte : orientation arbitraire cohérente
+          } else {
+            if (ds < 0) facing = 'east';
+            else if (ds > 0) facing = 'west';
+            else facing = 'east';
+          }
           out.push({ x, y, z, block: `${stairs}[facing=${facing},half=top]` });
           continue;
         }

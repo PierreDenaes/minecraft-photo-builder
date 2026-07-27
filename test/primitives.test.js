@@ -359,7 +359,8 @@ test('colombages : logs verticaux en saillie sur la façade, espacés régulièr
 
 test('lierre : rangées de vine sur un mur existant, dispersé', () => {
   const l = lierre({ facade: 'ouest', x: 0, z1: 2, z2: 8, y1: 1, y2: 5, densite: 0.5 });
-  const vines = l.filter((b) => b.block === 'vine');
+  // depuis l'audit 27/07, chaque vine porte sa face d'accrochage
+  const vines = l.filter((b) => /^vine\[/.test(b.block));
   assert.ok(vines.length > 0, 'lierre attendu');
   // moitié environ des cases occupées (tolérance)
   const total = 7 * 5;
@@ -853,4 +854,52 @@ test('normalisation : matériau sans variante stairs (brown_terracotta) throw to
     () => arche({ x1: 0, z1: 0, x2: 10, z2: 4, y_base: 0, y_faitage: 8, materiau: 'brown_terracotta', axe: 'x' }),
     /n'existe pas/
   );
+});
+
+// === Corrections audit 27/07 (CORRECTIONS-primitives_1.md) —
+// toutes les primitives nécessaires sont déjà importées plus haut
+
+test('toitPlat : acrotère planks → fence de la même essence (oak_wall n\'existe pas)', () => {
+  const t = toitPlat({ x1: 0, z1: 0, x2: 5, z2: 5, y: 4, materiau: 'oak_planks' });
+  assert.ok(!t.some((b) => b.block === 'oak_wall'), 'oak_wall n\'existe pas dans Minecraft');
+  assert.ok(t.some((b) => b.block === 'oak_fence'), 'attendu oak_fence en acrotère');
+  // bricks → brick_wall inchangé, repli cobblestone_wall inchangé
+  const tb = toitPlat({ x1: 0, z1: 0, x2: 5, z2: 5, y: 4, materiau: 'stone_bricks' });
+  assert.ok(tb.some((b) => b.block === 'stone_brick_wall'));
+  const tc = toitPlat({ x1: 0, z1: 0, x2: 5, z2: 5, y: 4, materiau: 'white_concrete' });
+  assert.ok(tc.some((b) => b.block === 'cobblestone_wall'));
+});
+
+test('arche axe=x : stairs de voûte orientés north/south (jamais east/west)', () => {
+  const a = arche({ x1: 0, z1: 0, x2: 10, z2: 6, y_base: 0, y_faitage: 10, materiau: 'stone_brick', axe: 'x' });
+  const stairs = a.filter((b) => /_stairs\[/.test(b.block));
+  assert.ok(stairs.length > 0, 'la voûte doit contenir des stairs');
+  for (const s of stairs) {
+    assert.match(s.block, /facing=(north|south)/, `axe=x : facing z attendu, obtenu ${s.block}`);
+  }
+  // axe=z : east/west (comportement d'origine, conservé)
+  const az = arche({ x1: 0, z1: 0, x2: 6, z2: 10, y_base: 0, y_faitage: 10, materiau: 'stone_brick', axe: 'z' });
+  for (const s of az.filter((b) => /_stairs\[/.test(b.block))) {
+    assert.match(s.block, /facing=(east|west)/, `axe=z : facing x attendu, obtenu ${s.block}`);
+  }
+});
+
+test('lierre : chaque vine porte sa face d\'accrochage (sinon retirée par le jeu)', () => {
+  const v = lierre({ facade: 'nord', x1: 0, x2: 10, z: 0, y1: 1, y2: 5, densite: 1 });
+  assert.ok(v.length > 0);
+  for (const b of v) {
+    assert.match(b.block, /^vine\[(north|south|east|west)=true\]$/, `vine sans accrochage : ${b.block}`);
+  }
+  // façade nord : le mur porteur est au sud de la vine
+  assert.ok(v.every((b) => b.block === 'vine[south=true]'), `attendu vine[south=true], obtenu ${v[0].block}`);
+});
+
+test('porte : essence dérivée du materiau (spruce_log → spruce_door, repli oak)', () => {
+  const ps = porte({ facade: 'sud', x: 3, z: 0, y0: 0, materiau: 'spruce_log' });
+  assert.ok(ps.some((b) => /^spruce_door\[/.test(b.block)), 'attendu spruce_door');
+  const pd = porte({ facade: 'sud', x: 3, z: 0, y0: 0, materiau: 'dark_oak_log' });
+  assert.ok(pd.some((b) => /^dark_oak_door\[/.test(b.block)), 'dark_oak avant oak (préfixe le plus long)');
+  assert.ok(!pd.some((b) => /^oak_door\[/.test(b.block)), 'PAS oak_door pour du dark_oak');
+  const pp = porte({ facade: 'sud', x: 3, z: 0, y0: 0, materiau: 'stone_bricks' });
+  assert.ok(pp.some((b) => /^oak_door\[/.test(b.block)), 'repli oak_door pour un matériau non bois');
 });

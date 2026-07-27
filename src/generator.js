@@ -445,10 +445,11 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
       // guide le style, les variantes stairs/slab/wall existantes restent légales
       if (validBlocks || existingBlocks) {
         const valid = new Set(existingBlocks || validBlocks);
-        const alwaysOk = new Set(['air', 'glass_pane', 'oak_door', 'ladder', 'lantern', 'torch', 'wall_torch']);
+        const alwaysOk = new Set(['air', 'glass_pane', 'ladder', 'lantern', 'torch', 'wall_torch']);
+        // toutes les essences de portes bois existent en 1.20 (porte() les dérive du materiau)
         const unknown = [...new Set(blocks
           .map((b) => String(b.block).replace(/\[[^\]]*\]$/, ''))
-          .filter((n) => !valid.has(n) && !alwaysOk.has(n)))];
+          .filter((n) => !valid.has(n) && !alwaysOk.has(n) && !/_door$/.test(n)))];
         if (unknown.length > 0) {
           throw new Error(usingPrimitives
             ? `blocs inexistants dans Minecraft 1.20 : ${unknown.join(', ')} — vérifie les arguments materiau/murs/fondation/plancher/encadrement/bordure passés aux primitives. Attention : pour toitDeuxPans/toitQuatrePans, materiau est un préfixe bois (par ex. "oak", "dark_oak") qui donne stairs et planks ; smooth_stone n'a qu'une slab.`
