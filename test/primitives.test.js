@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const {
-  boite, porte, baie, toitPlat, toitDeuxPans, toitQuatrePans, escalier, piscine, arche
+  boite, porte, baie, toitPlat, toitDeuxPans, toitQuatrePans, escalier, piscine, arche, pyramideTronquee
 } = require('../src/primitives');
 
 const at = (blocks, x, y, z) => blocks.find((b) => b.x === x && b.y === y && b.z === z);
@@ -619,4 +619,68 @@ test('arche pose air EXPLICITE dans le tunnel (nécessaire pour écraser une boi
   const a = arche({ x1: 0, z1: 0, x2: 10, z2: 4, y_base: 0, y_faitage: 8, materiau: 'stone_brick', axe: 'x' });
   const airBlocks = a.filter((b) => b.block === 'air');
   assert.ok(airBlocks.length > 0, `aucun air explicite posé dans le tunnel (${a.length} blocs total)`);
+});
+
+// pyramideTronquee : tronc de pyramide utile pour tours effilées (Tour Eiffel,
+// Burj Khalifa), pyramides d'Egypte, toits de temples, obélisques
+test('pyramideTronquee : base plus large que sommet, hauteur correcte', () => {
+  const p = pyramideTronquee({ x: 20, z: 20, y_base: 0, y_haut: 10, base: 12, sommet: 4, materiau: 'stone_bricks' });
+  const ys = [...new Set(p.map((b) => b.y))].sort((a, b) => a - b);
+  assert.strictEqual(ys[0], 0);
+  assert.strictEqual(ys[ys.length - 1], 9);  // dernier bloc à y=y_haut-1
+  // niveau bas : couvre 12×12 environ (centré sur x=20, z=20 → x∈[14..25])
+  const bas = p.filter((b) => b.y === 0);
+  const xsBas = [...new Set(bas.map((b) => b.x))];
+  const zsBas = [...new Set(bas.map((b) => b.z))];
+  assert.ok(xsBas.length >= 10 && xsBas.length <= 14, `base X trop étroite/large : ${xsBas.length}`);
+  assert.ok(zsBas.length >= 10 && zsBas.length <= 14);
+  // niveau haut : couvre ~4×4 (rétréci)
+  const haut = p.filter((b) => b.y === 9);
+  const xsHaut = [...new Set(haut.map((b) => b.x))];
+  assert.ok(xsHaut.length >= 3 && xsHaut.length <= 5, `sommet X mauvais : ${xsHaut.length}`);
+});
+
+test('pyramideTronquee : ajouree=false → murs pleins', () => {
+  const p = pyramideTronquee({ x: 10, z: 10, y_base: 0, y_haut: 8, base: 8, sommet: 4, materiau: 'stone_bricks', ajouree: false });
+  const solid = p.filter((b) => b.block === 'stone_bricks');
+  const air = p.filter((b) => b.block === 'air');
+  assert.ok(solid.length > 0);
+  assert.strictEqual(air.length, 0, 'mode plein ne pose pas d\'air');
+});
+
+test('pyramideTronquee : ajouree=true → parois iron_bars, pas de blocs pleins', () => {
+  const p = pyramideTronquee({ x: 10, z: 10, y_base: 0, y_haut: 8, base: 8, sommet: 4, materiau: 'stone_bricks', ajouree: true });
+  const bars = p.filter((b) => b.block === 'iron_bars');
+  const solid = p.filter((b) => b.block === 'stone_bricks');
+  assert.ok(bars.length > 0, 'ajouree=true doit poser iron_bars');
+  assert.strictEqual(solid.length, 0, 'ajouree=true ne doit PAS poser le materiau plein');
+});
+
+test('pyramideTronquee : contour creux (pas rempli) — seulement parois', () => {
+  const p = pyramideTronquee({ x: 20, z: 20, y_base: 0, y_haut: 6, base: 10, sommet: 6, materiau: 'stone_bricks' });
+  // au centre (x=20, z=20, y=3), il ne doit rien y avoir (intérieur creux)
+  const centre = p.find((b) => b.x === 20 && b.z === 20 && b.y === 3);
+  assert.strictEqual(centre, undefined, `centre creux attendu, obtenu ${centre && centre.block}`);
+});
+
+test('pyramideTronquee : sommet > base → throw (inversé)', () => {
+  assert.throws(
+    () => pyramideTronquee({ x: 10, z: 10, y_base: 0, y_haut: 8, base: 4, sommet: 12, materiau: 'stone_bricks' }),
+    /sommet.*base/
+  );
+});
+
+test('pyramideTronquee : materiau manquant → throw', () => {
+  assert.throws(
+    () => pyramideTronquee({ x: 10, z: 10, y_base: 0, y_haut: 8, base: 8, sommet: 4 }),
+    /materiau/
+  );
+});
+
+test('pyramideTronquee : base=sommet → cylindre (tronc droit, dégénéré valide)', () => {
+  const p = pyramideTronquee({ x: 10, z: 10, y_base: 0, y_haut: 5, base: 6, sommet: 6, materiau: 'stone_bricks' });
+  // toutes les couches ont la même emprise
+  const bas = p.filter((b) => b.y === 0);
+  const haut = p.filter((b) => b.y === 4);
+  assert.strictEqual(bas.length, haut.length, 'base=sommet doit produire des couches identiques');
 });

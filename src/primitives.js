@@ -744,6 +744,46 @@ function arche({ x1, z1, x2, z2, y_base, y_faitage, materiau, axe }) {
   return out;
 }
 
+// Tronc de pyramide (frustum) creux, centré sur (x,z). Chaque couche est un
+// contour rectangulaire dont la taille décroît linéairement de `base` en bas
+// à `sommet` en haut. Usage : silhouettes effilées non couvertes par boite/tour :
+// Tour Eiffel (empilement pieds+tronc+antenne), pyramides d'Egypte (sommet=1
+// ou 2), Burj Khalifa, toits de temples asiatiques, obélisques.
+// ajouree=true → iron_bars au lieu du matériau (aspect treillis métallique).
+function pyramideTronquee({ x, z, y_base, y_haut, base, sommet, materiau, ajouree = false }) {
+  if (!materiau) throw new Error('pyramideTronquee : materiau manquant');
+  if (!Number.isInteger(y_base) || !Number.isInteger(y_haut) || y_haut <= y_base) {
+    throw new Error(`pyramideTronquee : y_haut (${y_haut}) doit être > y_base (${y_base})`);
+  }
+  if (!Number.isFinite(base) || !Number.isFinite(sommet) || base <= 0 || sommet <= 0) {
+    throw new Error(`pyramideTronquee : base (${base}) et sommet (${sommet}) doivent être > 0`);
+  }
+  if (sommet > base) throw new Error(`pyramideTronquee : sommet (${sommet}) doit être <= base (${base})`);
+  const bloc = ajouree ? 'iron_bars' : materiau;
+  const out = [];
+  const hSteps = y_haut - y_base;
+  for (let dy = 0; dy < hSteps; dy++) {
+    const t = hSteps === 1 ? 0 : dy / (hSteps - 1);
+    const size = Math.max(1, Math.round(base * (1 - t) + sommet * t));
+    const half = Math.floor((size - 1) / 2);
+    const x1 = x - half;
+    const x2 = x + (size - 1 - half);
+    const z1 = z - half;
+    const z2 = z + (size - 1 - half);
+    const y = y_base + dy;
+    // Contour creux : parois seulement (4 arêtes du rectangle)
+    for (let cx = x1; cx <= x2; cx++) {
+      out.push({ x: cx, y, z: z1, block: bloc });
+      if (z2 !== z1) out.push({ x: cx, y, z: z2, block: bloc });
+    }
+    for (let cz = z1 + 1; cz < z2; cz++) {
+      out.push({ x: x1, y, z: cz, block: bloc });
+      if (x2 !== x1) out.push({ x: x2, y, z: cz, block: bloc });
+    }
+  }
+  return out;
+}
+
 module.exports = { boite, porte, baie, toitPlat, toitDeuxPans, toitQuatrePans, escalier, piscine, tour,
   lampadaire, terrasse, pontonBois, haie, bordurePlantes, perron, gardeCorps,
-  colombages, lierre, avantCorps, berge, cheminee, arche };
+  colombages, lierre, avantCorps, berge, cheminee, arche, pyramideTronquee };
