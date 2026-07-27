@@ -67,12 +67,11 @@ async function analyzeImage(imageBase64, mimeType, { client, maxSize = 64, valid
   const response = await withRetry(() =>
     c.messages.create({
       model: MODEL_ANALYSE,
-      // thinking adaptatif : Opus 4.7 utilise le nouveau format `adaptive` +
-      // output_config.effort (low/medium/high). "high" = raisonnement approfondi,
+      // thinking adaptatif + output_config.effort "high" = raisonnement approfondi,
       // adapté à l'analyse spatiale fine d'une photo architecturale.
-      // Temperature doit rester à 1 quand thinking est activé.
+      // AUCUN paramètre de sampling (temperature/top_p/top_k) : fable-5 et
+      // opus-4-7/4-8 les rejettent avec un 400 "deprecated for this model".
       max_tokens: 4096,
-      temperature: 1,
       thinking: { type: 'adaptive' },
       output_config: { effort: 'high' },
       system: [{ type: 'text', text: systemPrompt(maxSize, validBlocks), cache_control: { type: 'ephemeral' } }],
@@ -116,7 +115,6 @@ async function compareToPhoto(photoBase64, photoMime, renderBase64, { client } =
     const response = await withRetry(() => c.messages.create({
       model: MODEL_CRITIQUE,
       max_tokens: 800,
-      temperature: 0,
       system: `Tu compares une PHOTO de référence (première image) et le RENDU voxel Minecraft généré à partir d'elle (seconde image).
 
 Ignore les différences inhérentes au format Minecraft : pixellisation, textures des blocs, absence de courbes lisses, simplification des petits détails. Ne compare que ce qui est corrigeable à l'échelle du bloc.

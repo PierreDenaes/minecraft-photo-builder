@@ -30,7 +30,7 @@ const { enforceSupport } = require('./support');
 const { plantVegetation } = require('./vegetation');
 const { decorateInterior } = require('./decorator');
 const { portraitBlocks } = require('./portrait');
-const { auditHabitability, auditChecks } = require('./habitability');
+const { auditHabitability, auditChecks, isMonument } = require('./habitability');
 const { carveStaircase } = require('./staircase');
 const { refineQuery, searchImages, pickBest } = require('./websearch');
 
@@ -38,14 +38,6 @@ const validBlocks = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../data/valid_blocks.json'), 'utf8')
 );
 
-// Monuments non habitables : silhouette prime sur habitabilité. Skip audit
-// habitabilité, décoration intérieure, et règles portes/cloisons. Reconnus par
-// mots-clés dans type_batiment (fourni par la vision LLM).
-const MONUMENT_KEYWORDS = /^(arc|arche|arc_de_triomphe|porte_de_ville|aqueduc|tour_eiffel|tour_isolee|tour_de_tokyo|tour_de_telecom|minaret|campanile|obelisque|colonne|colonne_commemorative|stele|statue|statue_monumentale|sculpture|pyramide|pyramide_egypte|pyramide_maya|burj_khalifa|empire_state|gratte_ciel|gratte-ciel|monument|monument_commemoratif)$/i;
-function isMonument(description) {
-  if (!description || !description.type_batiment) return false;
-  return MONUMENT_KEYWORDS.test(String(description.type_batiment).replace(/[\s-]+/g, '_'));
-}
 
 function structureSize(blocks) {
   const max = { x: 0, y: 0, z: 0 };

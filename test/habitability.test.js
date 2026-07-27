@@ -235,3 +235,25 @@ test('audit : cellules dalle-sur-dalle (plancher+plafond superposés, sans air e
   // "hauteur libre médiane 0".
   assert.ok(!defects.some((d) => /médiane 0/.test(d)), defects.join(' | '));
 });
+
+// Monuments : aucune règle d'habitabilité ne s'applique (silhouette prime).
+// Bug Tour Eiffel : la boucle de correction appelait auditHabitability sur un
+// monument → « façades avec 2 matériaux » → colombages/bandeaux absurdes ajoutés.
+const { isMonument } = require('../src/habitability');
+
+test('auditHabitability : monument → aucun défaut, même sans porte ni étages', () => {
+  const b = box(10, 6, 8); // pas de porte → défauts garantis en mode bâtiment
+  assert.ok(auditHabitability(b, { type_batiment: 'maison' }).length > 0,
+    'le décor de test doit produire des défauts pour un bâtiment habitable');
+  assert.deepStrictEqual(auditHabitability(b, { type_batiment: 'tour_eiffel' }), []);
+  assert.deepStrictEqual(auditHabitability(b, { type_batiment: 'tour_isolee' }), []);
+  assert.deepStrictEqual(auditHabitability(b, { type_batiment: 'arc de triomphe' }), []);
+});
+
+test('isMonument : reconnaît les monuments, pas les bâtiments habitables', () => {
+  assert.strictEqual(isMonument({ type_batiment: 'tour_eiffel' }), true);
+  assert.strictEqual(isMonument({ type_batiment: 'pyramide_egypte' }), true);
+  assert.strictEqual(isMonument({ type_batiment: 'maison à colombages' }), false);
+  assert.strictEqual(isMonument({ type_batiment: 'villa' }), false);
+  assert.strictEqual(isMonument({}), false);
+});

@@ -4,11 +4,20 @@ const { detectFloors, mainBuilding } = require('./rooms');
 const STAIR_OR_LADDER = /_stairs(\[|$)|^ladder(\[|$)/;
 const MIN_CLEARANCE = 3;
 
+// Monuments non habitables : aucune règle d'habitabilité ne s'applique — la
+// silhouette prime (pas de porte, pas d'étages, pas de variété de façades).
+const MONUMENT_KEYWORDS = /^(arc|arche|arc_de_triomphe|porte_de_ville|aqueduc|tour_eiffel|tour_isolee|tour_de_tokyo|tour_de_telecom|minaret|campanile|obelisque|colonne|colonne_commemorative|stele|statue|statue_monumentale|sculpture|pyramide|pyramide_egypte|pyramide_maya|burj_khalifa|empire_state|gratte_ciel|gratte-ciel|monument|monument_commemoratif)$/i;
+function isMonument(description) {
+  if (!description || !description.type_batiment) return false;
+  return MONUMENT_KEYWORDS.test(String(description.type_batiment).replace(/[\s-]+/g, '_'));
+}
+
 // Audit mécanique d'habitabilité : mesures sur les blocs, pas d'IA.
 // Retourne une liste de défauts précis, injectés dans la passe de correction.
 // description (optionnelle) : la sortie vision, pour les attentes déclarées (baies...)
 function auditHabitability(blocks, description = {}) {
   if (!Array.isArray(blocks) || blocks.length === 0) return [];
+  if (isMonument(description)) return [];
   // dédoublonnage par position : air ET portes (traversables) priment sur tout
   // bloc plein superposé — sinon un mur émis avant la porte au même endroit
   // masque l'entrée aux yeux de l'audit
@@ -163,4 +172,4 @@ function auditChecks(blocks, description = {}) {
   ];
 }
 
-module.exports = { auditHabitability, auditChecks };
+module.exports = { auditHabitability, auditChecks, isMonument };

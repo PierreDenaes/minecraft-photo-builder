@@ -168,12 +168,38 @@ test('réglages API vision : thinking adaptatif effort=high, cache_control, reco
   const client = { messages: { create: async (req) => { captured = req; return { content: [{ type: 'text', text: '"type_batiment":"grange"}' }] }; } } };
   const r = await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
   assert.strictEqual(r.type_batiment, 'grange');
-  // thinking mode adaptatif : temperature doit être 1 (contrainte API), effort high pour l'analyse fine
-  assert.strictEqual(captured.temperature, 1);
+  // thinking mode adaptatif, effort high pour l'analyse fine — et AUCUN paramètre
+  // de sampling (fable-5 / opus-4-7 les rejettent avec un 400)
+  assert.ok(!('temperature' in captured));
   assert.deepStrictEqual(captured.thinking, { type: 'adaptive' });
   assert.deepStrictEqual(captured.output_config, { effort: 'high' });
   assert.ok(Array.isArray(captured.system));
   assert.deepStrictEqual(captured.system[0].cache_control, { type: 'ephemeral' });
   // les modèles 4.x refusent le prefill assistant : la conversation DOIT finir par un message user
   assert.strictEqual(captured.messages[captured.messages.length - 1].role, 'user');
+});
+
+// Les modèles claude-fable-5 / claude-opus-4-7 REJETTENT temperature/top_p/top_k
+// (400 "temperature is deprecated for this model") — la critique photo↔rendu
+// plantait silencieusement et la correction tournait sur le seul audit générique
+function captureClient(responseText) {
+  const captured = {};
+  return {
+    captured,
+    client: { messages: { create: async (params) => { captured.params = params; return { content: [{ type: 'text', text: responseText }] }; } } }
+  };
+}
+
+test('analyzeImage n\'envoie aucun paramètre de sampling (fable-5 les rejette)', async () => {
+  const { client, captured } = captureClient(JSON.stringify(fixture));
+  await analyzeImage('AAAA', 'image/jpeg', { client, maxSize: 64 });
+  assert.ok(!('temperature' in captured.params), 'temperature interdit sur claude-fable-5');
+  assert.ok(!('top_p' in captured.params) && !('top_k' in captured.params));
+});
+
+test('compareToPhoto n\'envoie aucun paramètre de sampling (opus-4-7 les rejette)', async () => {
+  const { client, captured } = captureClient('{"success": true}');
+  await compareToPhoto('UEhPVE8=', 'image/jpeg', 'UkVORFU=', { client });
+  assert.ok(!('temperature' in captured.params), 'temperature interdit sur claude-opus-4-7');
+  assert.ok(!('top_p' in captured.params) && !('top_k' in captured.params));
 });
