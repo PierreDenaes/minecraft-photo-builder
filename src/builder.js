@@ -9,6 +9,7 @@ class Builder {
     this.maxBlocks = maxBlocks;
     this.cmdsPerTick = cmdsPerTick;
     this.queue = [];
+    this.cursor = 0;
     this.timer = null;
     this.snapshot = null;
     this.lastBuild = null;
@@ -54,6 +55,9 @@ class Builder {
     };
   }
 
+  // Limite vanilla : /fill refuse au-delà de 32768 blocs par commande.
+  // Chaque couche fait (size.x+2)*(size.z+2) : OK jusqu'à ~180×180 d'emprise.
+  // Si un jour cfg.limits.diorama.size_x dépasse ~180, découper les fills.
   flattenCommands(origin, size) {
     const x1 = origin.x - 1, x2 = origin.x + size.x;
     const z1 = origin.z - 1, z2 = origin.z + size.z;
@@ -68,6 +72,10 @@ class Builder {
     return cmds;
   }
 
+  // Limitation connue : on sauvegarde block.name SANS les états ([facing=...]).
+  // Un !undo par-dessus des stairs/portes préexistantes les restaure sans
+  // orientation. Acceptable : la zone écrasée est presque toujours du terrain
+  // naturel sans états.
   takeSnapshot(origin, size) {
     // origin.y = bloc de sol lui-même (nouveau contrat). On sauvegarde de
     // origin.y (grass_block écrasé par la dalle) à origin.y+size.y (top structure).
@@ -86,6 +94,9 @@ class Builder {
   }
 
   startBuild(blocks, origin, size) {
+    // Défense en profondeur : ne pas écraser le snapshot d'une construction en
+    // cours (sinon !undo ne peut plus restaurer la première zone).
+    if (this.progress.active) return null;
     this.snapshot = this.takeSnapshot(origin, size);
     this.lastBuild = { origin, size };
     const cmds = [
@@ -148,14 +159,29 @@ class Builder {
       return;
     }
     this.progress = { active: true, done: 0, total: this.queue.length };
+    // Curseur (au lieu de queue.shift O(n²)) : l'avancement se fait par index,
+    // la file n'est jamais mutée en cours de drain.
     this.timer = setInterval(() => {
-      for (let i = 0; i < this.cmdsPerTick && this.queue.length > 0; i++) {
-        this.bot.chat(this.queue.shift());
-        this.progress.done++;
+      // Bot déconnecté (kick, redémarrage serveur) : on suspend, la file reprendra
+      // après la reconnexion automatique (builder.bot est réassigné par index.js)
+      if (!this.bot || !this.bot.entity) return;
+      for (let i = 0; i < this.cmdsPerTick && this.cursor < this.queue.length; i++) {
+        const cmd = this.queue[this.cursor];
+        try {
+          this.bot.chat(cmd);
+          this.cursor++;
+          this.progress.done++;
+        } catch (err) {
+          // échec d'envoi : on ne fait pas avancer le curseur, on réessaie au tick suivant
+          console.warn('[builder] envoi suspendu :', err.message);
+          return;
+        }
       }
-      if (this.queue.length === 0) {
+      if (this.cursor >= this.queue.length) {
         clearInterval(this.timer);
         this.timer = null;
+        this.queue = [];
+        this.cursor = 0;
         this.progress.active = false;
       }
     }, TICK_MS);

@@ -100,10 +100,24 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500, on
         const p = pending.get(pkey);
         if (!p) { bot.chat(`${username} : aucune proposition en attente. Envoie une photo avec !photo`); return; }
         const launch = (player) => {
+          const origin = builder.computeOrigin(player.entity.position, player.entity.yaw, p.size);
+          let started;
+          try {
+            started = builder.startBuild(p.blocks, origin, p.size);
+          } catch (err) {
+            // Build cassé (optimizer, bloc invalide...) : on consomme la proposition
+            // pour éviter une boucle de retry, et on laisse remonter l'erreur.
+            pending.delete(pkey);
+            throw err;
+          }
+          if (!started) {
+            // Course : la garde chat est passée mais le builder est actif → on restitue
+            bot.chat(`${username} : une construction est déjà en cours, réessaie après.`);
+            return;
+          }
+          const { total } = started;
           pending.delete(pkey);
           lastBuilt.set(pkey, { blocks: p.blocks, size: p.size, description: p.description, socle: p.socle, photo: p.photo, code: p.code });
-          const origin = builder.computeOrigin(player.entity.position, player.entity.yaw, p.size);
-          const { total } = builder.startBuild(p.blocks, origin, p.size);
           bot.chat(`Construction de ${p.description.type_batiment} lancée (~${builder.estimateSeconds(total)} s, ${total} commandes). !status pour suivre, !undo pour annuler.`);
           bot.chat(`Emprise : (${origin.x},${origin.z}) → (${origin.x + p.size.x - 1},${origin.z + p.size.z - 1}), centre (${origin.x + Math.floor(p.size.x / 2)},${origin.z + Math.floor(p.size.z / 2)})`);
           // Capture mémoire en arrière-plan (fire-and-forget, ne bloque pas la construction)

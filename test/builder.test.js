@@ -6,6 +6,7 @@ function fakeBot() {
   const sent = [];
   return {
     sent,
+    entity: {}, // bot apparu en jeu : la file ne draine que si bot.entity existe
     chat: (cmd) => sent.push(cmd),
     blockAt: () => ({ name: 'air' })
   };
@@ -133,4 +134,59 @@ test('groundLevelAt replie sur floor(pos.y) si aucun sol à portée', () => {
   bot.blockAt = () => ({ name: 'air' });
   const b = new Builder(bot, { maxBlocks: 100000 });
   assert.strictEqual(b.groundLevelAt({ x: 0, y: -49.5, z: 0 }), -50);
+});
+
+// === Corrections audit 27/07 (CORRECTIONS-builder.md) ===
+
+function spawnedBot() {
+  const bot = fakeBot();
+  bot.entity = {}; // bot apparu en jeu (spawn) — condition de disponibilité mineflayer
+  return bot;
+}
+
+test('startBuild refuse une 2e construction active et préserve le snapshot (undo)', async () => {
+  const bot = spawnedBot();
+  bot.blockAt = () => ({ name: 'grass_block' });
+  const b = new Builder(bot, { maxBlocks: 100000, cmdsPerTick: 1 });
+  // 1re construction : beaucoup de commandes pour rester active
+  const blocks1 = Array.from({ length: 20 }, (_, i) => ({ x: 0, y: i, z: 0, block: 'stone' }));
+  const r1 = b.startBuild(blocks1, { x: 0, y: -60, z: 0 }, { x: 1, y: 20, z: 1 });
+  assert.ok(r1 && r1.total > 0);
+  assert.strictEqual(b.status().active, true);
+  // 2e startBuild pendant que la 1re tourne → refusé (null), snapshot intact
+  const r2 = b.startBuild([{ x: 5, y: 0, z: 5, block: 'dirt' }], { x: 5, y: -60, z: 5 }, { x: 1, y: 1, z: 1 });
+  assert.strictEqual(r2, null, 'la 2e construction doit être refusée');
+  clearInterval(b.timer);
+});
+
+test('file suspendue quand le bot est déconnecté (pas de crash, reprise après reconnexion)', async () => {
+  const bot = spawnedBot();
+  const b = new Builder(bot, { maxBlocks: 100000, cmdsPerTick: 2 });
+  b.enqueue(Array.from({ length: 6 }, (_, i) => `/setblock ${i} 0 0 stone`));
+  // déconnexion : entity disparaît (kick) → aucun envoi, aucune exception
+  bot.entity = null;
+  await new Promise((r) => setTimeout(r, 120));
+  assert.strictEqual(bot.sent.length, 0, 'rien ne doit être envoyé pendant la déconnexion');
+  assert.strictEqual(b.status().active, true, 'la construction reste active, en attente');
+  // reconnexion : entity revient → la file reprend sans perte
+  bot.entity = {};
+  await new Promise((r) => setTimeout(r, 250));
+  assert.strictEqual(bot.sent.length, 6, 'toutes les commandes envoyées après reconnexion');
+  assert.strictEqual(b.status().active, false);
+});
+
+test('un échec ponctuel de bot.chat ne perd pas la commande (rejouée au tick suivant)', async () => {
+  const bot = spawnedBot();
+  let failOnce = true;
+  bot.chat = (cmd) => {
+    if (failOnce && cmd === '/setblock 2 0 0 stone') { failOnce = false; throw new Error('kick transitoire'); }
+    bot.sent.push(cmd);
+  };
+  const b = new Builder(bot, { maxBlocks: 100000, cmdsPerTick: 1 });
+  b.enqueue(['/setblock 0 0 0 stone', '/setblock 1 0 0 stone', '/setblock 2 0 0 stone', '/setblock 3 0 0 stone']);
+  await new Promise((r) => setTimeout(r, 400));
+  assert.deepStrictEqual(bot.sent, [
+    '/setblock 0 0 0 stone', '/setblock 1 0 0 stone', '/setblock 2 0 0 stone', '/setblock 3 0 0 stone'
+  ], 'aucune commande perdue malgré l\'échec transitoire');
+  assert.strictEqual(b.status().active, false);
 });
