@@ -684,3 +684,33 @@ test('pyramideTronquee : base=sommet → cylindre (tronc droit, dégénéré val
   const haut = p.filter((b) => b.y === 4);
   assert.strictEqual(bas.length, haut.length, 'base=sommet doit produire des couches identiques');
 });
+
+// Normalisation tolérante : le LLM passe souvent le bloc plein (stone_bricks,
+// dark_oak_planks) au lieu du préfixe (stone_brick, dark_oak)
+test('arche accepte "stone_bricks" (pluriel) et le normalise en stone_brick_stairs', () => {
+  const a = arche({ x1: 0, z1: 0, x2: 10, z2: 4, y_base: 0, y_faitage: 8, materiau: 'stone_bricks', axe: 'x' });
+  const stairs = a.filter((b) => /stone_brick_stairs\[/.test(b.block));
+  assert.ok(stairs.length > 0, `attendu stone_brick_stairs dans la voûte, blocs stairs : ${[...new Set(a.filter((b) => /_stairs/.test(b.block)).map((b) => b.block))]}`);
+  // les piédroits utilisent le bloc plein stone_bricks
+  const pleins = a.filter((b) => b.block === 'stone_bricks');
+  assert.ok(pleins.length > 0);
+});
+
+test('toitDeuxPans accepte "dark_oak_planks" et le normalise en dark_oak (stairs + planks)', () => {
+  const t = toitDeuxPans({ x1: 0, z1: 0, x2: 8, z2: 6, y_base: 5, faitage: 'x', materiau: 'dark_oak_planks' });
+  const stairs = t.filter((b) => /dark_oak_stairs\[/.test(b.block));
+  assert.ok(stairs.length > 0, 'attendu dark_oak_stairs');
+});
+
+test('escalier accepte "deepslate_tiles" (pluriel) → deepslate_tile_stairs', () => {
+  const e = escalier({ x: 2, z: 2, y_bas: 0, y_haut: 4, facing: 'east', materiau: 'deepslate_tiles' });
+  const stairs = e.filter((b) => /deepslate_tile_stairs\[/.test(b.block));
+  assert.ok(stairs.length > 0, `attendu deepslate_tile_stairs, obtenu : ${[...new Set(e.map((b) => b.block))]}`);
+});
+
+test('normalisation : matériau sans variante stairs (brown_terracotta) throw toujours', () => {
+  assert.throws(
+    () => arche({ x1: 0, z1: 0, x2: 10, z2: 4, y_base: 0, y_faitage: 8, materiau: 'brown_terracotta', axe: 'x' }),
+    /n'existe pas/
+  );
+});

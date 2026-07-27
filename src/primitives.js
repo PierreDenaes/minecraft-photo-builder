@@ -174,10 +174,24 @@ function fillBlockFor(materiau) {
   return materiau;
 }
 
+// Tolérance LLM : le modèle passe souvent le NOM DU BLOC PLEIN (stone_bricks,
+// dark_oak_planks) au lieu du PRÉFIXE attendu (stone_brick, dark_oak) — et
+// brûle des tentatives de génération sur des erreurs "X_stairs n'existe pas".
+// On normalise silencieusement plutôt que d'échouer.
+const MASONRY_PLURAL = Object.fromEntries(Object.entries(MASONRY_BASE).map(([k, v]) => [v, k]));
+function normalizeStairsMateriau(materiau) {
+  if (typeof materiau !== 'string') return materiau;
+  if (materiau in MASONRY_PLURAL) return MASONRY_PLURAL[materiau];       // stone_bricks → stone_brick
+  const sansPlanks = materiau.replace(/_planks$/, '');
+  if (sansPlanks !== materiau && WOOD_PREFIX.has(sansPlanks)) return sansPlanks; // dark_oak_planks → dark_oak
+  return materiau;
+}
+
 function toitDeuxPans({ x1, z1, x2, z2, y_base, faitage, materiau, debord = 1 }) {
   checkPositiveBox(x1, x2, z1, z2, y_base);
   if (faitage !== 'x' && faitage !== 'z') throw new Error('toitDeuxPans : faitage doit être "x" ou "z"');
   if (!materiau) throw new Error('toitDeuxPans : materiau manquant');
+  materiau = normalizeStairsMateriau(materiau);
   assertStairsExist(materiau, 'toitDeuxPans');
   const stairs = `${materiau}_stairs`;
   const planks = fillBlockFor(materiau);
@@ -258,6 +272,7 @@ function toitDeuxPans({ x1, z1, x2, z2, y_base, faitage, materiau, debord = 1 })
 function toitQuatrePans({ x1, z1, x2, z2, y_base, materiau, debord = 1 }) {
   checkPositiveBox(x1, x2, z1, z2, y_base);
   if (!materiau) throw new Error('toitQuatrePans : materiau manquant');
+  materiau = normalizeStairsMateriau(materiau);
   assertStairsExist(materiau, 'toitQuatrePans');
   const stairs = `${materiau}_stairs`;
   const planks = fillBlockFor(materiau);
@@ -299,6 +314,7 @@ function escalier({ x, z, y_bas, y_haut, facing, materiau, tremie = true, largeu
   const gap = y_haut - y_bas;
   if (gap < 1) throw new Error(`escalier : y_haut>y_bas requis (${y_bas}→${y_haut})`);
   const [dx, dz] = STAIR_STEP[facing];
+  materiau = normalizeStairsMateriau(materiau);
   assertStairsExist(materiau, 'escalier');
   const stairs = `${materiau}_stairs`;
   const planks = fillBlockFor(materiau);
@@ -502,6 +518,7 @@ function perron({ x, z, y0 = 0, largeur = 3, marches = 2, materiau, facing }) {
   facing = normalizeFacing(facing);
   if (!(facing in STAIR_STEP)) throw new Error(`perron : facing "${facing}" inconnu (utilise east|west|north|south)`);
   if (largeur % 2 === 0) throw new Error(`perron : largeur impaire requise pour rester centré sur la porte (${largeur})`);
+  if (!/_stairs$/.test(materiau)) materiau = normalizeStairsMateriau(materiau);
   if (!/_stairs$/.test(materiau)) assertStairsExist(materiau, 'perron');
   const stairs = /_stairs$/.test(materiau) ? materiau : `${materiau}_stairs`;
   const [dxDir, dzDir] = STAIR_STEP[facing];
@@ -675,6 +692,7 @@ function arche({ x1, z1, x2, z2, y_base, y_faitage, materiau, axe }) {
   if (y_faitage <= y_base) throw new Error(`arche : y_faitage (${y_faitage}) doit être > y_base (${y_base})`);
   if (!materiau) throw new Error('arche : materiau manquant');
   if (axe !== 'x' && axe !== 'z') throw new Error(`arche : axe "${axe}" invalide (utilise "x" ou "z")`);
+  if (!/_stairs$/.test(materiau)) materiau = normalizeStairsMateriau(materiau);
   if (!/_stairs$/.test(materiau)) assertStairsExist(materiau, 'arche');
   const stairsBase = /_stairs$/.test(materiau) ? materiau.replace(/_stairs$/, '') : materiau;
   const stairs = `${stairsBase}_stairs`;
