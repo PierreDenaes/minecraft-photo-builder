@@ -50,6 +50,19 @@ function structureSize(blocks) {
 }
 
 function createBot(cfg) {
+  // Validation de la config au démarrage : un champ manquant doit échouer
+  // immédiatement avec un message clair, pas d'un undefined en pleine partie
+  const requis = [
+    'minecraft.host', 'minecraft.port', 'minecraft.username', 'minecraft.version',
+    'limits.max_blocks', 'limits.max_size', 'limits.max_y', 'limits.sandbox_timeout_ms',
+    'limits.throttle_cmds_per_tick', 'limits.diorama', 'web.port', 'web.public_host'
+  ];
+  for (const chemin of requis) {
+    const v = chemin.split('.').reduce((o, k) => (o == null ? o : o[k]), cfg);
+    if (v === undefined || v === null) {
+      throw new Error(`config.json : champ requis manquant "${chemin}"`);
+    }
+  }
   const pending = new Map();
   const builder = new Builder(null, { maxBlocks: cfg.limits.max_blocks, cmdsPerTick: cfg.limits.throttle_cmds_per_tick });
   let bot = null;
@@ -156,6 +169,12 @@ function createBot(cfg) {
       underground, surfaceThemeOf: themeOfBlock
     });
     const zone = description.erreur ? null : description.zone_batiment;
+    // La zone vient du LLM vision, sans garantie de bornes : clamp 0-100
+    if (zone) {
+      for (const k of ['x', 'y', 'largeur', 'hauteur']) {
+        zone[k] = Math.max(0, Math.min(100, Number(zone[k]) || 0));
+      }
+    }
     if (zone) {
       const x1 = Math.max(0, Math.round(zone.x / 100 * dio.size_x));
       const x2 = Math.min(dio.size_x - 1, Math.round((zone.x + zone.largeur) / 100 * dio.size_x));
@@ -258,12 +277,7 @@ function createBot(cfg) {
       const decor = await decorateInterior(building, buildingDesc, { client: apiClient, timeoutMs: cfg.limits.sandbox_timeout_ms });
       if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
       const furnished = building.concat(decor);
-      const bSize = { x: 0, y: 0, z: 0 };
-      for (const b of furnished) {
-        bSize.x = Math.max(bSize.x, b.x + 1);
-        bSize.y = Math.max(bSize.y, b.y + 1);
-        bSize.z = Math.max(bSize.z, b.z + 1);
-      }
+      const bSize = structureSize(furnished);
       const sujetSeul = sceneDesc.cadrage === 'sujet_seul';
       if (sujetSeul) bot.chat('Cadrage : sujet seul — pas de relief ni de végétation ajoutés.');
       const hillHeight = sujetSeul ? 0 : Math.max(8, Math.min(24, Math.round(summary.dims.y / 3)));
@@ -306,6 +320,52 @@ function createBot(cfg) {
     return proposeStructure(username, blocks, { type_batiment: `modèle 3D (${ext})` }, { maxSize: Math.max(dio.size_x, dio.max_y, dio.size_z), maxBlocks: dio.max_blocks });
   }
 
+  // Boucle de correction itérative (pattern Voyager) + finalisation commune
+  // à onPhoto et onSchema. Retourne la valeur de proposeStructure.
+  async function corrigerEtFinaliser({ username, description, genOpts, blocks, code, base64, mimeType, buffer, maxRounds = 2, tag = 'photo' }) {
+    for (let round = 1; round <= maxRounds; round++) {
+      try {
+        const render = await renderVoxels(blocks, blockColors);
+        const critique = await compareToPhoto(base64, mimeType, render.toString('base64'), { client: apiClient });
+        // Monuments : l'habitabilité ne s'applique pas, seule la critique visuelle compte
+        const defauts = isMonument(description) ? [] : auditHabitability(blocks, description);
+        const defautsText = defauts.length > 0
+          ? `Défauts structurels MESURÉS (tour ${round}) — corrige-les impérativement :\n- ${defauts.join('\n- ')}`
+          : '';
+        if (!critique && !defautsText) {
+          if (round === 1) bot.chat('Rendu jugé fidèle (RAS) — pas de correction nécessaire.');
+          else bot.chat(`Rendu fidèle après ${round - 1} correction(s) — arrêt.`);
+          break;
+        }
+        bot.chat(`Correction tour ${round}/${maxRounds}...`);
+        ({ blocks, code } = await generateStructure(description, {
+          ...genOpts,
+          correction: { codeV1: code, critique: critique || '', defauts: defautsText, round }
+        }));
+      } catch (err) {
+        console.warn(`[${tag}] correction tour ${round} ignorée :`, err.message);
+        break;
+      }
+    }
+    const limits = { maxSize: { x: cfg.limits.max_size, y: cfg.limits.max_y, z: cfg.limits.max_size }, maxBlocks: cfg.limits.max_blocks };
+    if (isMonument(description)) {
+      bot.chat(`Monument (${description.type_batiment}) — audit habitabilité et décoration ignorés (silhouette prime).`);
+      return proposeStructure(username, blocks, description, limits, { photo: buffer, code });
+    }
+    const checks = auditChecks(blocks, description);
+    const line = checks.map((c) => `${c.name} ${c.passed ? '✓' : '✗'}`).join(' · ');
+    bot.chat(`Vérifications : ${line}`.slice(0, 250));
+    if (checks.every((c) => c.passed)) bot.chat('VALIDÉ ✓');
+    else {
+      const restants = auditHabitability(blocks, description);
+      if (restants.length > 0) bot.chat(`⚠ Défauts restants : ${restants.join(' ; ')}`.slice(0, 250));
+    }
+    bot.chat('Étape 4/4 : décoration intérieure...');
+    const decor = await decorateInterior(blocks, description, { client: apiClient, timeoutMs: cfg.limits.sandbox_timeout_ms });
+    if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
+    return proposeStructure(username, blocks.concat(decor), description, limits, { photo: buffer, code });
+  }
+
   async function onSchema(username, buffer, mimeType) {
     bot.chat(`Photo reçue de ${username} — étape 1/4 : lecture de la photo...`);
     const base64 = buffer.toString('base64');
@@ -334,65 +394,21 @@ function createBot(cfg) {
     if (memoryCasesSchema.length > 0) {
       bot.chat(`${memoryCasesSchema.length} construction(s) passée(s) similaire(s) injectée(s) en inspiration.`);
     }
+    if (isMonument(description)) {
+      bot.chat(`Sujet identifié comme MONUMENT (${description.type_batiment}) — pas de portes, cloisons, ni décoration.`);
+    }
     const genOpts = {
       timeoutMs: cfg.limits.sandbox_timeout_ms,
       validBlocks: realisticMaterials(materiaux, description),
       existingBlocks: validBlocks,
       image: { base64, mimeType },
       mode: 'primitives',
-      inspiration: { schemas, memoryCases: memoryCasesSchema }
+      inspiration: { schemas, memoryCases: memoryCasesSchema },
+      isMonument: isMonument(description)
     };
     let { blocks, code } = await generateStructure(description, genOpts);
-    // Correction itérative bornée (mêmes 2 tours max qu'onPhoto).
     bot.chat('Correction itérative (jusqu\'à 2 tours) avec schemas en inspiration...');
-    const MAX_CORRECTION_ROUNDS_SCHEMA = 2;
-    for (let round = 1; round <= MAX_CORRECTION_ROUNDS_SCHEMA; round++) {
-      try {
-        const render = await renderVoxels(blocks, blockColors);
-        const critique = await compareToPhoto(base64, mimeType, render.toString('base64'), { client: apiClient });
-        const defauts = auditHabitability(blocks, description);
-        const defautsText = defauts.length > 0
-          ? `Défauts structurels MESURÉS (tour ${round}) — corrige-les impérativement :\n- ${defauts.join('\n- ')}`
-          : '';
-        if (!critique && !defautsText) {
-          if (round === 1) bot.chat('Rendu jugé fidèle (RAS) — pas de correction nécessaire.');
-          else bot.chat(`Rendu fidèle après ${round - 1} correction(s) — arrêt.`);
-          break;
-        }
-        bot.chat(`Correction tour ${round}/${MAX_CORRECTION_ROUNDS_SCHEMA}...`);
-        ({ blocks, code } = await generateStructure(description, {
-          ...genOpts,
-          correction: { codeV1: code, critique: critique || '', defauts: defautsText, round }
-        }));
-      } catch (err) {
-        console.warn(`[schema] correction tour ${round} ignorée :`, err.message);
-        break;
-      }
-    }
-    // Monuments non habitables : silhouette prime — skip audit habitabilité + décoration
-    if (isMonument(description)) {
-      bot.chat(`Monument (${description.type_batiment}) — audit habitabilité et décoration ignorés (silhouette prime).`);
-      return proposeStructure(username, blocks, description,
-        { maxSize: { x: cfg.limits.max_size, y: cfg.limits.max_y, z: cfg.limits.max_size }, maxBlocks: cfg.limits.max_blocks },
-        { photo: buffer, code });
-    }
-    // Vérifications structurelles finales
-    const checks = auditChecks(blocks, description);
-    const line = checks.map((c) => `${c.name} ${c.passed ? '✓' : '✗'}`).join(' · ');
-    bot.chat(`Vérifications : ${line}`.slice(0, 250));
-    const allOk = checks.every((c) => c.passed);
-    if (allOk) bot.chat('VALIDÉ ✓');
-    else {
-      const restants = auditHabitability(blocks, description);
-      if (restants.length > 0) bot.chat(`⚠ Défauts restants : ${restants.join(' ; ')}`.slice(0, 250));
-    }
-    bot.chat('Étape 4/4 : décoration intérieure...');
-    const decor = await decorateInterior(blocks, description, { client: apiClient });
-    if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
-    const meubles = blocks.concat(decor);
-    return proposeStructure(username, meubles, description,
-      { maxSize: { x: cfg.limits.max_size, y: cfg.limits.max_y, z: cfg.limits.max_size }, maxBlocks: cfg.limits.max_blocks },
-      { photo: buffer, code });
+    return corrigerEtFinaliser({ username, description, genOpts, blocks, code, base64, mimeType, buffer, tag: 'schema' });
   }
 
   async function onPortrait(username, buffer) {
@@ -435,56 +451,7 @@ function createBot(cfg) {
     };
     let { blocks, code } = await generateStructure(description, genOpts);
     bot.chat('Étape 3/4 : correction itérative (jusqu\'à 2 tours) selon les écarts photo↔rendu...');
-    // Boucle inspirée de Voyager : itérer la correction tant que critic remonte des
-    // défauts, borné à MAX_CORRECTION_ROUNDS. Chaque tour = render → critic → regen.
-    // Stop dès que critic dit "success" (null) ou budget atteint.
-    const MAX_CORRECTION_ROUNDS = 2;
-    for (let round = 1; round <= MAX_CORRECTION_ROUNDS; round++) {
-      try {
-        const render = await renderVoxels(blocks, blockColors);
-        const critique = await compareToPhoto(base64, mimeType, render.toString('base64'), { client: apiClient });
-        const defauts = auditHabitability(blocks, description);
-        const defautsText = defauts.length > 0
-          ? `Défauts structurels MESURÉS (tour ${round}) — corrige-les impérativement :\n- ${defauts.join('\n- ')}`
-          : '';
-        if (!critique && !defautsText) {
-          if (round === 1) bot.chat('Rendu jugé fidèle (RAS) — pas de correction nécessaire.');
-          else bot.chat(`Rendu fidèle après ${round - 1} correction(s) — arrêt.`);
-          break;
-        }
-        bot.chat(`Correction tour ${round}/${MAX_CORRECTION_ROUNDS}...`);
-        ({ blocks, code } = await generateStructure(description, {
-          ...genOpts,
-          correction: { codeV1: code, critique: critique || '', defauts: defautsText, round }
-        }));
-      } catch (err) {
-        console.warn(`[photo] correction tour ${round} ignorée :`, err.message);
-        break;
-      }
-    }
-    // Monuments non habitables : silhouette prime — skip audit habitabilité + décoration
-    if (isMonument(description)) {
-      bot.chat(`Monument (${description.type_batiment}) — audit habitabilité et décoration ignorés (silhouette prime).`);
-      return proposeStructure(username, blocks, description,
-        { maxSize: { x: cfg.limits.max_size, y: cfg.limits.max_y, z: cfg.limits.max_size }, maxBlocks: cfg.limits.max_blocks },
-        { photo: buffer, code });
-    }
-    const checks = auditChecks(blocks, description);
-    const line = checks.map((c) => `${c.name} ${c.passed ? '✓' : '✗'}`).join(' · ');
-    bot.chat(`Vérifications : ${line}`.slice(0, 250));
-    const allOk = checks.every((c) => c.passed);
-    if (allOk) bot.chat('VALIDÉ ✓');
-    else {
-      const restants = auditHabitability(blocks, description);
-      if (restants.length > 0) bot.chat(`⚠ Défauts restants : ${restants.join(' ; ')}`.slice(0, 250));
-    }
-    bot.chat('Étape 4/4 : décoration intérieure...');
-    const decor = await decorateInterior(blocks, description, { client: apiClient, timeoutMs: cfg.limits.sandbox_timeout_ms });
-    if (decor.length > 0) bot.chat(`Décoration intérieure : ${decor.length} éléments.`);
-    const meubles = blocks.concat(decor);
-    return proposeStructure(username, meubles, description,
-      { maxSize: { x: cfg.limits.max_size, y: cfg.limits.max_y, z: cfg.limits.max_size }, maxBlocks: cfg.limits.max_blocks },
-      { photo: buffer, code });
+    return corrigerEtFinaliser({ username, description, genOpts, blocks, code, base64, mimeType, buffer, tag: 'photo' });
   }
 
   async function onBuild(username, userText) {
@@ -521,8 +488,23 @@ function createBot(cfg) {
       clearTimeout(timer);
     }
     if (!response.ok) throw new Error(`téléchargement image HTTP ${response.status}`);
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) {
+      bot.chat(`${username} : le lien choisi n'est pas une image (${contentType}) — réessaie avec une autre requête.`);
+      return;
+    }
+    const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+    const contentLength = Number(response.headers.get('content-length'));
+    if (contentLength && contentLength > MAX_IMAGE_BYTES) {
+      bot.chat(`${username} : image trop lourde (${Math.round(contentLength / 1024 / 1024)} Mo, max 10) — réessaie.`);
+      return;
+    }
     const buffer = Buffer.from(await response.arrayBuffer());
-    const mimeType = response.headers.get('content-type') || 'image/jpeg';
+    if (buffer.length > MAX_IMAGE_BYTES) {
+      bot.chat(`${username} : image trop lourde (max 10 Mo) — réessaie.`);
+      return;
+    }
+    const mimeType = contentType.split(';')[0];
     return onPhoto(username, buffer, mimeType);
   }
 
