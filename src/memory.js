@@ -88,4 +88,62 @@ function updateNote(id, note) {
   fs.writeFileSync(INDEX_PATH, JSON.stringify(index, null, 2));
 }
 
-module.exports = { CASES_DIR, INDEX_PATH, __ensureDirs, __generateId, warmup, __setEmbedder, __isReady, __embed, saveCase, updateNote };
+function cosineSimilarity(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(na) * Math.sqrt(nb) || 1);
+}
+
+function loadIndex() {
+  return fs.existsSync(INDEX_PATH) ? JSON.parse(fs.readFileSync(INDEX_PATH, 'utf8')) : [];
+}
+
+function loadCase(id) {
+  const p = path.join(CASES_DIR, `${id}.json`);
+  return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
+}
+
+function loadEmbedding(id) {
+  const p = path.join(CASES_DIR, `${id}.emb`);
+  if (!fs.existsSync(p)) return null;
+  const buf = fs.readFileSync(p);
+  return new Float32Array(buf.buffer, buf.byteOffset, buf.length / 4);
+}
+
+async function findSimilar(photo, description, opts = {}) {
+  const { n = 3, minNote = 3, minSimilarity = 0.5 } = opts;
+  const index = loadIndex();
+  const eligible = index.filter((e) => e.note != null && e.note >= minNote);
+  if (eligible.length === 0) return [];
+  if (!__isReady()) {
+    // fallback métadonnées : filtre style+type, tri note desc
+    return eligible
+      .filter((e) => e.style === description.style && e.type_batiment === description.type_batiment)
+      .sort((a, b) => b.note - a.note)
+      .slice(0, n)
+      .map((e) => {
+        const c = loadCase(e.id);
+        return { id: e.id, similarity: 0, note: e.note, description: c.description, code: c.code };
+      });
+  }
+  // mode CLIP : embed la nouvelle photo (miniature pour cohérence)
+  const thumb = await sharp(photo).resize({ width: 256, height: 256, fit: 'inside' }).jpeg({ quality: 80 }).toBuffer();
+  const targetEmb = await __embed(thumb);
+  const scored = [];
+  for (const e of eligible) {
+    const emb = loadEmbedding(e.id);
+    if (!emb) continue;
+    const sim = cosineSimilarity(targetEmb, emb);
+    if (sim < minSimilarity) continue;
+    const c = loadCase(e.id);
+    if (!c) continue;
+    scored.push({ id: e.id, similarity: sim, note: e.note, description: c.description, code: c.code });
+  }
+  return scored.sort((a, b) => b.similarity - a.similarity).slice(0, n);
+}
+
+module.exports = { CASES_DIR, INDEX_PATH, __ensureDirs, __generateId, warmup, __setEmbedder, __isReady, __embed, saveCase, updateNote, findSimilar };

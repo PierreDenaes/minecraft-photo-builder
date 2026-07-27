@@ -128,3 +128,50 @@ test('updateNote rejette une note hors [1..5] silencieusement', async () => {
   const caseJson = JSON.parse(fs.readFileSync(path.join(memory.CASES_DIR, `${id}.json`), 'utf8'));
   assert.strictEqual(caseJson.note, null);
 });
+
+async function seedCases() {
+  memory.__setEmbedder(fakeEmbedder());
+  const photo = fs.readFileSync(path.join(__dirname, 'fixtures/memory/photo-small.jpg'));
+  const id1 = await memory.saveCase({ photo, description: { style: 'medieval', type_batiment: 'maison' }, code: 'A' });
+  memory.updateNote(id1, 5);
+  const id2 = await memory.saveCase({ photo, description: { style: 'moderne', type_batiment: 'villa' }, code: 'B' });
+  memory.updateNote(id2, 4);
+  const id3 = await memory.saveCase({ photo, description: { style: 'medieval', type_batiment: 'maison' }, code: 'C' });
+  memory.updateNote(id3, 2);  // en dessous du seuil
+  return { id1, id2, id3, photo };
+}
+
+test('findSimilar sans cas en base retourne []', async () => {
+  resetMemoryDir();
+  memory.__setEmbedder(fakeEmbedder());
+  const photo = fs.readFileSync(path.join(__dirname, 'fixtures/memory/photo-small.jpg'));
+  const res = await memory.findSimilar(photo, { style: 'medieval', type_batiment: 'maison' });
+  assert.deepStrictEqual(res, []);
+});
+
+test('findSimilar exclut les cas note < minNote', async () => {
+  resetMemoryDir();
+  const { id3, photo } = await seedCases();
+  const res = await memory.findSimilar(photo, { style: 'medieval', type_batiment: 'maison' }, { minNote: 3, minSimilarity: 0 });
+  assert.ok(res.every((r) => r.id !== id3), `id3 (note 2) présent dans ${JSON.stringify(res.map((r) => r.id))}`);
+});
+
+test('findSimilar retourne au plus n cas triés par similarité desc', async () => {
+  resetMemoryDir();
+  await seedCases();
+  const photo = fs.readFileSync(path.join(__dirname, 'fixtures/memory/photo-small.jpg'));
+  const res = await memory.findSimilar(photo, { style: 'medieval', type_batiment: 'maison' }, { n: 2, minSimilarity: 0 });
+  assert.ok(res.length <= 2);
+  for (let i = 1; i < res.length; i++) assert.ok(res[i - 1].similarity >= res[i].similarity);
+});
+
+test('findSimilar sans CLIP : fallback métadonnées (filtre style, tri note desc)', async () => {
+  resetMemoryDir();
+  const { id1 } = await seedCases();
+  memory.__setEmbedder(null);  // désactive CLIP
+  const photo = fs.readFileSync(path.join(__dirname, 'fixtures/memory/photo-small.jpg'));
+  const res = await memory.findSimilar(photo, { style: 'medieval', type_batiment: 'maison' }, { minNote: 3 });
+  assert.ok(res.length >= 1);
+  assert.strictEqual(res[0].id, id1);  // note 5 en tête
+  assert.ok(res.every((r) => r.description.style === 'medieval'));
+});
