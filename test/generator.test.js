@@ -39,7 +39,9 @@ test('generateStructure appelle le LLM puis exécute le code', async () => {
   assert.strictEqual(blocks.length, 1);
 });
 
-test('rejette une structure circulaire avec une erreur claire', () => {
+test('structure circulaire : les propriétés parasites sont ignorées, le bloc reste valide', () => {
+  // sanitizeBlocks n'extrait que {x,y,z,block} : une référence circulaire dans
+  // une propriété annexe ne fait plus échouer l'exécution (ex-JSON.stringify)
   const code = `function generateStructure() {
     const a = [];
     const b = { x: 0, y: 0, z: 0, block: 'stone', ref: null };
@@ -48,7 +50,8 @@ test('rejette une structure circulaire avec une erreur claire', () => {
     return a;
   }
 // FIN_STRUCTURE`;
-  assert.throws(() => runStructureCode(code, 5000), /sérialisable/);
+  const blocks = runStructureCode(code, 5000);
+  assert.deepStrictEqual(blocks, [{ x: 0, y: 0, z: 0, block: 'stone' }]);
 });
 
 test('translate les coordonnées négatives vers une origine 0 (débord de toit)', () => {
@@ -505,4 +508,76 @@ test('generator isMonument:false (défaut) n\'injecte PAS la règle monument', a
   const rawContent = captured.messages[0].content;
   const userText = typeof rawContent === 'string' ? rawContent : rawContent.filter((b) => b.type === 'text').map((b) => b.text).join('\n');
   assert.doesNotMatch(userText, /MONUMENT NON HABITABLE/);
+});
+
+// === Corrections audit 2026-07-27 (CORRECTIONS-generator.md) ===
+
+test('réponse LLM sans bloc texte → erreur explicite (pas un TypeError)', async () => {
+  const client = { messages: { create: async () => ({ stop_reason: 'end_turn', content: [] }) } };
+  await assert.rejects(
+    () => generateStructure({ type_batiment: 'test' }, { client, timeoutMs: 5000 }),
+    /sans bloc texte/
+  );
+});
+
+test('coordonnées non entières → erreur explicite réinjectable', () => {
+  assert.throws(
+    () => runStructureCode('function generateStructure() { return [{ x: 1.5, y: 0, z: 0, block: "stone" }]; }', 5000),
+    /entières/
+  );
+});
+
+test('élément non-objet dans le tableau → erreur explicite', () => {
+  assert.throws(
+    () => runStructureCode('function generateStructure() { return [null]; }', 5000),
+    /objet bloc/
+  );
+});
+
+test('champ block manquant ou vide → erreur explicite', () => {
+  assert.throws(
+    () => runStructureCode('function generateStructure() { return [{ x: 0, y: 0, z: 0 }]; }', 5000),
+    /block manquant/
+  );
+});
+
+test('dedupeBlocks : dernier bloc posé à une coordonnée gagne', () => {
+  const { dedupeBlocks } = require('../src/generator');
+  const out = dedupeBlocks([
+    { x: 0, y: 0, z: 0, block: 'stone' },
+    { x: 1, y: 0, z: 0, block: 'stone' },
+    { x: 0, y: 0, z: 0, block: 'dirt' }
+  ]);
+  assert.strictEqual(out.length, 2);
+  assert.strictEqual(out.find((b) => b.x === 0 && b.y === 0 && b.z === 0).block, 'dirt');
+});
+
+test('generateStructure dédoublonne les coordonnées superposées', async () => {
+  const code = 'function generateStructure() { return [{ x: 0, y: 0, z: 0, block: "stone" }, { x: 0, y: 0, z: 0, block: "dirt" }]; }\n// FIN_STRUCTURE';
+  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
+  const { blocks } = await generateStructure({ type_batiment: 'test' }, { client, timeoutMs: 5000 });
+  assert.strictEqual(blocks.length, 1);
+  assert.strictEqual(blocks[0].block, 'dirt');
+});
+
+test('structure hors budget spatial (mode libre, y > 64) → erreur réinjectée', async () => {
+  const code = 'function generateStructure() { return [{ x: 0, y: 100, z: 0, block: "stone" }]; }\n// FIN_STRUCTURE';
+  const client = { messages: { create: async () => ({ content: [{ type: 'text', text: code }] }) } };
+  await assert.rejects(
+    () => generateStructure({ type_batiment: 'test' }, { client, timeoutMs: 5000 }),
+    /hors budget spatial/
+  );
+});
+
+test('mode primitives : y jusqu\'à 320 accepté, x > 96 refusé', async () => {
+  const ok = 'function generateStructure() { return [{ x: 0, y: 300, z: 0, block: "stone" }]; }\n// FIN_STRUCTURE';
+  let client = { messages: { create: async () => ({ content: [{ type: 'text', text: ok }] }) } };
+  const { blocks } = await generateStructure({ type_batiment: 'test' }, { client, timeoutMs: 5000, mode: 'primitives' });
+  assert.strictEqual(blocks.length, 1);
+  const tropLarge = 'function generateStructure() { return [{ x: 120, y: 0, z: 0, block: "stone" }, { x: 0, y: 0, z: 0, block: "stone" }]; }\n// FIN_STRUCTURE';
+  client = { messages: { create: async () => ({ content: [{ type: 'text', text: tropLarge }] }) } };
+  await assert.rejects(
+    () => generateStructure({ type_batiment: 'test' }, { client, timeoutMs: 5000, mode: 'primitives' }),
+    /hors budget spatial/
+  );
 });

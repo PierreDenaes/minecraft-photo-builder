@@ -11,14 +11,19 @@ let SCHEM_REFS = [];
 try { SCHEM_REFS = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/schem-refs.json'), 'utf8')); } catch { /* absent */ }
 function schemRefsFor(style) {
   const priority = SCHEM_REFS.filter((r) => r.style === style);
-  // Pas de padding hors-style : mieux vaut 1 ref pertinente que 1+2 mismatchées
-  const chosen = priority.length > 0 ? priority.slice(0, 3) : SCHEM_REFS.slice(0, 3);
+  // Aucune ref du bon style : ne rien injecter plutôt que de biaiser la palette
+  const chosen = priority.slice(0, 3);
   if (chosen.length === 0) return '';
   const lines = chosen.map((r) => `- ${r.style} (${r.dims.x}×${r.dims.y}×${r.dims.z}) : matériaux dominants ${r.top_materiaux.slice(0, 5).join(', ')} ; ratio stairs ${r.ratios.stairs}%, glass ${r.ratios.glass}%`);
   return `\n\nRéférences de vrais bâtiments (vocabulaire de matériaux à imiter selon le style) :\n${lines.join('\n')}`;
 }
 
 const PRIMITIVES_SANDBOX = { ...primitives, Math };
+
+// Budgets spatiaux (source unique : utilisée dans les prompts ET la vérification)
+const BUDGET_PRIMITIVES = { x: 96, y: 320, z: 96 };
+const BUDGET_LIBRE = { x: 96, y: 64, z: 96 };
+
 const PRIMITIVES_PROMPT = `Tu écris du code JavaScript pur pour composer une structure Minecraft en appelant UNIQUEMENT les primitives fournies.
 
 Format de réponse OBLIGATOIRE (inspiré de Voyager) :
@@ -39,9 +44,9 @@ Rien d'autre. Pas de balises markdown de code, pas de commentaire d'introduction
 
 ## Contrat
 - Définis une fonction generateStructure() qui retourne un tableau [{x, y, z, block}] — concatène simplement les résultats des primitives que tu appelles.
-- Coordonnées entières >= 0 ; x = largeur, y = hauteur (0 = sol), z = profondeur ; budget spatial 96 en X et Z, 320 en Y MAXIMUM (pour tours élancées, gratte-ciels, cathédrales, monuments verticaux). Une maison normale reste sous 96 partout.
+- Coordonnées entières >= 0 ; x = largeur, y = hauteur (0 = sol), z = profondeur ; budget spatial ${BUDGET_PRIMITIVES.x} en X et Z, ${BUDGET_PRIMITIVES.y} en Y MAXIMUM (pour tours élancées, gratte-ciels, cathédrales, monuments verticaux). Une maison normale reste sous 96 partout.
 - INTERDICTION FORMELLE : tu ne poses AUCUN bloc directement. Pas de push({x,y,z,block:...}). Pas de fonction \`place\`. Aucun nom de bloc hors des paramètres materiau/murs/fondation/etc. passés aux primitives.
-- Le sandbox n'expose QUE : les 8 primitives ci-dessous + Math. Toute autre référence (require, place, fs...) lève une ReferenceError.
+- Le sandbox n'expose QUE les primitives listées ci-dessous + Math. Toute autre référence (require, place, fs...) lève une ReferenceError.
 
 ## Primitives disponibles
 - boite({ x1, z1, x2, z2, y0, y1, murs, fondation?, plancher? }) — 4 murs pleins + dalle basse (fondation ou murs) + dalle haute (plancher, facultative)
@@ -149,8 +154,8 @@ function generateStructure() {
   const w2 = baie({ facade: 'est', x1: 7, x2: 7, z1: 2, z2: 3, y1: 2, y2: 3, encadrement: 'oak_log' });
   const t = toitDeuxPans({ x1: 0, z1: 0, x2: 7, z2: 5, y_base: 4, faitage: 'x', materiau: 'dark_oak' });
   return [...b1, ...p, ...w1, ...w2, ...t];
-  // FIN_STRUCTURE
 }
+// FIN_STRUCTURE
 
 ## Exemple 2 — villa contemporaine avec piscine
 function generateStructure() {
@@ -164,8 +169,8 @@ function generateStructure() {
   const t = toitPlat({ x1: 0, z1: 0, x2: 11, z2: 8, y: 8, materiau: 'light_gray_concrete' });
   const pool = piscine({ x1: 15, z1: 2, x2: 25, z2: 6, y_surface: 1, profondeur: 2, bordure: 'smooth_stone' });
   return [...b1, ...b2, ...p, ...w1, ...w2, ...w3, ...e, ...t, ...pool];
-  // FIN_STRUCTURE
 }
+// FIN_STRUCTURE
 
 ## Exemple 3 — château médiéval avec 4 tours d'angle (mode diorama / modèle 3D scanné)
 function generateStructure() {
@@ -178,11 +183,11 @@ function generateStructure() {
   const esc = escalier({ x: 18, z: 15, y_bas: 0, y_haut: 6, facing: 'east', materiau: 'oak' });
   const toit = toitQuatrePans({ x1: 6, z1: 6, x2: 21, z2: 21, y_base: 6, materiau: 'dark_oak' });
   return [...corps, ...porte1, ...t1, ...t2, ...t3, ...t4, ...esc, ...toit];
-  // FIN_STRUCTURE
-}`;
+}
+// FIN_STRUCTURE`;
 
 
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = process.env.GENERATOR_MODEL || 'claude-sonnet-4-6';
 
 const SYSTEM_PROMPT = `Tu écris du code JavaScript pur pour générer une structure Minecraft (version 1.20).
 Réponds UNIQUEMENT avec le code, sans texte autour, sans balises markdown.
@@ -191,7 +196,7 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 ## Contrat
 - Définis une fonction generateStructure() qui retourne un tableau [{x, y, z, block}]
 - Coordonnées entières >= 0 ; x = largeur, y = hauteur (0 = sol), z = profondeur
-- Budget spatial ABSOLU : 96 (x) × 64 (y) × 96 (z). Si la description ou le résumé dépasse, réduis TOUT à l'échelle en conservant les proportions
+- Budget spatial ABSOLU : ${BUDGET_LIBRE.x} (x) × ${BUDGET_LIBRE.y} (y) × ${BUDGET_LIBRE.z} (z). Si la description ou le résumé dépasse, réduis TOUT à l'échelle en conservant les proportions
 - Code pur et déterministe : pas de require, pas d'accès réseau/fichiers, pas de récursion, AUCUN Math.random (si tu veux de la variation, utilise (x*7 + z*13 + y*31) % n)
 - Code EFFICACE et COMPACT (< 250 lignes) : boucle sur les surfaces (murs, sols, toits), jamais sur le volume plein ; utilise des fonctions d'aide (mur, boite, toitDeuxPans...)
 
@@ -227,6 +232,27 @@ Termine ton code par le commentaire exact : // FIN_STRUCTURE
 - La "carte" est une vue de dessus ASCII (0 = vide, 9 = point culminant) : reproduis ses masses et son agencement
 - Reconstruis PROPREMENT en vocabulaire Minecraft : murs droits, créneaux, arches, fenêtres alignées, toits cohérents ; jamais le bruit du scan`;
 
+// Valide et clone chaque bloc hors du realm VM en une seule passe
+// (remplace JSON.parse(JSON.stringify(...)), coûteux sur de grosses structures)
+function sanitizeBlocks(result) {
+  const blocks = new Array(result.length);
+  for (let i = 0; i < result.length; i++) {
+    const b = result[i];
+    if (!b || typeof b !== 'object') {
+      throw new Error(`élément #${i} du tableau retourné n'est pas un objet bloc {x, y, z, block}`);
+    }
+    const { x, y, z, block } = b;
+    if (!Number.isInteger(x) || !Number.isInteger(y) || !Number.isInteger(z)) {
+      throw new Error(`bloc #${i} : coordonnées non entières (x=${x}, y=${y}, z=${z}) — toutes les coordonnées doivent être des entiers`);
+    }
+    if (typeof block !== 'string' || block.length === 0) {
+      throw new Error(`bloc #${i} (${x},${y},${z}) : champ block manquant ou vide`);
+    }
+    blocks[i] = { x, y, z, block };
+  }
+  return blocks;
+}
+
 function runStructureCode(code, timeoutMs, sandbox = {}) {
   // Base null-prototype pour interdire l'évasion via this.constructor.constructor
   const context = vm.createContext(Object.assign(Object.create(null), sandbox));
@@ -235,34 +261,33 @@ function runStructureCode(code, timeoutMs, sandbox = {}) {
   if (!Array.isArray(result)) {
     throw new Error('generateStructure() doit retourner un tableau de blocs');
   }
-  // Convertir les objets VM en objets du contexte hôte pour que deepStrictEqual fonctionne
-  let blocks;
-  try {
-    blocks = JSON.parse(JSON.stringify(result));
-  } catch {
-    throw new Error('generateStructure() a retourné une structure non sérialisable');
-  }
-  return normalizeOrigin(blocks);
+  return normalizeOrigin(sanitizeBlocks(result));
 }
 
 // Les LLM produisent souvent des débords (toit) en coordonnées négatives :
 // on translate la structure pour que son coin minimum soit à l'origine.
 function normalizeOrigin(blocks) {
+  if (blocks.length === 0) return blocks;
   const min = { x: Infinity, y: Infinity, z: Infinity };
   for (const b of blocks) {
-    if (!b || typeof b !== 'object') return blocks;
-    for (const axis of ['x', 'y', 'z']) {
-      if (Number.isInteger(b[axis])) min[axis] = Math.min(min[axis], b[axis]);
-    }
+    if (b.x < min.x) min.x = b.x;
+    if (b.y < min.y) min.y = b.y;
+    if (b.z < min.z) min.z = b.z;
   }
   for (const axis of ['x', 'y', 'z']) {
-    if (Number.isFinite(min[axis]) && min[axis] < 0) {
-      for (const b of blocks) {
-        if (Number.isInteger(b[axis])) b[axis] -= min[axis];
-      }
+    if (min[axis] < 0) {
+      for (const b of blocks) b[axis] -= min[axis];
     }
   }
   return blocks;
+}
+
+// Les primitives se chevauchent (murs + toit + cloisons) : on garde le
+// dernier bloc posé à chaque coordonnée, comme le ferait le jeu
+function dedupeBlocks(blocks) {
+  const map = new Map();
+  for (const b of blocks) map.set(`${b.x},${b.y},${b.z}`, b);
+  return [...map.values()];
 }
 
 const SENTINEL = '// FIN_STRUCTURE';
@@ -303,7 +328,7 @@ function formatMemoryCases(cases) {
   const blocks = cases.map((c, i) => `--- Cas ${i + 1} (note ${c.note}/5, similarité ${c.similarity.toFixed(2)}, style ${(c.description && c.description.style) || 'inconnu'}) ---
 Description : ${JSON.stringify(c.description).slice(0, 200)}
 Code :
-${c.code}`);
+${c.code.length > 4000 ? c.code.slice(0, 4000) + '\n// [... code tronqué ...]' : c.code}`);
   return `\n\nCas passés similaires (bien notés) — inspire-toi de leur composition :\n\n${blocks.join('\n\n')}`;
 }
 
@@ -358,13 +383,14 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
   // Boucle de re-prompt : une erreur d'exécution est réinjectée dans la conversation
   // (pattern mindcraft) — la troncature, elle, ne se corrige pas en retentant
   const messages = [{ role: 'user', content }];
+  // Construire le tableau system : prompt de base (mis en cache) + éventuels cas
+  // mémoire — invariant d'une tentative à l'autre, donc hors boucle
+  const memoryCases = inspiration && !Array.isArray(inspiration) ? inspiration.memoryCases : undefined;
+  const memoryCasesText = formatMemoryCases(memoryCases);
+  const systemBlocks = [{ type: 'text', text: activePrompt, cache_control: { type: 'ephemeral' } }];
+  if (memoryCasesText) systemBlocks.push({ type: 'text', text: memoryCasesText });
   let lastErr = null;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    // Construire le tableau system : prompt de base (mis en cache) + éventuels cas mémoire
-    const memoryCases = inspiration && !Array.isArray(inspiration) ? inspiration.memoryCases : undefined;
-    const memoryCasesText = formatMemoryCases(memoryCases);
-    const systemBlocks = [{ type: 'text', text: activePrompt, cache_control: { type: 'ephemeral' } }];
-    if (memoryCasesText) systemBlocks.push({ type: 'text', text: memoryCasesText });
     const response = await withRetry(() =>
       c.messages.create({
         model: MODEL,
@@ -377,7 +403,11 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
     if (response.stop_reason === 'max_tokens') {
       throw new Error('génération tronquée (max_tokens atteint) — réessaie avec une photo plus simple');
     }
-    const raw = response.content.find((b) => b.type === 'text').text;
+    const textBlock = response.content.find((b) => b.type === 'text');
+    if (!textBlock) {
+      throw new Error(`réponse LLM sans bloc texte (stop_reason: ${response.stop_reason})`);
+    }
+    const raw = textBlock.text;
     // Extraction self-explanation format Voyager : <explanation>...</explanation><code>...</code>.
     // Tolérant : si les balises absentes (ancien format), on prend tout après stripCodeFences.
     const explanationMatch = raw.match(/<explanation>([\s\S]*?)<\/explanation>/i);
@@ -390,7 +420,17 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
       throw new Error(`génération tronquée (sentinelle ${SENTINEL} absente)`);
     }
     try {
-      const blocks = completeDoors(runStructureCode(code, timeoutMs, sandbox));
+      const blocks = completeDoors(dedupeBlocks(runStructureCode(code, timeoutMs, sandbox)));
+      const budget = usingPrimitives ? BUDGET_PRIMITIVES : BUDGET_LIBRE;
+      const dims = { x: 0, y: 0, z: 0 };
+      for (const b of blocks) {
+        if (b.x >= dims.x) dims.x = b.x + 1;
+        if (b.y >= dims.y) dims.y = b.y + 1;
+        if (b.z >= dims.z) dims.z = b.z + 1;
+      }
+      if (dims.x > budget.x || dims.y > budget.y || dims.z > budget.z) {
+        throw new Error(`structure hors budget spatial : ${dims.x}×${dims.y}×${dims.z} pour un maximum de ${budget.x}×${budget.y}×${budget.z} — réduis TOUTES les dimensions à l'échelle en conservant les proportions`);
+      }
       // Blocs inventés (ex : smooth_stone_wall n'existe pas) : réinjectés dans la
       // boucle pour que le modèle les corrige lui-même
       // existence contre la liste blanche COMPLÈTE : la palette (validBlocks)
@@ -413,6 +453,7 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
       lastErr = err;
       if (/tronquée \(max_tokens/.test(err.message)) throw err;
       console.warn(`[generator] tentative ${attempt}/${MAX_ATTEMPTS} échouée :`, err.message);
+      console.warn('[generator] code fautif :\n', code);
       messages.push({ role: 'assistant', content: raw });
       messages.push({
         role: 'user',
@@ -423,4 +464,4 @@ async function generateStructure(description, { client, timeoutMs = 5000, validB
   throw lastErr;
 }
 
-module.exports = { runStructureCode, generateStructure, completeDoors };
+module.exports = { runStructureCode, generateStructure, completeDoors, dedupeBlocks };

@@ -14,6 +14,11 @@ async function withRetry(fn, { retries = 3, baseDelayMs = 1000 } = {}) {
       return await fn();
     } catch (err) {
       lastErr = err;
+      const status = err.status ?? err.response?.status;
+      // 4xx (sauf 408/429) = erreur définitive : retenter ne sert à rien
+      if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) {
+        throw err;
+      }
       if (attempt < retries) {
         const delay = baseDelayMs * 2 ** attempt;
         console.warn(`[llm] échec (tentative ${attempt + 1}), retry dans ${delay} ms :`, err.message);
