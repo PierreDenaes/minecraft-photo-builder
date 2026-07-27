@@ -74,27 +74,36 @@ RÈGLES OBLIGATOIRES pour empilement (souvent mal exécuté) :
   3. sommet de la couche N = base de la couche N+1 (continuité visuelle : le sommet évasé rejoint la base du niveau suivant).
   4. Si le résultat visuel doit ressembler à une seule silhouette continue (Tour Eiffel, Burj Khalifa, obélisque), on parle d'UNE structure — donc UN SEUL centre (x,z), pas plusieurs points de la carte.
   5. PIEDS SÉPARÉS (Tour Eiffel, Tokyo Tower) : 4 pyramideTronquee INCLINÉES dont les (x,z) de base sont aux 4 coins de l'emprise et dont les (x_sommet,z_sommet) convergent vers les 4 coins de la section supérieure ; leur y_haut = y_base du tronc. NE JAMAIS simuler les pieds avec un seul grand frustum centré : ça donne une jupe pleine sans pieds.
+  6. PROPORTIONS : respecte les rapports RÉELS du monument photographié, pas des valeurs inventées. Tour Eiffel : emprise au sol ≈ 0.42×hauteur — si l'emprise max est atteinte, RÉDUIS la hauteur (hauteur ≈ emprise/0.42) plutôt que d'étirer une tour trop fine ; 1er étage à 19% de la hauteur (largeur 52% de l'emprise), 2e étage à 38% (largeur 24%), plateforme sommitale à 92% (largeur 8%), antenne = les 8% restants — une flèche qui dépasse ~10% de la hauteur est FAUSSE. Marque chaque étage par une plateforme toitPlat en iron_block.
 
-Exemple TOUR EIFFEL 300 blocs de haut, centrée sur x=40, z=40, matériau iron_bars ajouré :
+Exemple TOUR EIFFEL fidèle aux proportions réelles — emprise 96×96 (centre 48,48) → hauteur H = 96/0.42 ≈ 230 :
   const blocks = [];
-  // 4 pieds inclinés : bases aux coins (40±30), sommets convergeant vers les coins du tronc (40±11)
+  const cx = 48, cz = 48;
+  // 4 pieds inclinés (0 → 44 = 19% de H) : bases 20 aux coins (±37), sommets 8 convergeant vers ±21
   for (const [sx, sz] of [[-1,-1],[-1,1],[1,-1],[1,1]]) {
     blocks.push(...pyramideTronquee({
-      x: 40 + sx*30, z: 40 + sz*30, x_sommet: 40 + sx*8, z_sommet: 40 + sz*8,
-      y_base: 0, y_haut: 55, base: 20, sommet: 8, materiau: 'iron_bars', ajouree: true }));
+      x: cx + sx*37, z: cz + sz*37, x_sommet: cx + sx*21, z_sommet: cz + sz*21,
+      y_base: 0, y_haut: 44, base: 20, sommet: 8, materiau: 'iron_bars', ajouree: true }));
   }
-  // tronc effilé : sa base (24) couvre l'enveloppe des 4 sommets de pieds, même centre (40,40)
-  blocks.push(...pyramideTronquee({ x:40, z:40, y_base:55,  y_haut:180, base:24, sommet:10, materiau:'iron_bars', ajouree:true }));
-  // antenne fine au même centre : base = sommet du tronc (règle 3)
-  blocks.push(...pyramideTronquee({ x:40, z:40, y_base:180, y_haut:300, base:10, sommet:2,  materiau:'iron_bars', ajouree:true }));
-  // 4 pieds inclinés convergents + 2 sections empilées au MÊME (x,z), y_haut→y_base continus.
+  // 1er étage : plateforme 51×51 (52% de l'emprise) posée sur les 4 sommets de pieds
+  blocks.push(...toitPlat({ x1: cx-25, z1: cz-25, x2: cx+25, z2: cz+25, y: 44, materiau: 'iron_block', acrotere: false, debord: 0 }));
+  // fût 1er → 2e étage (44 → 87 = 38% de H) : 51 → 23, même centre
+  blocks.push(...pyramideTronquee({ x: cx, z: cz, y_base: 44, y_haut: 87, base: 51, sommet: 23, materiau: 'iron_bars', ajouree: true }));
+  // 2e étage : plateforme 25×25 (24% de l'emprise)
+  blocks.push(...toitPlat({ x1: cx-12, z1: cz-12, x2: cx+12, z2: cz+12, y: 87, materiau: 'iron_block', acrotere: false, debord: 0 }));
+  // fût 2e étage → plateforme sommitale (87 → 212 = 92% de H) : 23 → 8
+  blocks.push(...pyramideTronquee({ x: cx, z: cz, y_base: 87, y_haut: 212, base: 23, sommet: 8, materiau: 'iron_bars', ajouree: true }));
+  // plateforme sommitale 9×9 puis antenne COURTE (212 → 230 : les 8% restants, jamais plus)
+  blocks.push(...toitPlat({ x1: cx-4, z1: cz-4, x2: cx+4, z2: cz+4, y: 212, materiau: 'iron_block', acrotere: false, debord: 0 }));
+  blocks.push(...pyramideTronquee({ x: cx, z: cz, y_base: 212, y_haut: 230, base: 8, sommet: 1, materiau: 'iron_bars', ajouree: true }));
+  // 4 pieds inclinés + fûts empilés au MÊME (x,z), y_haut→y_base et sommet→base continus, un toitPlat par étage.
 
 Autres usages : pyramides d'Egypte (sommet=1), Burj Khalifa, toits de temples asiatiques, obélisques. ajouree=true remplace materiau par iron_bars pour un aspect treillis métallique (essentiel pour la Tour Eiffel, tours de télécommunications).
 
 ## Règles de composition
 - Une porte doit être dans un mur existant (même x/z que la façade de la boite).
 - CHAQUE bâtiment habitable a AU MOINS UNE porte en façade — le bâtiment principal en premier.
-- MONUMENTS NON HABITABLES : si type_batiment évoque un ARC (arc_de_triomphe, arche, porte_de_ville, aqueduc) → utilise la primitive "arche" comme corps principal (JAMAIS une simple boite pleine qui ressemblerait à une prison). Si type_batiment évoque une TOUR ÉLANCÉE MÉTALLIQUE (tour_eiffel, tour_de_tokyo, tour_de_télécom) → 4 pieds pyramideTronquee INCLINÉES (x_sommet/z_sommet convergents, règle 5) + tronc + antenne empilés en pyramideTronquee ajouree:true, c'est la SEULE façon d'obtenir la silhouette pieds séparés + treillis. Si type_batiment évoque une TOUR EN PIERRE (big_ben, tour_pise, minaret, campanile) → primitive "tour" avec toit_conique et créneaux. Si c'est un GRATTE-CIEL EFFILÉ (burj_khalifa, empire_state) → pyramideTronquee ajouree:false empilées. Si c'est une PYRAMIDE (pyramide_egypte, pyramide_maya) → une seule pyramideTronquee avec sommet=1. Si c'est un OBÉLISQUE / colonne / stèle → empile 2-3 boites étroites décroissantes ou une pyramideTronquee très fine. Pour ces monuments : PAS de porte, PAS de cloisons intérieures, PAS d'audit habitabilité applicable — la fidélité de la silhouette prime sur l'habitabilité.
+- MONUMENTS NON HABITABLES : si type_batiment évoque un ARC (arc_de_triomphe, arche, porte_de_ville, aqueduc) → utilise la primitive "arche" comme corps principal (JAMAIS une simple boite pleine qui ressemblerait à une prison). Si type_batiment évoque une TOUR ÉLANCÉE MÉTALLIQUE (tour_eiffel, tour_de_tokyo, tour_de_télécom) → 4 pieds pyramideTronquee INCLINÉES (x_sommet/z_sommet convergents, règle 5) + fûts empilés + antenne courte en pyramideTronquee ajouree:true, avec une plateforme toitPlat iron_block par étage et les PROPORTIONS de la règle 6 — c'est la SEULE façon d'obtenir la silhouette pieds séparés + treillis + étages. Si type_batiment évoque une TOUR EN PIERRE (big_ben, tour_pise, minaret, campanile) → primitive "tour" avec toit_conique et créneaux. Si c'est un GRATTE-CIEL EFFILÉ (burj_khalifa, empire_state) → pyramideTronquee ajouree:false empilées. Si c'est une PYRAMIDE (pyramide_egypte, pyramide_maya) → une seule pyramideTronquee avec sommet=1. Si c'est un OBÉLISQUE / colonne / stèle → empile 2-3 boites étroites décroissantes ou une pyramideTronquee très fine. Pour ces monuments : PAS de porte, PAS de cloisons intérieures, PAS d'audit habitabilité applicable — la fidélité de la silhouette prime sur l'habitabilité.
 - MARGE PORTE / BAIE : laisse AU MOINS 2 blocs d'écart entre la porte et la baie la plus proche sur la même façade (sinon les encadrements se chevauchent et la porte devient invisible). Une villa avec une porte à x=28 doit avoir ses baies à x ≤ 26 ou x ≥ 30.
 - Sur l'entrée principale d'une villa/manoir : préfère porte({double:true}) qui pose 2 battants — visuel de portail bien plus reconnaissable qu'une simple porte 1×2.
 - Pour les villas et maisons, prévois PLUSIEURS entrées : une porte principale sur la façade avant, et si la scène a une piscine/terrasse/jardin, une SECONDE porte donnant sur cet extérieur arrière (baie coulissante = utilise porte, pas baie). Une villa vraie a 2 à 3 accès.
