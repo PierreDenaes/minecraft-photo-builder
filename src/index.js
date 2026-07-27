@@ -64,7 +64,7 @@ function createBot(cfg) {
       auth: 'offline'
     });
     builder.bot = bot;
-    const handleChat = createChatHandler({ bot, builder, config: cfg, pending });
+    const handleChat = createChatHandler({ bot, builder, config: cfg, pending, onBuild });
 
     memory.warmup().catch((err) => console.warn('[memory] warmup échoué :', err.message));
 

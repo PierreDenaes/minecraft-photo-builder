@@ -66,6 +66,24 @@ npm run server:reset  # réinitialise le monde
 
 Architecture dans `src/` (un module par responsabilité : vision, generator, voxelizer, meshvoxelizer, palette, terrain, subsurface, support, decorator, habitability, portrait, builder, optimizer, chat, webserver). Spécifications des itérations dans `docs/superpowers/specs/`, pistes d'amélioration dans `docs/audit-ameliorations-2026-07-19.md` (FAWE + schematics, détourage BiRefNet, simplification GLB, TripoSR).
 
+## `!build <texte>` — construire depuis une description
+
+Le bot cherche une photo sur le web via SerpAPI, sélectionne la meilleure avec
+Claude Haiku vision, puis lance le pipeline photo. Exemples :
+
+```
+!build chateau de disney
+!build tour eiffel
+!build villa moderne avec piscine
+```
+
+Requiert la variable d'environnement `SERPAPI_KEY` (250 requêtes gratuites par
+mois sur serpapi.com).
+
+Une fois la photo trouvée, le bot annonce son URL dans le chat et lance
+l'analyse. Le reste du flux est identique à `!photo` : proposition, `!go` /
+`!cancel`, puis `!note N` pour enrichir la mémoire.
+
 ## Mémoire
 
 Le bot mémorise chaque construction confirmée (`!go`) et le joueur peut la noter avec `!note N` (N ∈ [1..5]). Les cas bien notés sont réutilisés en inspiration lors des générations suivantes.
