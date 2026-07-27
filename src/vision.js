@@ -5,7 +5,7 @@ const { createClient, withRetry, stripCodeFences } = require('./llm');
 // Le surcoût (~5×) reste marginal sur ce projet (~1 photo par !photo). Le critique
 // compareToPhoto reste sur sonnet — la comparaison photo↔rendu n'a pas besoin
 // du raisonnement fin d'opus, et elle est appelée deux fois par pipeline.
-const MODEL_ANALYSE = 'claude-opus-5';
+const MODEL_ANALYSE = 'claude-opus-4-7-thinking';
 const MODEL_CRITIQUE = 'claude-sonnet-4-6';
 
 const STYLES = ['primitif', 'egyptien', 'antique', 'asiatique_japonais', 'asiatique_chinois', 'oriental',
