@@ -32,6 +32,7 @@ const { decorateInterior } = require('./decorator');
 const { portraitBlocks } = require('./portrait');
 const { auditHabitability, auditChecks } = require('./habitability');
 const { carveStaircase } = require('./staircase');
+const { refineQuery, searchImages, pickBest } = require('./websearch');
 
 const validBlocks = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../data/valid_blocks.json'), 'utf8')
@@ -445,6 +446,46 @@ function createBot(cfg) {
     return proposeStructure(username, meubles, description,
       { maxSize: cfg.limits.max_size, maxBlocks: cfg.limits.max_blocks },
       { photo: buffer, code });
+  }
+
+  async function onBuild(username, userText) {
+    bot.chat(`${username} : recherche "${userText}" sur le web...`);
+    if (!apiClient) {
+      bot.chat(`${username} : clé API Anthropic manquante — impossible de trier les résultats.`);
+      return;
+    }
+    if (!process.env.SERPAPI_KEY) {
+      bot.chat(`${username} : SERPAPI_KEY absente de l'env — configure-la et réessaie.`);
+      return;
+    }
+    const refined = await refineQuery(userText, { client: apiClient });
+    console.log(`[build] requête reformulée : "${refined}"`);
+    const n = (cfg.web_search && cfg.web_search.n_results) || 8;
+    const candidates = await searchImages(refined, { apiKey: process.env.SERPAPI_KEY, n });
+    if (candidates.length === 0) {
+      bot.chat(`${username} : aucune image trouvée pour "${userText}". Réessaie avec une description plus précise.`);
+      return;
+    }
+    const bestIdx = await pickBest(candidates, { client: apiClient });
+    if (bestIdx === null) {
+      bot.chat(`${username} : aucune photo utilisable parmi les ${candidates.length} résultats. Réessaie plus précis, ex: "chateau disneyland paris facade jour".`);
+      return;
+    }
+    const chosen = candidates[bestIdx - 1];
+    bot.chat(`Photo trouvée : ${chosen.url}`);
+    bot.chat('Analyse en cours (~1 min)...');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    let response;
+    try {
+      response = await fetch(chosen.url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!response.ok) throw new Error(`téléchargement image HTTP ${response.status}`);
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const mimeType = response.headers.get('content-type') || 'image/jpeg';
+    return onPhoto(username, buffer, mimeType);
   }
 
   const app = createWebServer({ onPhoto, onDiorama, onModel, onPortrait, onSchema });

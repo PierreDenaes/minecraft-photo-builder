@@ -22,5 +22,9 @@
     }
   },
   "generation_mode": "code",
-  "reconstruction": "inspire"
+  "reconstruction": "inspire",
+  "web_search": {
+    "n_results": 8,
+    "min_image_size": 400
+  }
 }
