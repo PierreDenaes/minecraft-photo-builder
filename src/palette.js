@@ -2,8 +2,10 @@ const { withRetry, stripCodeFences } = require('./llm');
 const { nearestBlock, filterColors, THEME_BLOCKS } = require('./blockcolors');
 const { getSections } = require('./almanach');
 
+let MODELS = {};
+try { MODELS = require('../config.json').models || {}; } catch { /* défaut ci-dessous */ }
 // classification simple : Haiku suffit, latence et coût réduits
-const MODEL_THEMES = 'claude-haiku-4-5-20251001';
+const MODEL_THEMES = MODELS.palette_themes || 'claude-haiku-4-5-20251001';
 
 // K-means déterministe : init par luminance triée, 12 itérations, clusters vides éliminés
 function clusterColors(samples, k) {

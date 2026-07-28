@@ -3,7 +3,9 @@ const { detectFloors, detectRooms, furnishRooms, dimsOf } = require('./rooms');
 const { ROLE_LAYOUTS } = require('./roomlayouts');
 
 // classification simple : Haiku suffit
-const MODEL_SETS = 'claude-haiku-4-5-20251001';
+let MODELS = {};
+try { MODELS = require('../config.json').models || {}; } catch { /* défaut ci-dessous */ }
+const MODEL_SETS = MODELS.decorateur_roles || 'claude-haiku-4-5-20251001';
 
 // Physique des attachements Minecraft : une torche debout exige un bloc plein
 // DESSOUS, au mur c'est wall_torch avec orientation, sinon l'objet saute à la pose

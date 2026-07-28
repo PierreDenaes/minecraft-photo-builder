@@ -4,8 +4,10 @@ const { createClient, withRetry, stripCodeFences } = require('./llm');
 // Critique compareToPhoto sur opus-4-7 : le verdict photo↔rendu conditionne
 // les tours de correction, on privilégie la fiabilité du jugement malgré
 // les 2 appels par pipeline.
-const MODEL_ANALYSE = 'claude-fable-5';
-const MODEL_CRITIQUE = 'claude-opus-4-7';
+let MODELS = {};
+try { MODELS = require('../config.json').models || {}; } catch { /* défauts ci-dessous */ }
+const MODEL_ANALYSE = MODELS.vision_analyse || 'claude-fable-5';
+const MODEL_CRITIQUE = MODELS.vision_critique || 'claude-opus-4-7';
 
 const STYLES = ['primitif', 'egyptien', 'antique', 'asiatique_japonais', 'asiatique_chinois', 'oriental',
   'medieval', 'gothique', 'chateau_fort', 'renaissance', 'baroque_classique', 'haussmannien', 'victorien',

@@ -187,7 +187,10 @@ function generateStructure() {
 // FIN_STRUCTURE`;
 
 
-const MODEL = process.env.GENERATOR_MODEL || 'claude-sonnet-4-6';
+let MODELS = {};
+try { MODELS = require('../config.json').models || {}; } catch { /* défauts ci-dessous */ }
+// priorité env > config > défaut (cf CORRECTIONS-generator point 10)
+const MODEL = process.env.GENERATOR_MODEL || MODELS.generator || 'claude-sonnet-4-6';
 
 const SYSTEM_PROMPT = `Tu écris du code JavaScript pur pour générer une structure Minecraft (version 1.20).
 Réponds UNIQUEMENT avec le code, sans texte autour, sans balises markdown.

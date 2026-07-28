@@ -1,4 +1,6 @@
-const REFINE_MODEL = 'claude-haiku-4-5-20251001';
+let MODELS = {};
+try { MODELS = require('../config.json').models || {}; } catch { /* défauts ci-dessous */ }
+const REFINE_MODEL = MODELS.websearch_refine || 'claude-haiku-4-5-20251001';
 
 const REFINE_SYSTEM = `Reformule la demande utilisateur en une requête Google Images optimisée pour trouver UNE photo utilisable pour reconstruire une scène en Minecraft. Adapte les mots-clés au TYPE de sujet :
 
@@ -56,7 +58,7 @@ async function searchImages(refinedQuery, { apiKey, n = 8, fetchFn = fetch } = {
     }));
 }
 
-const PICK_MODEL = 'claude-haiku-4-5-20251001';
+const PICK_MODEL = MODELS.websearch_pick || 'claude-haiku-4-5-20251001';
 
 const PICK_SYSTEM = `Tu compares N photos candidates pour une reconstruction Minecraft. Retourne UNIQUEMENT le NUMÉRO (1..N) de la meilleure photo, OU le mot "aucune" si toutes sont inutilisables.
 

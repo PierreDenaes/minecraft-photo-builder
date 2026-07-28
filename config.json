@@ -27,5 +27,14 @@
   "web_search": {
     "n_results": 8,
     "min_image_size": 400
+  },
+  "models": {
+    "generator": "claude-sonnet-4-6",
+    "vision_analyse": "claude-fable-5",
+    "vision_critique": "claude-opus-4-7",
+    "decorateur_roles": "claude-haiku-4-5-20251001",
+    "palette_themes": "claude-haiku-4-5-20251001",
+    "websearch_refine": "claude-haiku-4-5-20251001",
+    "websearch_pick": "claude-haiku-4-5-20251001"
   }
 }
