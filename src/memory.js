@@ -64,13 +64,8 @@ async function saveCase({ photo, description, code }) {
   const id = __generateId();
   const casesDir = getCasesDir();
   const indexPath = getIndexPath();
-  // miniature 256px max côté long
-  const thumbBuf = await sharp(photo).resize({ width: 256, height: 256, fit: 'inside' }).jpeg({ quality: 80 }).toBuffer();
-  fs.writeFileSync(path.join(casesDir, `${id}.jpg`), thumbBuf);
-  // embedding (calculé sur la miniature pour cohérence et rapidité)
-  const emb = await __embed(thumbBuf);
-  fs.writeFileSync(path.join(casesDir, `${id}.emb`), Buffer.from(emb.buffer));
-  // json
+  // json d'abord : c'est la donnée maîtresse (un .jpg orphelin est bénin,
+  // un .json orphelin ne l'est pas)
   const caseObj = {
     id,
     date: new Date().toISOString(),
@@ -81,6 +76,16 @@ async function saveCase({ photo, description, code }) {
     note: null
   };
   fs.writeFileSync(path.join(casesDir, `${id}.json`), JSON.stringify(caseObj, null, 2));
+  // miniature 256px max côté long
+  const thumbBuf = await sharp(photo).resize({ width: 256, height: 256, fit: 'inside' }).jpeg({ quality: 80 }).toBuffer();
+  fs.writeFileSync(path.join(casesDir, `${id}.jpg`), thumbBuf);
+  // embedding OPTIONNEL : sans CLIP (macOS ARM64, warmup désactivé), le cas est
+  // quand même mémorisé — findSimilar utilise alors le fallback métadonnées,
+  // et loadEmbedding retourne null pour ce cas en mode CLIP
+  if (__isReady()) {
+    const emb = await __embed(thumbBuf);
+    fs.writeFileSync(path.join(casesDir, `${id}.emb`), Buffer.from(emb.buffer));
+  }
   // index (créé si absent)
   const index = fs.existsSync(indexPath) ? JSON.parse(fs.readFileSync(indexPath, 'utf8')) : [];
   index.push({ id, date: caseObj.date, style: caseObj.style, type_batiment: caseObj.type_batiment, note: null });
@@ -91,21 +96,24 @@ async function saveCase({ photo, description, code }) {
 function updateNote(id, note) {
   if (!Number.isInteger(note) || note < 1 || note > 5) {
     console.warn(`[memory] note invalide (${note}), ignorée`);
-    return;
+    return false;
   }
   const casePath = path.join(getCasesDir(), `${id}.json`);
   if (!fs.existsSync(casePath)) {
     console.warn(`[memory] cas ${id} introuvable, note ignorée`);
-    return;
+    return false;
   }
   const caseObj = JSON.parse(fs.readFileSync(casePath, 'utf8'));
   caseObj.note = note;
   fs.writeFileSync(casePath, JSON.stringify(caseObj, null, 2));
   const indexPath = getIndexPath();
-  const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
-  const entry = index.find((e) => e.id === id);
-  if (entry) entry.note = note;
-  fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
+  if (fs.existsSync(indexPath)) {
+    const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+    const entry = index.find((e) => e.id === id);
+    if (entry) entry.note = note;
+    fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
+  }
+  return true;
 }
 
 function cosineSimilarity(a, b) {
@@ -142,8 +150,15 @@ async function findSimilar(photo, description, opts = {}) {
   if (eligible.length === 0) return [];
   if (!__isReady()) {
     // fallback métadonnées : filtre style+type, tri note desc
+    // style strict, type assoupli : égalité OU inclusion croisée des textes libres
+    const typeMatch = (a, b) => {
+      if (!a || !b) return false;
+      const ta = String(a).toLowerCase();
+      const tb = String(b).toLowerCase();
+      return ta === tb || ta.includes(tb) || tb.includes(ta);
+    };
     return eligible
-      .filter((e) => e.style === description.style && e.type_batiment === description.type_batiment)
+      .filter((e) => e.style === description.style && typeMatch(e.type_batiment, description.type_batiment))
       .sort((a, b) => b.note - a.note)
       .slice(0, n)
       .map((e) => {

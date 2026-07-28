@@ -222,7 +222,9 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500, on
           return;
         }
         Promise.resolve(memory.updateNote(buildId, n))
-          .then(() => bot.chat(`Note enregistrée : ${n}/5, merci !`))
+          .then((ok) => bot.chat(ok
+            ? `Note enregistrée : ${n}/5, merci !`
+            : `${username} : construction introuvable en mémoire, note non enregistrée.`))
           .catch((err) => {
             console.warn('[chat] updateNote échoué :', err.message);
             bot.chat(`${username} : impossible d'enregistrer la note, réessaie.`);

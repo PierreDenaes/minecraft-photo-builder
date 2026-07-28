@@ -237,3 +237,55 @@ test('findSimilar avec minSimilarity=0.99 exclut un cas visuellement très diff�
   assert.ok(res.length >= 1, 'id1 (même buffer) devrait être retourné');
   assert.strictEqual(res[0].id, id1);
 });
+
+// === Corrections audit 27/07 (CORRECTIONS-memory.md) ===
+
+test('saveCase SANS CLIP : ne throw plus, écrit .json/.jpg/index mais PAS .emb', async () => {
+  resetMemoryDir();
+  memory.__setEmbedder(null); // cas de prod macOS : warmup désactivé
+  const photo = fs.readFileSync(path.join(__dirname, 'fixtures/memory/photo-small.jpg'));
+  let id;
+  await assert.doesNotReject(async () => {
+    id = await memory.saveCase({ photo, description: { style: 'moderne', type_batiment: 'villa_contemporaine' }, code: 'x' });
+  });
+  assert.ok(fs.existsSync(path.join(memory.CASES_DIR, `${id}.json`)), '.json attendu');
+  assert.ok(fs.existsSync(path.join(memory.CASES_DIR, `${id}.jpg`)), '.jpg attendu');
+  assert.ok(!fs.existsSync(path.join(memory.CASES_DIR, `${id}.emb`)), '.emb NE doit PAS exister sans CLIP');
+  const index = JSON.parse(fs.readFileSync(memory.INDEX_PATH, 'utf8'));
+  assert.ok(index.some((e) => e.id === id), 'cas ajouté à l\'index');
+});
+
+test('updateNote retourne true en succès, false si cas absent ou note invalide', async () => {
+  resetMemoryDir();
+  memory.__setEmbedder(null);
+  const photo = fs.readFileSync(path.join(__dirname, 'fixtures/memory/photo-small.jpg'));
+  const id = await memory.saveCase({ photo, description: { style: 'medieval', type_batiment: 'maison' }, code: '' });
+  assert.strictEqual(memory.updateNote(id, 4), true, 'succès → true');
+  assert.strictEqual(memory.updateNote('2020-01-01-ffff', 3), false, 'cas absent → false');
+  assert.strictEqual(memory.updateNote(id, 9), false, 'note hors [1..5] → false');
+});
+
+test('updateNote sans index.json ne crashe pas (garde fs.existsSync)', async () => {
+  resetMemoryDir();
+  memory.__setEmbedder(null);
+  const photo = fs.readFileSync(path.join(__dirname, 'fixtures/memory/photo-small.jpg'));
+  const id = await memory.saveCase({ photo, description: { style: 'moderne', type_batiment: 'villa' }, code: '' });
+  fs.rmSync(memory.INDEX_PATH); // index disparu (corruption, nettoyage manuel)
+  assert.doesNotThrow(() => memory.updateNote(id, 5));
+  assert.strictEqual(memory.updateNote(id, 5), true);
+});
+
+test('findSimilar fallback : match de type assoupli (inclusion croisée)', async () => {
+  resetMemoryDir();
+  memory.__setEmbedder(null);
+  const photo = fs.readFileSync(path.join(__dirname, 'fixtures/memory/photo-small.jpg'));
+  const id = await memory.saveCase({ photo, description: { style: 'moderne', type_batiment: 'villa_contemporaine_piscine' }, code: 'v1' });
+  memory.updateNote(id, 4);
+  // requête "villa" ⊂ "villa_contemporaine_piscine" → doit matcher
+  const found = await memory.findSimilar(photo, { style: 'moderne', type_batiment: 'villa' });
+  assert.strictEqual(found.length, 1, 'inclusion croisée villa ⊂ villa_contemporaine_piscine');
+  assert.strictEqual(found[0].id, id);
+  // style différent → pas de match (style reste strict)
+  const other = await memory.findSimilar(photo, { style: 'medieval', type_batiment: 'villa' });
+  assert.strictEqual(other.length, 0, 'le style reste strict');
+});
