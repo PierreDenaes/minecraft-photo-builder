@@ -2,6 +2,8 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
+![Minecraft AI Builder — de l'idée à la construction](assets/presentation.png)
+
 Bot Minecraft (Mineflayer) qui construit en jeu à partir d'une **photo**, d'un **modèle 3D**, d'un **texte** ou d'une simple envie de fresque. L'analyse visuelle et l'architecture sont confiées à Claude, la géométrie et la physique à des passes mécaniques testées. Les modèles utilisés à chaque étape sont configurables (voir `config.json` → `models`).
 
 ## Capacités
