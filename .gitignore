@@ -5,6 +5,8 @@ models/
 .DS_Store
 docs/
 .env
-.claude/scheduled_tasks.lock
+.claude/
+tmp/
+CLAUDE.md
 vendor/
 data/memoire/
