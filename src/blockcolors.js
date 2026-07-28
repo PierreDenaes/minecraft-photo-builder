@@ -2,7 +2,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 function loadBlockColors() {
-  const raw = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/block_colors.json'), 'utf8'));
+  const p = path.join(__dirname, '../data/block_colors.json');
+  let raw;
+  try {
+    raw = JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (err) {
+    throw new Error(`data/block_colors.json manquant ou invalide (${err.message}) — ce fichier est requis pour le mapping couleur→bloc, restaure-le depuis le dépôt ou régénère-le`);
+  }
   return new Map(Object.entries(raw));
 }
 

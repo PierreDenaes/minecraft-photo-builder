@@ -2,7 +2,6 @@ const { withRetry, stripCodeFences } = require('./llm');
 const { nearestBlock, filterColors, THEME_BLOCKS } = require('./blockcolors');
 const { getSections } = require('./almanach');
 
-const MODEL = 'claude-sonnet-4-6';
 // classification simple : Haiku suffit, latence et coût réduits
 const MODEL_THEMES = 'claude-haiku-4-5-20251001';
 
@@ -28,42 +27,6 @@ function clusterColors(samples, k) {
     centroids = sums.filter((s) => s[3] > 0).map((s) => [s[0] / s[3], s[1] / s[3], s[2] / s[3]]);
   }
   return centroids.map((c) => c.map(Math.round));
-}
-
-// @deprecated — remplacée par assignThemes (mapping à deux niveaux) ; conservée
-// pour référence, aucun chemin du pipeline ne l'appelle
-async function assignBlocks(centroids, allowedColors, { client, contexte } = {}) {
-  console.warn('[palette] assignBlocks est dépréciée — utiliser assignThemes');
-  const fallback = () => centroids.map((c) => nearestBlock(c[0], c[1], c[2], allowedColors));
-  if (!client || centroids.length === 0) return fallback();
-  try {
-    const response = await withRetry(() => client.messages.create({
-      model: MODEL,
-      max_tokens: 800,
-      system: `Tu es un maître bâtisseur Minecraft. Pour chaque couleur dominante RGB d'une scène, choisis LE bloc le plus approprié SÉMANTIQUEMENT : roche/falaise → pierres (stone, tuff, andesite...), végétation → feuilles ou grass_block, terre/chemin → dirt/gravel, murs → maçonnerie cohérente, bois → planches ou troncs. Jamais un bloc incongru pour la matière représentée. Réponds UNIQUEMENT en JSON strict : [{"rgb":[r,g,b],"bloc":"nom"}], dans le même ordre que les couleurs fournies.`,
-      messages: [{
-        role: 'user',
-        content: `Contexte : ${contexte || 'scène extérieure'}\nBlocs autorisés (aucun autre) : ${[...allowedColors.keys()].join(', ')}\nCouleurs dominantes : ${JSON.stringify(centroids)}`
-      }]
-    }), { retries: 1 });
-    const parsed = JSON.parse(stripCodeFences(response.content.find((b) => b.type === 'text').text));
-    return centroids.map((c, i) => {
-      const bloc = parsed[i]?.bloc;
-      return allowedColors.has(bloc) ? bloc : nearestBlock(c[0], c[1], c[2], allowedColors);
-    });
-  } catch (err) {
-    console.warn('[palette] choix LLM indisponible, repli plus-proche-voisin :', err.message);
-    return fallback();
-  }
-}
-
-// Map bloc→centroïde : passée aux voxeliseurs, elle contraint tout le rendu aux blocs choisis
-function buildPaletteMap(centroids, blocks) {
-  const map = new Map();
-  for (let i = 0; i < blocks.length; i++) {
-    if (!map.has(blocks[i])) map.set(blocks[i], centroids[i]);
-  }
-  return map;
 }
 
 function themeOfBlock(block) {
@@ -131,4 +94,4 @@ function realisticMaterials(materials, description = {}) {
   return materials.filter((b) => VIVID_EXCEPTIONS.has(b) || !VIVID_MATERIAL.test(b));
 }
 
-module.exports = { clusterColors, assignBlocks, buildPaletteMap, assignThemes, buildThemePicker, themeOfBlock, realisticMaterials };
+module.exports = { clusterColors, assignThemes, buildThemePicker, themeOfBlock, realisticMaterials };
