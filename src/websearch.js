@@ -86,8 +86,11 @@ async function pickBest(candidates, { client, fetchFn = fetch } = {}) {
     try {
       const resp = await fetchFn(c.thumbnail, { signal: ctrl.signal });
       if (!resp.ok) return null;
+      // un serveur qui répond du HTML au lieu d'une image ferait échouer l'appel
+      // vision (400) et donc tout le !build : on l'écarte comme candidat
+      const mimeType = (resp.headers.get('content-type') || 'image/jpeg').split(';')[0];
+      if (!mimeType.startsWith('image/')) return null;
       const buf = Buffer.from(await resp.arrayBuffer());
-      const mimeType = resp.headers.get('content-type') || 'image/jpeg';
       return { image: { base64: buf.toString('base64'), mimeType }, candidate: c };
     } catch { return null; }
     finally { clearTimeout(t); }
@@ -115,7 +118,12 @@ async function pickBest(candidates, { client, fetchFn = fetch } = {}) {
     system: PICK_SYSTEM,
     messages: [{ role: 'user', content: userContent }]
   });
-  const raw = response.content.find((b) => b.type === 'text').text.trim().toLowerCase();
+  const textBlock = response.content.find((b) => b.type === 'text');
+  if (!textBlock) {
+    console.warn(`[websearch] pickBest sans bloc texte (stop_reason: ${response.stop_reason})`);
+    return null;
+  }
+  const raw = textBlock.text.trim().toLowerCase();
   // Parsing tolérant : Haiku ajoute parfois du markdown (**2**) ou justifie sa réponse
   // ("2\nLa photo 2 est..."). On extrait le premier nombre trouvé, ou "aucune" si présent.
   if (/\baucune\b/.test(raw)) return null;

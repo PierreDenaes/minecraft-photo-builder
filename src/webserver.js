@@ -41,23 +41,27 @@ function createWebServer({ onPhoto, onDiorama, onModel, onPortrait, onSchema }) 
     upload.single('photo')(req, res, async (err) => {
       if (err) return res.status(400).json({ ok: false, error: err.message });
       if (!req.file) return res.status(400).json({ ok: false, error: 'aucun fichier reçu' });
-      if (!req.body.username) return res.status(400).json({ ok: false, error: 'pseudo manquant' });
+      // Même règle d'assainissement que le GET + longueur pseudo Minecraft (16).
+      // Indispensable : le pseudo finit en tête de bot.chat(...) — un pseudo
+      // commençant par "/" ferait exécuter une commande par le bot (op).
+      const username = String(req.body.username || '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 16);
+      if (!username) return res.status(400).json({ ok: false, error: 'pseudo manquant ou invalide' });
       try {
         const ext = path.extname(req.file.originalname).toLowerCase();
         let message;
         if (MODEL_EXTS.has(ext)) {
-          console.log(`[web] modèle ${ext} reçu de ${req.body.username} (${req.file.size} octets)`);
-          message = await onModel(req.body.username, req.file.buffer, ext.slice(1), req.body.mode || '');
+          console.log(`[web] modèle ${ext} reçu de ${username} (${req.file.size} octets)`);
+          message = await onModel(username, req.file.buffer, ext.slice(1), req.body.mode || '');
         } else {
           if (req.file.size > IMAGE_MAX) {
             return res.status(400).json({ ok: false, error: 'image trop lourde (5 Mo max)' });
           }
-          console.log(`[web] image reçue de ${req.body.username} (${req.file.size} octets, ${req.file.mimetype}, mode=${req.body.mode || 'code'})`);
+          console.log(`[web] image reçue de ${username} (${req.file.size} octets, ${req.file.mimetype}, mode=${req.body.mode || 'code'})`);
           const m = req.body.mode;
-          message = m === 'diorama' ? await onDiorama(req.body.username, req.file.buffer, req.file.mimetype)
-            : m === 'portrait' ? await onPortrait(req.body.username, req.file.buffer, req.file.mimetype)
-            : m === 'schema' ? await onSchema(req.body.username, req.file.buffer, req.file.mimetype)
-            : await onPhoto(req.body.username, req.file.buffer, req.file.mimetype);
+          message = m === 'diorama' ? await onDiorama(username, req.file.buffer, req.file.mimetype)
+            : m === 'portrait' ? await onPortrait(username, req.file.buffer, req.file.mimetype)
+            : m === 'schema' ? await onSchema(username, req.file.buffer, req.file.mimetype)
+            : await onPhoto(username, req.file.buffer, req.file.mimetype);
         }
         res.json({ ok: true, message: message || 'fichier reçu, analyse en cours' });
       } catch (e) {

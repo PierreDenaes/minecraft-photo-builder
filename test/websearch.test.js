@@ -167,3 +167,27 @@ test('pickBest : si un thumbnail échoue au download, l\'index Claude est mappé
   const chosen = await pickBest(CANDS, { client: fakeVisionClient('2'), fetchFn: partialFetch });
   assert.deepStrictEqual(chosen, CANDS[2]);
 });
+
+// === Corrections audit 27/07 (CORRECTIONS-webserver.md) : websearch ===
+
+test('pickBest : réponse sans bloc texte → null (pas de TypeError)', async () => {
+  const client = { messages: { create: async () => ({ stop_reason: 'end_turn', content: [] }) } };
+  const idx = await pickBest(CANDS, { client, fetchFn: fakeThumbFetch() });
+  assert.strictEqual(idx, null);
+});
+
+test('pickBest : thumbnail non-image (HTML) filtré avant l\'API vision', async () => {
+  // 2 thumbnails HTML sur 3 → seul le 3e survit ; Claude répond "1" (1er survivant)
+  let call = 0;
+  const fetchFn = async () => {
+    call++;
+    const isImage = call === 3;
+    return {
+      ok: true,
+      headers: { get: () => (isImage ? 'image/jpeg' : 'text/html; charset=utf-8') },
+      arrayBuffer: async () => Buffer.from([0xff, 0xd8]).buffer
+    };
+  };
+  const result = await pickBest(CANDS, { client: fakeVisionClient('1'), fetchFn });
+  assert.deepStrictEqual(result, CANDS[2], 'seul le candidat au thumbnail image doit survivre');
+});

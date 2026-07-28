@@ -186,3 +186,47 @@ test('mode=schema route vers onSchema', async () => {
   assert.strictEqual(body.ok, true);
   assert.strictEqual(called, 'schema');
 });
+
+// === Corrections audit 27/07 (CORRECTIONS-webserver.md) : sécurité ===
+
+test('POST : username assaini avant d\'atteindre le handler (anti-injection commande MC)', async () => {
+  let received = null;
+  const app = createWebServer({ onPhoto: async (username) => { received = username; return 'ok'; } });
+  const server = await listen(app);
+  const fd = new FormData();
+  fd.append('username', '/give @p diamond 64');
+  fd.append('photo', new Blob([Buffer.from([1, 2, 3])], { type: 'image/jpeg' }), 'p.jpg');
+  const res = await post(server.address().port, fd);
+  server.close();
+  // deux issues acceptables : 400, OU pseudo assaini SANS slash ni espace
+  if (res.status === 200) {
+    assert.strictEqual(received, 'givepdiamond64', `pseudo non assaini : ${received}`);
+    assert.ok(!/[/@ ]/.test(received), 'aucun caractère de commande ne doit subsister');
+  } else {
+    assert.strictEqual(res.status, 400);
+  }
+});
+
+test('POST : username vide après assainissement → 400', async () => {
+  const app = createWebServer({ onPhoto: async () => 'ok' });
+  const server = await listen(app);
+  const fd = new FormData();
+  fd.append('username', '/@#$%'); // ne laisse rien après nettoyage
+  fd.append('photo', new Blob([Buffer.from([1, 2, 3])], { type: 'image/jpeg' }), 'p.jpg');
+  const res = await post(server.address().port, fd);
+  server.close();
+  assert.strictEqual(res.status, 400);
+});
+
+test('POST : username tronqué à 16 caractères (limite pseudo Minecraft)', async () => {
+  let received = null;
+  const app = createWebServer({ onPhoto: async (username) => { received = username; return 'ok'; } });
+  const server = await listen(app);
+  const fd = new FormData();
+  fd.append('username', 'A'.repeat(40));
+  fd.append('photo', new Blob([Buffer.from([1, 2, 3])], { type: 'image/jpeg' }), 'p.jpg');
+  const res = await post(server.address().port, fd);
+  server.close();
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(received.length, 16);
+});
