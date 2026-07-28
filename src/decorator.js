@@ -1,7 +1,6 @@
 const { withRetry, stripCodeFences } = require('./llm');
-const { INTERIOR_BLOCKS } = require('./blockcolors');
-const { getSections } = require('./almanach');
 const { detectFloors, detectRooms, furnishRooms, dimsOf } = require('./rooms');
+const { ROLE_LAYOUTS } = require('./roomlayouts');
 
 // classification simple : Haiku suffit
 const MODEL_SETS = 'claude-haiku-4-5-20251001';
@@ -67,7 +66,8 @@ function fixAttachments(items, isSolid) {
 
 // 9 rôles à disposition — chacun a un LAYOUT dédié dans roomlayouts.js qui pose
 // le mobilier avec circulation garantie et éclairage plafond.
-const ROLES_VALIDES = ['chambre', 'cuisine', 'bibliotheque', 'salon', 'salle_a_manger', 'chapelle', 'forge', 'atelier', 'entree'];
+// Source unique : les rôles proposés au LLM sont exactement ceux qui ont un layout
+const ROLES_VALIDES = Object.keys(ROLE_LAYOUTS);
 
 // Le LLM ne choisit QUE le rôle de chaque pièce (pas les meubles).
 async function chooseFurnitureSets(rooms, description, { client } = {}) {
@@ -109,17 +109,18 @@ async function decorateInterior(building, description, { client } = {}) {
     for (let yy = b.y + 1; yy < d.y; yy++) if (occupied.has(`${b.x},${yy},${b.z}`)) return true;
     return false;
   };
-  const covered = raw.filter((b) => underRoof(b) && !occupied.has(`${b.x},${b.y},${b.z}`));
-  const anchored = fixAttachments(covered, (x, y, z) => occupied.has(`${x},${y},${z}`));
+  let covered = raw.filter((b) => underRoof(b) && !occupied.has(`${b.x},${b.y},${b.z}`));
+  // Écrémage AVANT l'ancrage : fixAttachments re-garantit ensuite la physique
+  // sur l'ensemble FINAL (pas de demi-lit ni de torche au support écrémé)
   const cap = Math.ceil(d.x * d.z * Math.max(1, detectFloors(building).length) * 0.10);
-  if (anchored.length > cap) {
-    const step = anchored.length / cap;
+  if (covered.length > cap) {
+    const step = covered.length / cap;
     const thinned = [];
-    for (let i = 0; i < anchored.length; i += step) thinned.push(anchored[Math.floor(i)]);
-    console.warn(`[decorateur] densité plafonnée : ${anchored.length} → ${thinned.length}`);
-    return thinned.slice(0, cap);
+    for (let i = 0; i < covered.length; i += step) thinned.push(covered[Math.floor(i)]);
+    console.warn(`[decorateur] densité plafonnée : ${covered.length} → ${thinned.length}`);
+    covered = thinned.slice(0, cap);
   }
-  return anchored;
+  return fixAttachments(covered, (x, y, z) => occupied.has(`${x},${y},${z}`));
 }
 
 module.exports = { detectFloors, decorateInterior, fixAttachments, chooseFurnitureSets };
