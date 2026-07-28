@@ -3,7 +3,7 @@ mc-data/
 models/
 *.log
 .DS_Store
-docs/*.glb
+docs/
 .env
 .claude/scheduled_tasks.lock
 vendor/
