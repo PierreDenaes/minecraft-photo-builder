@@ -15,6 +15,31 @@ function loadValid() {
   return VALID_BLOCKS;
 }
 
+// Chargement gardé de schem-refs.json (comme les autres data/*.json) : absent →
+// repli [] au lieu de MODULE_NOT_FOUND qui ferait échouer tous les analyzeSchema
+let SCHEM_REFS = null;
+function loadSchemRefs() {
+  if (SCHEM_REFS) return SCHEM_REFS;
+  try { SCHEM_REFS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'schem-refs.json'), 'utf8')); }
+  catch { SCHEM_REFS = []; }
+  return SCHEM_REFS;
+}
+
+// Matching tolérant : chaque type du catalogue matche si son mot-clé apparaît
+// dans le type libre de la vision ("maison_bretonne_en_pierre" → "maison")
+const TYPE_KEYWORDS = {
+  villa: ['villa'],
+  maison: ['maison', 'chaumiere', 'cottage', 'chalet'],
+  manoir: ['manoir', 'demeure', 'ferme', 'batisse'],
+  chateau: ['chateau', 'castle', 'castillo', 'forteresse', 'palais'],
+  tour: ['tour', 'phare', 'donjon']
+};
+function matchesType(schemaType, type) {
+  if (schemaType === type) return true;
+  const kws = TYPE_KEYWORDS[schemaType] || [schemaType];
+  return kws.some((kw) => type.includes(kw));
+}
+
 // nbt-ts retourne un plain object mais schematicjs attend un Map récursif.
 function toMap(v) {
   if (v && typeof v === 'object' && !(v instanceof Map) && !(v instanceof Buffer) && !Array.isArray(v) && !ArrayBuffer.isView(v)) {
@@ -81,7 +106,8 @@ async function loadSchema(nom) {
   const GROUND = /^(dirt|grass_block|coarse_dirt|podzol|farmland|dirt_path|rooted_dirt|gravel|mycelium)$/;
   const STRUCT_START_Y = 3; // au-delà de 3 blocs au-dessus du sol = structure
   if (blocks.length > 0) {
-    const minY = Math.min(...blocks.map((b) => b.y));
+    let minY = Infinity;
+    for (const b of blocks) if (b.y < minY) minY = b.y;
     // emprise du bâtiment = colonnes (x,z) qui portent au moins un bloc de STRUCTURE
     const structXZ = new Set();
     for (const b of blocks) {
@@ -123,43 +149,6 @@ function remapPalette(schema, mapping) {
   return { ...schema, blocks };
 }
 
-// STRICT : on ne propose que si un schema matche vraiment. Ordre de priorité :
-// 1. type_batiment exact + style exact
-// 2. type_batiment exact (peu importe le style)
-// 3. style exact (peu importe le type)
-// 4. null (aucun match → l'appelant décide d'afficher une erreur claire)
-async function chooseSchema(description) {
-  const catalog = loadCatalog();
-  if (catalog.length === 0) return null;
-  const type = (description.type_batiment || '').toLowerCase();
-  const style = (description.style || '').toLowerCase();
-  // Matching tolérant : chaque type du catalogue matche si son mot-clé apparaît
-  // dans le type libre de la vision ("maison_bretonne_en_pierre" → "maison")
-  const typeKeywords = {
-    villa: ['villa'],
-    maison: ['maison', 'chaumiere', 'cottage', 'chalet'],
-    manoir: ['manoir', 'demeure', 'ferme', 'batisse'],
-    chateau: ['chateau', 'castle', 'castillo', 'forteresse', 'palais'],
-    tour: ['tour', 'phare', 'donjon']
-  };
-  const matchType = (schemaType) => {
-    if (schemaType === type) return true;
-    const kws = typeKeywords[schemaType] || [schemaType];
-    return kws.some((kw) => type.includes(kw));
-  };
-  // Priorité 1 : type + style
-  let match = catalog.find((e) => matchType(e.type_batiment) && e.style === style);
-  if (match) return match;
-  // Priorité 2 : type seulement
-  match = catalog.find((e) => matchType(e.type_batiment));
-  if (match && catalog.some((e) => e.style === style)) return match;
-  // Priorité 3 : style seulement (donne au moins un style cohérent)
-  match = catalog.find((e) => e.style === style);
-  if (match) return match;
-  // Aucun match convaincant
-  return null;
-}
-
 // Retourne jusqu'à n schemas triés par pertinence — style_exact_et_type >
 // type_exact > style_exact. Utilisé par le mode RAG (I18) qui passe 2-3 exemples
 // au LLM plutôt qu'un seul.
@@ -168,22 +157,10 @@ async function chooseSchemas(description, n = 3) {
   if (catalog.length === 0) return [];
   const type = (description.type_batiment || '').toLowerCase();
   const style = (description.style || '').toLowerCase();
-  const typeKeywords = {
-    villa: ['villa'],
-    maison: ['maison', 'chaumiere', 'cottage', 'chalet'],
-    manoir: ['manoir', 'demeure', 'ferme', 'batisse'],
-    chateau: ['chateau', 'castle', 'castillo', 'forteresse', 'palais'],
-    tour: ['tour', 'phare', 'donjon']
-  };
-  const matchType = (schemaType) => {
-    if (schemaType === type) return true;
-    const kws = typeKeywords[schemaType] || [schemaType];
-    return kws.some((kw) => type.includes(kw));
-  };
   const scored = catalog.map((e) => {
     let score = 0;
     if (e.style === style) score += 10;
-    if (matchType(e.type_batiment)) score += 5;
+    if (matchesType(e.type_batiment, type)) score += 5;
     return { entry: e, score };
   }).filter((s) => s.score > 0);
   scored.sort((a, b) => b.score - a.score);
@@ -216,7 +193,7 @@ async function analyzeSchema(entry) {
       .slice(0, 3)
       .map(([bloc, count]) => ({ bloc, pct: Math.round((count / total) * 100) }));
   };
-  const refInfo = require('../data/schem-refs.json').find((r) => r.nom === entry.nom) || {};
+  const refInfo = loadSchemRefs().find((r) => r.nom === entry.nom) || {};
   return {
     nom: entry.nom,
     style: entry.style,
@@ -236,4 +213,4 @@ async function analyzeSchema(entry) {
   };
 }
 
-module.exports = { loadSchema, remapPalette, chooseSchema, chooseSchemas, analyzeSchema, listCatalog };
+module.exports = { loadSchema, remapPalette, chooseSchemas, analyzeSchema, listCatalog };

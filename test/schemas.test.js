@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('node:path');
-const { loadSchema, remapPalette, chooseSchema, listCatalog } = require('../src/schemas');
+const { loadSchema, remapPalette, listCatalog } = require('../src/schemas');
 
 // Fixture minimale : mock d'un schema après load — [{x, y, z, block}]
 function fakeSchema() {
@@ -66,30 +66,6 @@ test('listCatalog : retourne les entrées du catalogue', () => {
   }
 });
 
-test('chooseSchema : match direct par style + type_batiment', async () => {
-  const description = { style: 'moderne', type_batiment: 'villa', dimensions_estimees: { largeur: 20, profondeur: 15, hauteur: 8 } };
-  const choice = await chooseSchema(description);
-  assert.ok(choice, `sélection attendue pour villa moderne`);
-  assert.strictEqual(choice.style, 'moderne');
-});
-
-test('chooseSchema : STRICT — retourne null si aucun schema ne matche vraiment', async () => {
-  const description = { style: 'egyptien', type_batiment: 'pyramide', dimensions_estimees: { largeur: 50, profondeur: 50, hauteur: 30 } };
-  const choice = await chooseSchema(description);
-  assert.strictEqual(choice, null, 'aucun schema égyptien dans le catalogue → doit refuser');
-});
-
-test('chooseSchema : type_batiment libre "maison_bretonne_en_pierre" matche "maison"', async () => {
-  const description = { style: 'medieval', type_batiment: 'maison_bretonne_en_pierre' };
-  const choice = await chooseSchema(description);
-  // doit trouver un match sur "maison" mais SANS retourner un schema minuscule
-  if (choice) {
-    const emprise = choice.emprise;
-    const vol = emprise.x * emprise.y * emprise.z;
-    assert.ok(vol >= 500, `schema trop petit choisi : ${choice.nom} ${emprise.x}x${emprise.y}x${emprise.z}`);
-  }
-});
-
 test('loadSchema : filtre le terrain plat sous le bâtiment (dirt/grass en couche basse)', async () => {
   // 30843 a un vaste plateau d'herbe autour — on ne veut pas ce socle
   const s = await loadSchema('30843');
@@ -112,7 +88,7 @@ test('chooseSchemas : retourne un tableau trié par pertinence (jusqu\'à n sche
   assert.strictEqual(results[0].style, 'moderne');
 });
 
-test('chooseSchemas : n=1 se comporte comme chooseSchema (compat)', async () => {
+test('chooseSchemas : n=1 retourne un unique schema du bon style', async () => {
   const arr = await chooseSchemas({ style: 'rustique_organique', type_batiment: 'maison' }, 1);
   assert.strictEqual(arr.length, 1);
   assert.ok(['rustique_organique', 'medieval', 'autre'].includes(arr[0].style));
