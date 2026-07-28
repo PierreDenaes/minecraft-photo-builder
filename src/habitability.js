@@ -13,7 +13,9 @@ function isMonument(description) {
 }
 
 // Audit mécanique d'habitabilité : mesures sur les blocs, pas d'IA.
-// Retourne une liste de défauts précis, injectés dans la passe de correction.
+// Retourne une liste de défauts { code, message } (code parmi hauteur, entree,
+// escalier, facade, eau, fenetres, alignement) : message = phrase injectée dans
+// la passe de correction, code = classement stable pour auditChecks.
 // description (optionnelle) : la sortie vision, pour les attentes déclarées (baies...)
 function auditHabitability(blocks, description = {}) {
   if (!Array.isArray(blocks) || blocks.length === 0) return [];
@@ -69,7 +71,7 @@ function auditHabitability(blocks, description = {}) {
     clearances.sort((a, b) => a - b);
     const median = clearances[Math.floor(clearances.length / 2)];
     if (median < MIN_CLEARANCE) {
-      defects.push(`plancher y=${fy} : hauteur libre médiane ${median} bloc(s) sous le plafond — vise au moins 4`);
+      defects.push({ code: 'hauteur', message: `plancher y=${fy} : hauteur libre médiane ${median} bloc(s) sous le plafond — vise au moins 4` });
     }
   }
 
@@ -89,15 +91,15 @@ function auditHabitability(blocks, description = {}) {
     }
   }
   if (!entrance) {
-    defects.push('aucune entrée praticable (ouverture 1x2 sous linteau) au rez-de-chaussée — perce une porte');
+    defects.push({ code: 'entree', message: 'aucune entrée praticable (ouverture 1x2 sous linteau) au rez-de-chaussée — perce une porte' });
   }
 
   // 3. Accès vertical entre niveaux habitables consécutifs
   for (let i = 0; i + 1 < habitable.length; i++) {
     const [f1, f2] = [habitable[i], habitable[i + 1]];
-    const linked = blocks.some((b) => STAIR_OR_LADDER.test(b.block) && b.y > f1 && b.y < f2);
+    const linked = blocks.some((b) => STAIR_OR_LADDER.test(b.block) && b.y > f1 && b.y <= f2);
     if (!linked) {
-      defects.push(`aucun escalier ni échelle entre les niveaux y=${f1} et y=${f2} — relie-les (trémie dans le plancher + escaliers alignés)`);
+      defects.push({ code: 'escalier', message: `aucun escalier ni échelle entre les niveaux y=${f1} et y=${f2} — relie-les (trémie dans le plancher + escaliers alignés)` });
     }
   }
 
@@ -115,7 +117,7 @@ function auditHabitability(blocks, description = {}) {
     if (wall.length < 30) continue;
     const mats = new Set(wall.map((b) => baseOf(b.block)));
     if (mats.size < 3) {
-      defects.push(`façade ${name} : ${mats.size} matériau(x) seulement — varie (3 à 5, stairs/slabs/walls de la palette compris)`);
+      defects.push({ code: 'facade', message: `façade ${name} : ${mats.size} matériau(x) seulement — varie (3 à 5, stairs/slabs/walls de la palette compris)` });
     }
   }
 
@@ -123,7 +125,7 @@ function auditHabitability(blocks, description = {}) {
   const eauLibre = blocks.filter((b) => baseOf(b.block) === 'water'
     && !occ.has(`${b.x},${b.y - 1},${b.z}`));
   if (eauLibre.length > 0) {
-    defects.push(`eau non contenue : ${eauLibre.length} bloc(s) d'eau sans fond — creuse un bassin étanche (fond + parois)`);
+    defects.push({ code: 'eau', message: `eau non contenue : ${eauLibre.length} bloc(s) d'eau sans fond — creuse un bassin étanche (fond + parois)` });
   }
 
   // 4ter. Fenêtres promises par la vision mais absentes du bâti
@@ -132,7 +134,7 @@ function auditHabitability(blocks, description = {}) {
     const vitresMur = blocks.filter((b) => /^glass(\[|$)|^glass_pane(\[|$)/.test(b.block) && isBoundary(b.x, b.z)).length;
     const minVitres = Math.max(4, (description.etages || 1) * 2);
     if (vitresMur < minVitres) {
-      defects.push(`la photo montre des baies vitrées mais les murs n'ont que ${vitresMur} vitre(s) — perce de vraies fenêtres en glass_pane encadrées sur les façades`);
+      defects.push({ code: 'fenetres', message: `la photo montre des baies vitrées mais les murs n'ont que ${vitresMur} vitre(s) — perce de vraies fenêtres en glass_pane encadrées sur les façades` });
     }
   }
 
@@ -148,7 +150,7 @@ function auditHabitability(blocks, description = {}) {
       const haut = winsIn(f2, f2 + gap);
       if (bas.size === 0 || haut.size === 0) continue;
       if (![...haut].some((c) => bas.has(c))) {
-        defects.push(`fenêtres désalignées sur la façade ${name} entre les niveaux y=${f1} et y=${f2} — aligne les colonnes de baies`);
+        defects.push({ code: 'alignement', message: `fenêtres désalignées sur la façade ${name} entre les niveaux y=${f1} et y=${f2} — aligne les colonnes de baies` });
       }
     }
   }
@@ -160,15 +162,15 @@ function auditHabitability(blocks, description = {}) {
 // (« Hauteur sous plafond ✓ / Portes & accès ✗ ... ») dans le chat
 function auditChecks(blocks, description = {}) {
   const defects = auditHabitability(blocks, description);
-  const has = (re) => defects.some((d) => re.test(d));
+  const codes = new Set(defects.map((d) => d.code));
   return [
-    { name: 'Hauteur sous plafond', passed: !has(/hauteur libre/i) },
-    { name: 'Portes & accès', passed: !has(/entrée/i) },
-    { name: 'Escaliers praticables', passed: !has(/escalier|accès/i) },
-    // regex ancré sur le préfixe des defects de façades uniformes (line 82 dans
-     // auditHabitability) — pas de faux positif sur "fenêtres désalignées sur la façade..."
-    { name: 'Murs cohérents', passed: !has(/^façade [xz]=/i) },
-    { name: 'Bâtiment habitable', passed: !has(/fenêtre|vitre|eau/i) }
+    { name: 'Hauteur sous plafond', passed: !codes.has('hauteur') },
+    { name: 'Portes & accès', passed: !codes.has('entree') },
+    { name: 'Escaliers praticables', passed: !codes.has('escalier') },
+    // alignement rejoint la cohérence des murs (défaut esthétique de façade)
+    { name: 'Murs cohérents', passed: !codes.has('facade') && !codes.has('alignement') },
+    // habitabilité de fond : fenêtres manquantes, eau non contenue
+    { name: 'Bâtiment habitable', passed: !codes.has('fenetres') && !codes.has('eau') }
   ];
 }
 

@@ -20,7 +20,7 @@ function twoFloors(w = 14, d = 10) {
 
 test('carveStaircase : cage unique taillée, trémie percée, défaut d\'accès résolu', () => {
   const before = twoFloors();
-  assert.ok(auditHabitability(before).some((dd) => /escalier/.test(dd)), 'le bâtiment de départ doit être en défaut');
+  assert.ok(auditHabitability(before).some((dd) => /escalier/.test(dd.message)), 'le bâtiment de départ doit être en défaut');
   const { blocks, carved } = carveStaircase(before);
   assert.ok(carved > 0, 'au moins un escalier taillé');
   const stairs = blocks.filter((b) => /oak_stairs\[facing=/.test(b.block));
@@ -31,7 +31,7 @@ test('carveStaircase : cage unique taillée, trémie percée, défaut d\'accès 
   // même facing pour toute la volée
   assert.strictEqual(new Set(stairs.map((b) => b.block)).size, 1);
   // l'audit d'accès passe désormais
-  assert.ok(!auditHabitability(blocks).some((dd) => /escalier/.test(dd)));
+  assert.ok(!auditHabitability(blocks).some((dd) => /escalier/.test(dd.message)));
   // la trémie existe : des cases du plancher y4 ont été retirées
   const slabAt4 = blocks.filter((b) => b.y === 4 && b.block === 'oak_planks').length;
   assert.ok(slabAt4 < 14 * 10, 'trémie attendue dans le plancher');

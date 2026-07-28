@@ -330,7 +330,7 @@ function createBot(cfg) {
         // Monuments : l'habitabilité ne s'applique pas, seule la critique visuelle compte
         const defauts = isMonument(description) ? [] : auditHabitability(blocks, description);
         const defautsText = defauts.length > 0
-          ? `Défauts structurels MESURÉS (tour ${round}) — corrige-les impérativement :\n- ${defauts.join('\n- ')}`
+          ? `Défauts structurels MESURÉS (tour ${round}) — corrige-les impérativement :\n- ${defauts.map((d) => d.message).join('\n- ')}`
           : '';
         if (!critique && !defautsText) {
           if (round === 1) bot.chat('Rendu jugé fidèle (RAS) — pas de correction nécessaire.');
@@ -358,7 +358,7 @@ function createBot(cfg) {
     if (checks.every((c) => c.passed)) bot.chat('VALIDÉ ✓');
     else {
       const restants = auditHabitability(blocks, description);
-      if (restants.length > 0) bot.chat(`⚠ Défauts restants : ${restants.join(' ; ')}`.slice(0, 250));
+      if (restants.length > 0) bot.chat(`⚠ Défauts restants : ${restants.map((d) => d.message).join(' ; ')}`.slice(0, 250));
     }
     bot.chat('Étape 4/4 : décoration intérieure...');
     const decor = await decorateInterior(blocks, description, { client: apiClient, timeoutMs: cfg.limits.sandbox_timeout_ms });
