@@ -1,7 +1,13 @@
 {
   "name": "minecraft-photo-builder",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "description": "Bot Minecraft (Mineflayer) qui construit en jeu à partir d'une photo, d'un modèle 3D ou d'un texte, via l'API Claude.",
+  "license": "MIT",
+  "author": "Pierre-Jacques Denaes",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PierreDenaes/minecraft-photo-builder.git"
+  },
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

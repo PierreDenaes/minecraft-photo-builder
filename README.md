@@ -1,6 +1,8 @@
 # Minecraft Photo Builder
 
-Bot Minecraft (Mineflayer) qui construit en jeu à partir d'une **photo**, d'un **modèle 3D** ou d'une simple envie de fresque. L'analyse visuelle et l'architecture sont confiées à Claude (`claude-sonnet-4-6`), la géométrie et la physique à des passes mécaniques testées.
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
+Bot Minecraft (Mineflayer) qui construit en jeu à partir d'une **photo**, d'un **modèle 3D**, d'un **texte** ou d'une simple envie de fresque. L'analyse visuelle et l'architecture sont confiées à Claude, la géométrie et la physique à des passes mécaniques testées. Les modèles utilisés à chaque étape sont configurables (voir `config.json` → `models`).
 
 ## Capacités
 
@@ -10,7 +12,7 @@ Bot Minecraft (Mineflayer) qui construit en jeu à partir d'une **photo**, d'un 
 | `!diorama` | Copie conforme : photo de paysage (profondeur estimée localement par Depth Anything V2) **ou** modèle 3D `.obj`/`.stl`/`.glb` (textures, couleurs de sommets et STRIP/FAN lus). Mode « inspire » par défaut : le modèle sert de référence, l'IA reconstruit un bâtiment habitable posé sur un relief naturel avec sous-sol (strates, cavités, minerais) et végétation. Cadrage intelligent : une maison seule est posée seule, sans colline inventée |
 | `!statue` | Statue voxelisée d'un modèle 3D de personnage, sur socle, palette couleurs vives. Le fichier fait foi pour l'orientation : `!tourner` (90° yaw) et `!redresser` (pitch) avant **ou** après construction |
 | `!portrait` | Fresque murale pixel-art d'un bloc d'épaisseur avec cadre, mapping couleur sur toute la palette |
-| `!schema` | Génère un bâtiment avec les primitives EN S'INSPIRANT de 2-3 schemas du même style de la bibliothèque (`docs/schem/*.schem`). Le LLM reçoit les matériaux par zone (fondation/murs/toit) et les proportions des schemas comme exemples pour reproduire la photo. Bascule automatique sur `!photo` si aucun schema n'a le style demandé. |
+| `!schema` | Génère un bâtiment avec les primitives EN S'INSPIRANT de 2-3 schemas du même style d'une bibliothèque locale de `.schem`. Le LLM reçoit les matériaux par zone (fondation/murs/toit) et les proportions des schemas comme exemples. Bascule automatique sur `!photo` si aucun schema n'est disponible (voir la note plus bas — la bibliothèque n'est pas fournie dans le dépôt). |
 | `!go` / `!cancel` | Confirme ou annule la proposition en attente |
 | `!status` | Avancement de la construction |
 | `!undo` | Restaure la zone d'avant la dernière construction |
@@ -56,15 +58,24 @@ Rejoindre `localhost:25565` avec un client 1.20.4, puis taper `!photo` (ou autre
 - `limits.diorama` : 160×120×120, 2 500 000 blocs
 - `reconstruction` : `"inspire"` (défaut, reconstruction IA) ou `"brut"` (voxelisation directe du modèle)
 - `throttle_cmds_per_tick` : 16 commandes / 50 ms
+- `models` : identifiants des modèles Claude par étape (`generator`, `vision_analyse`,
+  `vision_critique`, `decorateur_roles`, `palette_themes`, `websearch_refine`, `websearch_pick`).
+  Un seul endroit pour changer de modèle ou suivre une montée de version. La variable
+  d'environnement `GENERATOR_MODEL` reste prioritaire sur `models.generator`.
+
+> **Note `!schema`** : la bibliothèque de schemas de référence (`.schem` de bâtiments
+> réels) n'est **pas incluse** dans le dépôt — ces fichiers sont du contenu tiers. Sans
+> elle, `!schema` bascule automatiquement sur `!photo`. Pour l'activer, déposez vos propres
+> `.schem` et régénérez le catalogue avec `npm run schem`.
 
 ## Développement
 
 ```bash
-npm test              # 200 tests (node:test)
+npm test              # ~495 tests (node:test natif, sans dépendance)
 npm run server:reset  # réinitialise le monde
 ```
 
-Architecture dans `src/` (un module par responsabilité : vision, generator, voxelizer, meshvoxelizer, palette, terrain, subsurface, support, decorator, habitability, portrait, builder, optimizer, chat, webserver). Spécifications des itérations dans `docs/superpowers/specs/`, pistes d'amélioration dans `docs/audit-ameliorations-2026-07-19.md` (FAWE + schematics, détourage BiRefNet, simplification GLB, TripoSR).
+Architecture dans `src/` (un module par responsabilité : vision, generator, voxelizer, meshvoxelizer, palette, terrain, subsurface, support, decorator, habitability, portrait, builder, optimizer, chat, webserver). Voir [CONTRIBUTING.md](CONTRIBUTING.md) pour le workflow de contribution.
 
 ## `!build <texte>` — construire depuis une description
 
@@ -90,3 +101,7 @@ Le bot mémorise chaque construction confirmée (`!go`) et le joueur peut la not
 
 Stockage : `data/memoire/cases/`.
 Effacer la mémoire : `rm -rf data/memoire/`.
+
+## Licence
+
+Sous licence **MIT** — voir [LICENSE](LICENSE). Contributions bienvenues : voir [CONTRIBUTING.md](CONTRIBUTING.md).
