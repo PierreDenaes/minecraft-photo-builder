@@ -29,6 +29,19 @@ Chaque commande affiche le lien d'upload (`http://localhost:3000/upload/<pseudo>
 - **Sandbox** : tout code généré par le LLM s'exécute dans `vm` avec timeout, blocs validés contre une liste blanche (états `[facing=...]` à charset strict), coordonnées bornées.
 - **Robustesse** : voxelisation asynchrone (le bot répond au keep-alive pendant les gros calculs), reconnexion automatique en 5 s, commandes throttlées (16/tick), `!undo` par snapshot.
 
+## Exemples de rendus
+
+Constructions réelles produites en jeu :
+
+| | |
+|---|---|
+| ![Tour Eiffel (!build)](assets/rendu-tour-eiffel.png) | ![Gratte-ciel effilé (!build)](assets/rendu-gratte-ciel.png) |
+| **Tour Eiffel** — `!build tour eiffel` (treillis + étages) | **Gratte-ciel effilé** — `!build` (étages en retrait + flèche) |
+| ![Villa moderne (!photo)](assets/rendu-villa-moderne.png) | ![Le Cri de Munch (!portrait)](assets/rendu-portrait-munch.png) |
+| **Villa moderne** — `!photo` (baies vitrées, piscine, jardin) | **Le Cri de Munch** — `!portrait` (fresque pixel-art) |
+| ![Statue de personnage (!statue)](assets/rendu-statue-pirate.png) | ![Deux statues (!statue)](assets/rendu-statues.png) |
+| **Statue** — `!statue` (modèle 3D voxelisé sur socle) | **Statues** — `!statue` (personnages, palette couleurs vives) |
+
 ## Installation
 
 Prérequis : Node.js ≥ 20.12, Docker (pour le serveur de test), une clé API Anthropic.
