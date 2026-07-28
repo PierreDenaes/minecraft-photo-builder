@@ -4,7 +4,12 @@ const path = require('node:path');
 // Almanach de construction : source de vérité éditoriale (data/almanach-construction.md).
 // Injection SÉLECTIVE par sections dans les messages utilisateur — jamais intégrale,
 // jamais dans le system (qui reste stable pour le prompt caching).
-const md = fs.readFileSync(path.join(__dirname, '../data/almanach-construction.md'), 'utf8');
+let md;
+try {
+  md = fs.readFileSync(path.join(__dirname, '../data/almanach-construction.md'), 'utf8');
+} catch (err) {
+  throw new Error(`data/almanach-construction.md manquant ou illisible (${err.message}) — l'almanach est requis par les prompts du générateur, restaure-le depuis le dépôt`);
+}
 
 const sections = new Map();
 for (const chunk of md.split(/\n## /).slice(1)) {

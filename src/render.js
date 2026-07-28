@@ -30,7 +30,8 @@ async function renderVoxels(blocks, colors, { scale = 2 } = {}) {
   };
   const ordered = [...blocks].sort((a, b2) => (a.x + a.z) - (b2.x + b2.z) || a.y - b2.y);
   for (const b of ordered) {
-    const c = colors.get(b.block) || [128, 128, 128];
+    // lookup sur le nom de base : les états ([facing=...]) ne changent pas la couleur
+    const c = colors.get(b.block.replace(/\[[^\]]*\]$/, '')) || [128, 128, 128];
     const { u, v } = proj(b);
     const px = (u - minU) * scale;
     const py = (v - minV) * scale;

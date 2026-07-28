@@ -94,3 +94,28 @@ test('rotateY ×4 = identité (coordonnées ET états)', () => {
   const key = (a) => a.map((b) => `${b.x},${b.y},${b.z},${b.block}`).sort();
   assert.deepStrictEqual(key(cur), key(initial));
 });
+
+// === Corrections audit 27/07 (CORRECTIONS-petits-modules.md) ===
+test('enforceSupport : l\'air explicite n\'est ni porteur ni élagable', () => {
+  // un bloc air isolé en l'air doit survivre ; il ne doit pas "soutenir" de solide
+  const { blocks, removed } = enforceSupport([
+    { x: 0, y: 0, z: 0, block: 'stone' },
+    { x: 5, y: 5, z: 5, block: 'air' }
+  ]);
+  assert.strictEqual(removed, 0);
+  assert.ok(blocks.some((b) => b.x === 5 && b.y === 5 && b.z === 5 && b.block === 'air'), 'air conservé');
+  assert.ok(blocks.some((b) => b.x === 0 && b.block === 'stone'), 'stone de base conservé');
+});
+
+test('enforceSupport : un solide flottant relié seulement par de l\'air est élagué', () => {
+  // colonne au sol + solide flottant séparé, "relié" uniquement via une case air :
+  // l'air ne transmet pas le support → le solide flottant tombe
+  const { blocks } = enforceSupport([
+    { x: 0, y: 0, z: 0, block: 'stone' },
+    { x: 0, y: 1, z: 0, block: 'air' },
+    { x: 0, y: 2, z: 0, block: 'stone' } // flottant, séparé du sol par de l'air
+  ]);
+  assert.ok(blocks.some((b) => b.x === 0 && b.y === 0 && b.block === 'stone'), 'base gardée');
+  assert.ok(blocks.some((b) => b.y === 1 && b.block === 'air'), 'air toujours conservé');
+  assert.ok(!blocks.some((b) => b.y === 2 && b.block === 'stone'), 'solide flottant élagué (air non porteur)');
+});

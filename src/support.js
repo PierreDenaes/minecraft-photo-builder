@@ -2,12 +2,17 @@
 function enforceSupport(blocks) {
   if (blocks.length === 0) return { blocks: [], removed: 0 };
   const key = (x, y, z) => `${x},${y},${z}`;
-  const all = new Set(blocks.map((b) => key(b.x, b.y, b.z)));
+  // Les blocs 'air' explicites (tunnels d'arche, trémies) ne sont NI porteurs
+  // NI élagables : ils sont exclus du graphe et toujours conservés en sortie
+  const solids = blocks.filter((b) => b.block !== 'air');
+  const airs = blocks.filter((b) => b.block === 'air');
+  if (solids.length === 0) return { blocks, removed: 0, guard: true };
+  const all = new Set(solids.map((b) => key(b.x, b.y, b.z)));
   let minY = Infinity;
-  for (const b of blocks) if (b.y < minY) minY = b.y;
+  for (const b of solids) if (b.y < minY) minY = b.y;
   const kept = new Set();
   const queue = [];
-  for (const b of blocks) {
+  for (const b of solids) {
     if (b.y === minY) {
       const k = key(b.x, b.y, b.z);
       kept.add(k);
@@ -24,14 +29,14 @@ function enforceSupport(blocks) {
       }
     }
   }
-  const out = blocks.filter((b) => kept.has(key(b.x, b.y, b.z)));
+  const out = solids.filter((b) => kept.has(key(b.x, b.y, b.z)));
   // Garde-fou : si la couche de base est un artefact (voxel bas isolé), la quasi-totalité
   // du bâtiment serait « flottante » — mieux vaut tout conserver que proposer un moignon
-  if (out.length < blocks.length * 0.25) {
+  if (out.length < solids.length * 0.25) {
     console.warn('[support] couche de base anormale — structure conservée telle quelle');
     return { blocks, removed: 0, guard: true };
   }
-  return { blocks: out, removed: blocks.length - out.length, guard: false };
+  return { blocks: out.concat(airs), removed: solids.length - out.length, guard: false };
 }
 
 // Rotation 90° horaire vue de dessus : est→nord→ouest→sud→est

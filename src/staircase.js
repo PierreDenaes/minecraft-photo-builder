@@ -14,6 +14,10 @@ function carveStaircase(blocks) {
   const occ = new Map();
   for (const b of blocks) occ.set(`${b.x},${b.y},${b.z}`, b);
 
+  // Limitation connue : seuls les blocs _stairs du LLM sont retirés, pas leurs
+  // masses de soutien (colonnes de planks posées par la primitive escalier) —
+  // impossible de les distinguer d'un mur porteur. Des piliers orphelins peuvent
+  // subsister là où une volée LLM a été supprimée.
   // 1. Retirer les escaliers intérieurs du LLM (entre planchers, hors coquille)
   const isInterior = (b) => b.x > 0 && b.x < d.x - 1 && b.z > 0 && b.z < d.z - 1;
   const betweenFloors = (y) => floors.some((f, i) => i + 1 < floors.length && y > f && y <= floors[i + 1]);
@@ -54,10 +58,10 @@ function carveStaircase(blocks) {
     if (!strip) continue;
     const { x0, z } = strip;
     // 3. Trémie : retirer le plancher f2 au-dessus des marches hautes (têtes libres)
+    // Trémie : cases i=1..gap-1 uniquement — le palier d'arrivée (x0+gap) reste
+    // plein, le joueur débouche DESSUS
     const tremie = new Set();
     for (let i = 1; i < gap; i++) tremie.add(`${x0 + i},${f2},${z}`);
-    tremie.add(`${x0 + gap},${f2},${z}`); // palier d'arrivée dégagé ? non : le palier est SUR f2
-    tremie.delete(`${x0 + gap},${f2},${z}`);
     kept = kept.filter((b) => !tremie.has(`${b.x},${b.y},${b.z}`));
     // 4. Marches + masse de soutien pleine sous chaque marche
     for (let i = 0; i < gap; i++) {

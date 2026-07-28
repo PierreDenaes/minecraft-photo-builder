@@ -33,3 +33,17 @@ test('bloc inconnu rendu en gris moyen sans erreur', async () => {
   }
   assert.ok(found);
 });
+
+// === Corrections audit 27/07 (CORRECTIONS-petits-modules.md) ===
+test('renderVoxels : lookup couleur sur le nom de base (stairs à états, plus de gris)', async () => {
+  const cmap = new Map([['dark_oak_stairs', [60, 40, 20]]]);
+  const blocks = [{ x: 0, y: 0, z: 0, block: 'dark_oak_stairs[facing=north,half=bottom]' }];
+  const png = await renderVoxels(blocks, cmap, { scale: 2 });
+  const { data, info } = await sharp(png).raw().toBuffer({ resolveWithObject: true });
+  // au moins un pixel doit porter la couleur dark_oak (pas le gris 128 de repli)
+  let found = false;
+  for (let i = 0; i + 2 < data.length; i += info.channels) {
+    if (Math.abs(data[i] - 60) < 20 && Math.abs(data[i + 1] - 40) < 20 && Math.abs(data[i + 2] - 20) < 20) { found = true; break; }
+  }
+  assert.ok(found, 'le toit en stairs doit être brun, pas gris 128');
+});
