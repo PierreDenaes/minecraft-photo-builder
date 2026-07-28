@@ -224,3 +224,83 @@ test('GLB matériau alpha 0 : géométrie invisible ignorée', async () => {
   const { triangles } = await parseModel(makeTexturedGLB(png, { alphaZero: true }), 'glb');
   assert.strictEqual(triangles.length, 0);
 });
+
+// === Corrections audit 27/07 (CORRECTIONS-mesh.md) ===
+const mesh = require('../src/mesh');
+
+test('parseSTL : buffer tronqué (< 84 o) → erreur claire, pas de RangeError', async () => {
+  await assert.rejects(() => parseModel(Buffer.alloc(50), 'stl'), /STL invalide ou tronqué/);
+});
+
+test('parseSTL : compteur mensonger (annonce 1000 triangles, buffer pour 1) → lit ce qui existe', async () => {
+  const buf = Buffer.alloc(84 + 50); // place pour 1 triangle
+  buf.writeUInt32LE(1000, 80);       // mais en annonce 1000
+  const base = 84 + 12;
+  [[0, 0, 0], [1, 0, 0], [0, 1, 0]].forEach((v, vi) => v.forEach((c, ci) => buf.writeFloatLE(c, base + vi * 12 + ci * 4)));
+  const { triangles } = await parseModel(buf, 'stl');
+  assert.strictEqual(triangles.length, 1); // pas de crash, on lit le triangle réel
+});
+
+test('parseOBJ : face aux sommets manquants ignorée + warning', async () => {
+  const obj = 'v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\nf 1 2 99\n'; // 99 hors bornes
+  const { triangles, warning } = await parseModel(Buffer.from(obj), 'obj');
+  assert.strictEqual(triangles.length, 1, 'seule la face valide est conservée');
+  assert.match(warning, /face\(s\) avec sommets manquants/);
+});
+
+test('helpers mat4 exportés : nodeLocalMatrix + mat4TransformPoint (translation)', () => {
+  assert.strictEqual(typeof mesh.nodeLocalMatrix, 'function');
+  const m = mesh.nodeLocalMatrix({ translation: [10, 0, 0] });
+  assert.deepStrictEqual(mesh.mat4TransformPoint(m, 1, 2, 3), [11, 2, 3]);
+});
+
+test('helpers mat4 : rotation quart de tour autour Y', () => {
+  const m = mesh.nodeLocalMatrix({ rotation: [0, 0.7071068, 0, 0.7071068] });
+  const [x, y, z] = mesh.mat4TransformPoint(m, 1, 0, 0);
+  assert.ok(Math.abs(x - 0) < 1e-4, `x≈0, obtenu ${x}`);
+  assert.ok(Math.abs(y - 0) < 1e-4, `y≈0, obtenu ${y}`);
+  assert.ok(Math.abs(z - (-1)) < 1e-4, `z≈-1, obtenu ${z}`);
+});
+
+// GLB à deux nodes translatés : le mesh doit être placé selon le graphe de scène
+function makeTwoNodeGLB() {
+  const positions = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]);
+  const indices = new Uint16Array([0, 1, 2]);
+  const bin = Buffer.concat([Buffer.from(positions.buffer), Buffer.from(indices.buffer)]);
+  const binPad = Buffer.concat([bin, Buffer.alloc((4 - (bin.length % 4)) % 4)]);
+  const json = {
+    asset: { version: '2.0' },
+    scenes: [{ nodes: [0, 1] }],
+    nodes: [
+      { mesh: 0 },                              // à l'origine
+      { mesh: 0, translation: [100, 0, 0] }     // décalé de +100 en x
+    ],
+    meshes: [{ primitives: [{ attributes: { POSITION: 0 }, indices: 1, material: 0 }] }],
+    materials: [{ pbrMetallicRoughness: { baseColorFactor: [1, 0, 0, 1] } }],
+    accessors: [
+      { bufferView: 0, componentType: 5126, count: 3, type: 'VEC3' },
+      { bufferView: 1, componentType: 5123, count: 3, type: 'SCALAR' }
+    ],
+    bufferViews: [
+      { buffer: 0, byteOffset: 0, byteLength: 36 },
+      { buffer: 0, byteOffset: 36, byteLength: 6 }
+    ],
+    buffers: [{ byteLength: binPad.length }]
+  };
+  let jsonBuf = Buffer.from(JSON.stringify(json));
+  jsonBuf = Buffer.concat([jsonBuf, Buffer.alloc((4 - (jsonBuf.length % 4)) % 4, 0x20)]);
+  const header = Buffer.alloc(12);
+  header.writeUInt32LE(0x46546c67, 0); header.writeUInt32LE(2, 4);
+  header.writeUInt32LE(12 + 8 + jsonBuf.length + 8 + binPad.length, 8);
+  const jh = Buffer.alloc(8); jh.writeUInt32LE(jsonBuf.length, 0); jh.writeUInt32LE(0x4e4f534a, 4);
+  const bh = Buffer.alloc(8); bh.writeUInt32LE(binPad.length, 0); bh.writeUInt32LE(0x004e4942, 4);
+  return Buffer.concat([header, jh, jsonBuf, bh, binPad]);
+}
+
+test('parseGLB : transforms du graphe de scène appliqués (2 nodes, un translaté)', async () => {
+  const { triangles } = await parseModel(makeTwoNodeGLB(), 'glb');
+  assert.strictEqual(triangles.length, 2, '2 instances du mesh (une par node)');
+  const xs = triangles.flatMap((t) => [t.a[0], t.b[0], t.c[0]]);
+  assert.ok(xs.some((x) => x >= 100), 'le node translaté doit décaler la géométrie de +100 en x');
+  assert.ok(xs.some((x) => x < 100), 'le node à l\'origine reste près de 0');
+});

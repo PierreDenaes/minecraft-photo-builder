@@ -4,6 +4,7 @@ function parseOBJ(text) {
   const verts = [];
   const triangles = [];
   let sawMtl = false;
+  let badFaces = 0;
   for (const line of text.split('\n')) {
     const parts = line.trim().split(/\s+/);
     if (parts[0] === 'v') {
@@ -16,31 +17,42 @@ function parseOBJ(text) {
         return i > 0 ? i - 1 : verts.length + i;
       });
       for (let k = 1; k + 1 < idx.length; k++) {
-        triangles.push({ a: verts[idx[0]], b: verts[idx[k]], c: verts[idx[k + 1]], color: null });
+        const A = verts[idx[0]], B = verts[idx[k]], C = verts[idx[k + 1]];
+        if (!A || !B || !C) { badFaces++; continue; }
+        triangles.push({ a: A, b: B, c: C, color: null });
       }
     }
   }
   const result = { triangles };
-  if (sawMtl) result.warning = 'matériaux MTL non fournis (upload mono-fichier) : blocs par défaut';
+  const warnings = [];
+  if (sawMtl) warnings.push('matériaux MTL non fournis (upload mono-fichier) : blocs par défaut');
+  if (badFaces > 0) warnings.push(`${badFaces} face(s) avec sommets manquants ignorée(s)`);
+  if (warnings.length > 0) result.warning = warnings.join(' ; ');
   return result;
 }
 
-function parseSTL(buffer) {
-  const isBinarySized = buffer.length >= 84 && buffer.length === 84 + buffer.readUInt32LE(80) * 50;
-  const head = buffer.toString('ascii', 0, Math.min(buffer.length, 512));
-  if (!isBinarySized && head.trimStart().startsWith('solid') && head.includes('facet')) {
-    const triangles = [];
-    const verts = [];
-    for (const m of buffer.toString('ascii').matchAll(/vertex\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)/g)) {
-      verts.push([Number(m[1]), Number(m[2]), Number(m[3])]);
-      if (verts.length === 3) {
-        triangles.push({ a: verts[0], b: verts[1], c: verts[2], color: null });
-        verts.length = 0;
-      }
+function parseSTLAscii(text) {
+  const triangles = [];
+  const verts = [];
+  for (const m of text.matchAll(/vertex\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)/g)) {
+    verts.push([Number(m[1]), Number(m[2]), Number(m[3])]);
+    if (verts.length === 3) {
+      triangles.push({ a: verts[0], b: verts[1], c: verts[2], color: null });
+      verts.length = 0;
     }
-    return { triangles };
   }
-  const count = buffer.readUInt32LE(80);
+  return { triangles };
+}
+
+function parseSTL(buffer) {
+  const head = buffer.toString('ascii', 0, Math.min(buffer.length, 512));
+  const looksAscii = head.trimStart().startsWith('solid') && head.includes('facet');
+  const isBinarySized = buffer.length >= 84 && buffer.length === 84 + buffer.readUInt32LE(80) * 50;
+  if (!isBinarySized && looksAscii) return parseSTLAscii(buffer.toString('ascii'));
+  if (buffer.length < 84) throw new Error('STL invalide ou tronqué (en-tête binaire incomplet)');
+  const declared = buffer.readUInt32LE(80);
+  const count = Math.min(declared, Math.floor((buffer.length - 84) / 50));
+  if (count < declared) console.warn(`[mesh] STL tronqué : ${count}/${declared} triangles lus`);
   const triangles = [];
   for (let t = 0; t < count; t++) {
     const off = 84 + t * 50 + 12;
@@ -52,6 +64,44 @@ function parseSTL(buffer) {
 
 const GLB_COMPONENT = { 5120: Int8Array, 5121: Uint8Array, 5122: Int16Array, 5123: Uint16Array, 5125: Uint32Array, 5126: Float32Array };
 
+const MAT4_IDENTITY = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+
+// a × b, colonne-major (convention glTF)
+function mat4Multiply(a, b) {
+  const out = new Array(16);
+  for (let c = 0; c < 4; c++) {
+    for (let r = 0; r < 4; r++) {
+      out[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
+    }
+  }
+  return out;
+}
+
+// matrice locale d'un node : node.matrix si présent, sinon composition T×R×S
+// (quaternion glTF [x,y,z,w])
+function nodeLocalMatrix(node) {
+  if (node.matrix) return node.matrix;
+  const t = node.translation || [0, 0, 0];
+  const [x, y, z, w] = node.rotation || [0, 0, 0, 1];
+  const s = node.scale || [1, 1, 1];
+  return [
+    (1 - 2 * (y * y + z * z)) * s[0], (2 * (x * y + z * w)) * s[0], (2 * (x * z - y * w)) * s[0], 0,
+    (2 * (x * y - z * w)) * s[1], (1 - 2 * (x * x + z * z)) * s[1], (2 * (y * z + x * w)) * s[1], 0,
+    (2 * (x * z + y * w)) * s[2], (2 * (y * z - x * w)) * s[2], (1 - 2 * (x * x + y * y)) * s[2], 0,
+    t[0], t[1], t[2], 1
+  ];
+}
+
+function mat4TransformPoint(m, x, y, z) {
+  return [
+    m[0] * x + m[4] * y + m[8] * z + m[12],
+    m[1] * x + m[5] * y + m[9] * z + m[13],
+    m[2] * x + m[6] * y + m[10] * z + m[14]
+  ];
+}
+
+// Limitations connues : accessors "sparse" non supportés (rares) ; skins et
+// morph targets ignorés (les meshes sont pris en pose de repos).
 async function parseGLB(buffer) {
   if (buffer.length < 20 || buffer.readUInt32LE(0) !== 0x46546c67) throw new Error('GLB invalide : magic absent');
   let offset = 12;
@@ -74,8 +124,20 @@ async function parseGLB(buffer) {
     const view = json.bufferViews[acc.bufferView];
     const Type = GLB_COMPONENT[acc.componentType];
     const comps = GLB_COMPS[acc.type] || 1;
-    const start = bin.byteOffset + (view.byteOffset || 0) + (acc.byteOffset || 0);
-    return new Type(bin.buffer.slice(start, start + acc.count * comps * Type.BYTES_PER_ELEMENT));
+    const elemBytes = comps * Type.BYTES_PER_ELEMENT;
+    const stride = view.byteStride || elemBytes;
+    const base = bin.byteOffset + (view.byteOffset || 0) + (acc.byteOffset || 0);
+    if (stride === elemBytes) {
+      return new Type(bin.buffer.slice(base, base + acc.count * elemBytes));
+    }
+    // buffer entrelacé : recopie élément par élément
+    // (offsets alignés par spec glTF sur BYTES_PER_ELEMENT)
+    const out = new Type(acc.count * comps);
+    for (let e = 0; e < acc.count; e++) {
+      const src = new Type(bin.buffer, base + e * stride, comps);
+      out.set(src, e * comps);
+    }
+    return out;
   }
 
   // Décodage paresseux des textures baseColor (photogrammétrie : couleurs dans les textures)
@@ -109,8 +171,29 @@ async function parseGLB(buffer) {
     return [tex.data[i], tex.data[i + 1], tex.data[i + 2]];
   }
 
+  // Parcours du graphe de scène : chaque node portant un mesh donne une instance
+  // (mesh, matrice monde). Un même mesh instancié par plusieurs nodes est
+  // volontairement dupliqué. Repli : GLB sans scenes/nodes → meshes à l'identité.
+  const meshInstances = [];
+  const roots = (json.scenes || []).flatMap((sc) => sc.nodes || []);
+  if (roots.length > 0 && Array.isArray(json.nodes)) {
+    const visit = (nodeIndex, parentM) => {
+      const node = json.nodes[nodeIndex];
+      if (!node) return;
+      const world = mat4Multiply(parentM, nodeLocalMatrix(node));
+      if (node.mesh !== undefined && json.meshes?.[node.mesh]) {
+        meshInstances.push({ mesh: json.meshes[node.mesh], matrix: world });
+      }
+      for (const child of node.children || []) visit(child, world);
+    };
+    for (const r of roots) visit(r, MAT4_IDENTITY);
+  }
+  if (meshInstances.length === 0) {
+    for (const mesh of json.meshes || []) meshInstances.push({ mesh, matrix: null });
+  }
+
   const triangles = [];
-  for (const mesh of json.meshes || []) {
+  for (const { mesh, matrix } of meshInstances) {
     for (const prim of mesh.primitives || []) {
       const mode = prim.mode === undefined ? 4 : prim.mode;
       if (![4, 5, 6].includes(mode)) continue;
@@ -159,7 +242,9 @@ async function parseGLB(buffer) {
           color = [Math.round(factor[0] * 255), Math.round(factor[1] * 255), Math.round(factor[2] * 255)];
         }
       }
-      const p = (i) => [pos[idx[i] * 3], pos[idx[i] * 3 + 1], pos[idx[i] * 3 + 2]];
+      const p = matrix
+        ? (i) => mat4TransformPoint(matrix, pos[idx[i] * 3], pos[idx[i] * 3 + 1], pos[idx[i] * 3 + 2])
+        : (i) => [pos[idx[i] * 3], pos[idx[i] * 3 + 1], pos[idx[i] * 3 + 2]];
       const vertColor = (i) => {
         const o = idx[i] * vcolComps;
         return [vcol[o] * vcolScale, vcol[o + 1] * vcolScale, vcol[o + 2] * vcolScale];
@@ -190,4 +275,4 @@ async function parseModel(buffer, ext) {
   throw new Error(`format non supporté : ${ext}`);
 }
 
-module.exports = { parseModel };
+module.exports = { parseModel, nodeLocalMatrix, mat4Multiply, mat4TransformPoint };
