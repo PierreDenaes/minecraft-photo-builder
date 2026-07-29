@@ -119,3 +119,42 @@ test('enforceSupport : un solide flottant relié seulement par de l\'air est él
   assert.ok(blocks.some((b) => b.y === 1 && b.block === 'air'), 'air toujours conservé');
   assert.ok(!blocks.some((b) => b.y === 2 && b.block === 'stone'), 'solide flottant élagué (air non porteur)');
 });
+
+// === Fix orientation !portrait (fresque face au joueur) ===
+const { orientFacingPlayer } = require('../src/support');
+
+// helper dims
+function dimsOf(b) {
+  return { x: Math.max(...b.map(o => o.x)) + 1, y: Math.max(...b.map(o => o.y)) + 1, z: Math.max(...b.map(o => o.z)) + 1 };
+}
+// fresque plate : plan X-Y, épaisseur 1 sur Z, face vers -Z
+function fresco() {
+  const out = [];
+  for (let x = 0; x < 5; x++) for (let y = 0; y < 3; y++) out.push({ x, y, z: 0, block: 'stone' });
+  return out;
+}
+
+test('orientFacingPlayer : joueur regardant NORD/SUD → fresque inchangée (déjà de face)', () => {
+  // yaw 0 = regard -Z (nord) ; yaw π = regard +Z (sud). |dz| domine → pas de rotation
+  for (const yaw of [0, Math.PI]) {
+    const d = dimsOf(orientFacingPlayer(fresco(), yaw));
+    assert.strictEqual(d.z, 1, `yaw=${yaw} : la fresque doit rester fine sur Z, obtenu z=${d.z}`);
+    assert.strictEqual(d.x, 5);
+  }
+});
+
+test('orientFacingPlayer : joueur regardant EST/OUEST → fresque pivotée (fine sur X)', () => {
+  // yaw π/2 = regard -X ou +X selon convention ; |dx| domine → rotation 90°
+  for (const yaw of [Math.PI / 2, -Math.PI / 2]) {
+    const d = dimsOf(orientFacingPlayer(fresco(), yaw));
+    assert.strictEqual(d.x, 1, `yaw=${yaw} : la fresque doit devenir fine sur X, obtenu x=${d.x}`);
+    assert.strictEqual(d.z, 5);
+  }
+});
+
+test('orientFacingPlayer : les états de blocs suivent la rotation (via rotateY)', () => {
+  const b = [{ x: 0, y: 0, z: 0, block: 'oak_stairs[facing=north,half=bottom]' }];
+  // yaw est/ouest → une rotation appliquée → facing change
+  const out = orientFacingPlayer(b, Math.PI / 2);
+  assert.match(out[0].block, /facing=(west|east)/, `orientation d'état attendue, obtenu ${out[0].block}`);
+});

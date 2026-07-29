@@ -70,4 +70,17 @@ function rotateX(blocks) {
   return blocks.map((b) => ({ ...b, y: b.z, z: maxY - b.y }));
 }
 
-module.exports = { enforceSupport, rotateY, rotateX };
+// Auto-oriente une structure PLATE (fresque !portrait, dans le plan X-Y, face
+// vers -Z) pour qu'elle fasse face au joueur quel que soit son regard.
+// Sans ça, la fresque n'est de face que si le joueur regarde nord/sud au !go ;
+// s'il regarde est/ouest il en voit la tranche. Convention regard mineflayer :
+// (dx, dz) = (-sin yaw, -cos yaw). Si l'axe X domine le regard → rotation 90°
+// (rotateY, qui réoriente aussi les états de blocs) pour rendre la fresque fine sur X.
+function orientFacingPlayer(blocks, yaw) {
+  const dx = -Math.sin(yaw);
+  const dz = -Math.cos(yaw);
+  if (Math.abs(dx) > Math.abs(dz)) return rotateY(blocks);
+  return blocks;
+}
+
+module.exports = { enforceSupport, rotateY, rotateX, orientFacingPlayer };

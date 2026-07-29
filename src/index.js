@@ -417,7 +417,7 @@ function createBot(cfg) {
       .resize(128, 96, { fit: 'inside' }).raw().toBuffer({ resolveWithObject: true });
     const blocks = portraitBlocks({ data, width: info.width, height: info.height }, { colors: colorsBati, frame: true });
     return proposeStructure(username, blocks, { type_batiment: `fresque (${info.width}x${info.height} pixels)` },
-      { maxSize: 130, maxBlocks: cfg.limits.max_blocks });
+      { maxSize: 130, maxBlocks: cfg.limits.max_blocks }, { facePlayer: true });
   }
 
   async function onPhoto(username, buffer, mimeType) {

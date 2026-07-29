@@ -1,4 +1,4 @@
-const { rotateY, rotateX } = require('./support');
+const { rotateY, rotateX, orientFacingPlayer } = require('./support');
 const memory = require('./memory');
 
 // Applique une rotation à la proposition ; si elle a un socle, seul le corps tourne
@@ -100,6 +100,12 @@ function createChatHandler({ bot, builder, config, pending, tpDelayMs = 1500, on
         const p = pending.get(pkey);
         if (!p) { bot.chat(`${username} : aucune proposition en attente. Envoie une photo avec !photo`); return; }
         const launch = (player) => {
+          // Fresque plate (!portrait) : l'auto-orienter face au joueur selon son
+          // regard, sinon elle n'est de face que s'il regarde nord/sud au !go.
+          if (p.facePlayer) {
+            p.blocks = orientFacingPlayer(p.blocks, player.entity.yaw);
+            p.size = sizeOf(p.blocks);
+          }
           const origin = builder.computeOrigin(player.entity.position, player.entity.yaw, p.size);
           let started;
           try {

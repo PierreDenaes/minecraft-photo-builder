@@ -490,3 +490,35 @@ test('!tourner après construction : photo et code conservés pour la mémoire',
     memory.saveCase = origSave;
   }
 });
+
+// === Fix orientation !portrait au !go (câblage facePlayer) ===
+
+test('!go : une proposition facePlayer est auto-orientée selon le yaw (est/ouest → pivot)', () => {
+  let builtBlocks = null;
+  const { pending, handle, bot } = setup({
+    startBuild: (blocks) => { builtBlocks = blocks; return { total: blocks.length }; }
+  });
+  // joueur regardant l'est/ouest (yaw π/2) → la fresque plate doit être pivotée
+  bot.players.Steve.entity.yaw = Math.PI / 2;
+  const fresco = [];
+  for (let x = 0; x < 5; x++) for (let y = 0; y < 3; y++) fresco.push({ x, y, z: 0, block: 'stone' });
+  pending.set('steve', { blocks: fresco, size: { x: 5, y: 3, z: 1 }, description: { type_batiment: 'fresque' }, facePlayer: true });
+  handle('Steve', '!go');
+  const dims = { x: Math.max(...builtBlocks.map(b => b.x)) + 1, z: Math.max(...builtBlocks.map(b => b.z)) + 1 };
+  assert.strictEqual(dims.x, 1, `fresque pivotée attendue (fine sur X), obtenu x=${dims.x}`);
+  assert.strictEqual(dims.z, 5);
+});
+
+test('!go : sans facePlayer, aucune rotation même en regardant est/ouest', () => {
+  let builtBlocks = null;
+  const { pending, handle, bot } = setup({
+    startBuild: (blocks) => { builtBlocks = blocks; return { total: blocks.length }; }
+  });
+  bot.players.Steve.entity.yaw = Math.PI / 2;
+  const fresco = [];
+  for (let x = 0; x < 5; x++) for (let y = 0; y < 3; y++) fresco.push({ x, y, z: 0, block: 'stone' });
+  pending.set('steve', { blocks: fresco, size: { x: 5, y: 3, z: 1 }, description: { type_batiment: 'fresque' } }); // pas de facePlayer
+  handle('Steve', '!go');
+  const dimX = Math.max(...builtBlocks.map(b => b.x)) + 1;
+  assert.strictEqual(dimX, 5, 'sans facePlayer, la structure ne doit pas pivoter');
+});
