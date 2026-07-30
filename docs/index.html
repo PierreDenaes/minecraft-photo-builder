@@ -82,6 +82,20 @@
   .lang button{background:transparent;border:0;color:var(--ink-faint);font-weight:700;
     padding:6px 10px;cursor:pointer;font-size:12px;font-family:var(--pixel)}
   .lang button.on{background:#1a2b20;color:var(--emerald)}
+  /* burger + mobile menu (hidden on desktop) */
+  .burger{display:none;flex-direction:column;justify-content:center;gap:4px;width:40px;height:36px;
+    padding:0;background:var(--panel);border:2px solid var(--line-2);cursor:pointer;flex-shrink:0}
+  .burger span{display:block;width:18px;height:2px;background:var(--emerald);margin:0 auto;transition:transform .2s ease,opacity .2s ease}
+  .burger[aria-expanded="true"] span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+  .burger[aria-expanded="true"] span:nth-child(2){opacity:0}
+  .burger[aria-expanded="true"] span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+  .mobile-menu{display:none;flex-direction:column;border-top:2px solid #1e2c23;
+    background:rgba(10,16,13,.98);padding:6px 0}
+  .mobile-menu a{padding:14px 24px;color:var(--ink);font-size:16px;font-weight:600;border-bottom:1px solid #16211b}
+  .mobile-menu a:last-child{border-bottom:0}
+  .mobile-menu a:hover{color:var(--emerald);background:var(--panel)}
+  .mobile-menu .mm-gh{color:var(--gold-2)}
+  .mobile-menu.open{display:flex;animation:lineIn .2s ease both}
 
   /* block buttons */
   .btn{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:16px;cursor:pointer;
@@ -251,8 +265,11 @@
     .hero-img{margin-left:0}
     .lede{max-width:none}
   }
-  @media (max-width:560px){
+  @media (max-width:640px){
     .nav-links{display:none}
+    .gh-btn{display:none}
+    .burger{display:flex}
+    .nav-inner{gap:10px}
   }
   @media (prefers-reduced-motion:reduce){
     *{animation:none!important;scroll-behavior:auto!important}
@@ -276,8 +293,17 @@
       <button data-lang="fr" class="on">FR</button>
       <button data-lang="en">EN</button>
     </div>
-    <a class="btn btn-gold" href="https://github.com/PierreDenaes/minecraft-photo-builder" target="_blank" rel="noopener">★ GitHub</a>
+    <a class="btn btn-gold gh-btn" href="https://github.com/PierreDenaes/minecraft-photo-builder" target="_blank" rel="noopener">★ GitHub</a>
+    <button class="burger" aria-label="Menu" aria-expanded="false" aria-controls="mobile-menu">
+      <span></span><span></span><span></span>
+    </button>
   </div>
+  <nav id="mobile-menu" class="mobile-menu" aria-label="Menu mobile">
+    <a href="#demo" data-i18n="nav_demo">Démo</a>
+    <a href="#build" data-i18n="nav_build">À construire</a>
+    <a href="#hood" data-i18n="nav_hood">Sous le capot</a>
+    <a class="mm-gh" href="https://github.com/PierreDenaes/minecraft-photo-builder" target="_blank" rel="noopener">★ GitHub</a>
+  </nav>
 </header>
 
 <a id="top"></a>
@@ -583,6 +609,18 @@ document.querySelectorAll('.lang button').forEach(b=>{
 let saved='fr';
 try{ saved = localStorage.getItem('mpb-lang') || 'fr'; }catch(e){}
 setLang(saved);
+
+// mobile menu
+const burger = document.querySelector('.burger');
+const mobileMenu = document.getElementById('mobile-menu');
+if(burger && mobileMenu){
+  const closeMenu = () => { mobileMenu.classList.remove('open'); burger.setAttribute('aria-expanded','false'); };
+  burger.addEventListener('click', () => {
+    const open = mobileMenu.classList.toggle('open');
+    burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  mobileMenu.querySelectorAll('a').forEach(a => a.addEventListener('click', closeMenu));
+}
 </script>
 </body>
 </html>
