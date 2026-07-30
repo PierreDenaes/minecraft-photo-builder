@@ -10,372 +10,420 @@
 <meta property="og:image" content="assets/presentation.png">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230b0f0d'/%3E%3Crect x='2' y='2' width='5' height='5' fill='%2340c463'/%3E%3Crect x='9' y='2' width='5' height='5' fill='%23f0b429'/%3E%3Crect x='2' y='9' width='5' height='5' fill='%23f0b429'/%3E%3Crect x='9' y='9' width='5' height='5' fill='%2340c463'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230a100d'/%3E%3Crect x='2' y='2' width='5' height='5' fill='%2357e07c'/%3E%3Crect x='9' y='2' width='5' height='5' fill='%23ffc433'/%3E%3Crect x='2' y='9' width='5' height='5' fill='%23ffc433'/%3E%3Crect x='9' y='9' width='5' height='5' fill='%2357e07c'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Silkscreen:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0b0f0d;
-    --bg-2:#0f1512;
-    --panel:#141b17;
-    --panel-2:#1a231d;
+    --bg:#0a100d;
     --ink:#e8f0ea;
     --ink-soft:#a9bcb0;
     --ink-faint:#6f8377;
-    --emerald:#40c463;
-    --emerald-bright:#57e07c;
-    --emerald-deep:#1f7a3f;
-    --gold:#f0b429;
-    --gold-soft:#f7d073;
+    --emerald:#57e07c;
+    --emerald-2:#3fbf5f;
+    --emerald-deep:#123f22;
+    --gold:#ffc433;
+    --gold-2:#ffd44d;
+    --gold-deep:#6b5514;
     --line:#243029;
-    --line-bright:#33443a;
-    --radius:14px;
-    --maxw:1120px;
-    --step:clamp(1rem,0.7rem + 1.4vw,1.5rem);
-    --shadow:0 18px 50px -20px rgba(0,0,0,.75);
+    --line-2:#33443a;
+    --panel:#141b17;
+    --panel-2:#111813;
+    --maxw:1140px;
+    --sans:"Space Grotesk",Helvetica,Arial,sans-serif;
+    --pixel:"Silkscreen",monospace;
+    --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{
-    margin:0;
-    background:
-      radial-gradient(1200px 600px at 80% -10%, rgba(64,196,99,.10), transparent 60%),
-      radial-gradient(900px 500px at 0% 10%, rgba(240,180,41,.07), transparent 55%),
-      var(--bg);
-    color:var(--ink);
-    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif;
-    line-height:1.6;
-    -webkit-font-smoothing:antialiased;
-    overflow-x:hidden;
-  }
-  /* Subtle voxel grid backdrop */
-  body::before{
-    content:"";
-    position:fixed;inset:0;
-    background-image:
-      linear-gradient(rgba(64,196,99,.035) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(64,196,99,.035) 1px,transparent 1px);
-    background-size:44px 44px;
-    mask-image:radial-gradient(circle at 50% 30%,#000 0%,transparent 75%);
-    pointer-events:none;z-index:0;
-  }
-  a{color:inherit;text-decoration:none}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:var(--emerald);text-decoration:none}
+  a:hover{color:var(--gold-2)}
   img{max-width:100%;display:block}
-  .wrap{width:min(var(--maxw),92vw);margin-inline:auto;position:relative;z-index:1}
-  .mono{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace}
-  .accent{color:var(--emerald-bright)}
-  .accent-gold{color:var(--gold-soft)}
+  ::selection{background:#2f7a45;color:#fff}
 
-  /* ---------- NAV ---------- */
+  @keyframes floaty{0%,100%{transform:translateY(0) rotate(var(--r,0deg))}50%{transform:translateY(-16px) rotate(var(--r,0deg))}}
+  @keyframes blinkPx{0%,100%{opacity:1}50%{opacity:.25}}
+  @keyframes lineIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @keyframes xpFill{from{width:4%}to{width:100%}}
+  @keyframes popIn{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:none}}
+  @keyframes cursorBlink{0%,49%{opacity:1}50%,100%{opacity:0}}
+
+  .shell{position:relative;min-height:100vh;
+    background:
+      radial-gradient(1100px 560px at 82% -8%, rgba(87,224,124,.13), transparent 60%),
+      radial-gradient(800px 480px at 0% 12%, rgba(255,196,51,.08), transparent 55%),
+      var(--bg)}
+  .grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:linear-gradient(rgba(87,224,124,.04) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(87,224,124,.04) 1px,transparent 1px);
+    background-size:40px 40px;
+    -webkit-mask-image:radial-gradient(circle at 50% 25%,#000 0%,transparent 72%);
+    mask-image:radial-gradient(circle at 50% 25%,#000 0%,transparent 72%)}
+  .wrap{width:min(var(--maxw),92vw);margin-inline:auto}
+  section{position:relative;z-index:1}
+
+  /* nav */
   header.nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(10px);
-    background:linear-gradient(180deg,rgba(11,15,13,.92),rgba(11,15,13,.7));
-    border-bottom:1px solid var(--line)}
-  .nav-inner{display:flex;align-items:center;gap:1rem;padding:.7rem 0}
-  .brand{display:flex;align-items:center;gap:.55rem;font-weight:800;letter-spacing:.3px}
-  .brand .cube{width:22px;height:22px;border-radius:5px;
-    background:conic-gradient(from 45deg,var(--emerald),var(--gold),var(--emerald));
-    box-shadow:inset 0 0 0 2px rgba(0,0,0,.25)}
-  .brand b{font-size:1.02rem}
+    background:linear-gradient(180deg,rgba(10,16,13,.94),rgba(10,16,13,.72));border-bottom:2px solid #1e2c23}
+  .nav-inner{display:flex;align-items:center;gap:14px;padding:11px 0}
+  .brand{display:flex;align-items:center;gap:10px;color:var(--ink);font-weight:700;letter-spacing:.3px}
+  .brand .px{display:grid;grid-template-columns:11px 11px;grid-template-rows:11px 11px;gap:2px}
+  .brand .px span:nth-child(1),.brand .px span:nth-child(4){background:var(--emerald)}
+  .brand .px span:nth-child(2),.brand .px span:nth-child(3){background:var(--gold)}
+  .brand b{font-family:var(--pixel);font-size:13px;letter-spacing:.5px}
   .nav-spacer{flex:1}
-  .nav-links{display:flex;align-items:center;gap:.4rem}
-  .nav a.link{padding:.5rem .7rem;border-radius:9px;color:var(--ink-soft);font-size:.94rem;font-weight:600}
-  .nav a.link:hover{color:var(--ink);background:var(--panel)}
-  .btn{display:inline-flex;align-items:center;gap:.5rem;font-weight:700;
-    padding:.6rem .95rem;border-radius:11px;border:1px solid transparent;cursor:pointer;
-    transition:transform .12s ease,box-shadow .12s ease,background .12s ease}
-  .btn:active{transform:translateY(1px)}
-  .btn-primary{background:linear-gradient(180deg,var(--emerald-bright),var(--emerald));color:#06210f;
-    box-shadow:0 6px 0 -1px var(--emerald-deep),0 12px 24px -10px rgba(64,196,99,.6)}
-  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 0 -1px var(--emerald-deep),0 18px 30px -12px rgba(64,196,99,.7)}
-  .btn-ghost{border-color:var(--line-bright);color:var(--ink);background:rgba(255,255,255,.02)}
-  .btn-ghost:hover{border-color:var(--emerald);color:var(--emerald-bright)}
-  .lang{display:flex;border:1px solid var(--line-bright);border-radius:10px;overflow:hidden}
+  .nav-links{display:flex;align-items:center;gap:4px}
+  .nav-links a{padding:8px 11px;color:var(--ink-soft);font-size:14.5px;font-weight:600}
+  .nav-links a:hover{color:var(--emerald)}
+  .lang{display:flex;border:2px solid #2a3a30;overflow:hidden}
   .lang button{background:transparent;border:0;color:var(--ink-faint);font-weight:700;
-    padding:.42rem .6rem;cursor:pointer;font-size:.85rem}
-  .lang button.on{background:var(--panel-2);color:var(--emerald-bright)}
+    padding:6px 10px;cursor:pointer;font-size:12px;font-family:var(--pixel)}
+  .lang button.on{background:#1a2b20;color:var(--emerald)}
 
-  /* ---------- HERO ---------- */
-  .hero{position:relative;padding:clamp(3rem,7vw,6rem) 0 clamp(2.5rem,5vw,4rem)}
-  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(1.5rem,4vw,3.5rem);align-items:center}
-  .eyebrow{display:inline-flex;align-items:center;gap:.5rem;font-size:.8rem;font-weight:700;
-    text-transform:uppercase;letter-spacing:.14em;color:var(--emerald-bright);
-    background:rgba(64,196,99,.08);border:1px solid rgba(64,196,99,.25);
-    padding:.35rem .7rem;border-radius:999px}
-  .eyebrow .dot{width:7px;height:7px;border-radius:2px;background:var(--emerald-bright);
-    box-shadow:0 0 10px var(--emerald-bright);animation:pulse 2.4s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-  h1.title{font-size:clamp(2.3rem,1.4rem + 3.8vw,4.1rem);line-height:1.03;margin:1rem 0 .4rem;
-    font-weight:900;letter-spacing:-.02em}
-  h1.title .hl{color:var(--gold-soft)}
-  .lede{font-size:clamp(1.05rem,1rem + .4vw,1.25rem);color:var(--ink-soft);max-width:34ch;margin:0 0 1.6rem}
-  .cta-row{display:flex;flex-wrap:wrap;gap:.8rem;margin-bottom:1.4rem}
-  .hero-note{font-size:.9rem;color:var(--ink-faint)}
-  .hero-note code{color:var(--gold-soft);background:var(--panel);padding:.1rem .4rem;border-radius:6px;
-    border:1px solid var(--line)}
-  .hero-art{position:relative}
-  .hero-art .frame{border:1px solid var(--line-bright);border-radius:18px;overflow:hidden;
-    box-shadow:var(--shadow);transform:rotate(.6deg);background:var(--panel)}
-  .hero-art .frame img{width:100%;height:100%;object-fit:cover}
-  .hero-art .chip{position:absolute;left:-14px;bottom:22px;background:var(--panel-2);
-    border:1px solid var(--line-bright);border-radius:12px;padding:.5rem .8rem;font-weight:700;
-    font-size:.85rem;box-shadow:var(--shadow)}
-  .hero-art .chip .cmd{color:var(--emerald-bright)}
+  /* block buttons */
+  .btn{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:16px;cursor:pointer;
+    text-align:center;transition:transform .1s ease,box-shadow .1s ease,color .1s ease,border-color .1s ease}
+  .btn-emerald{padding:13px 22px;border:2px solid var(--emerald-deep);
+    background:linear-gradient(180deg,#5fe97f,var(--emerald-2));color:#06210f;
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.4),inset 0 -3px 0 rgba(0,0,0,.25),0 4px 0 var(--emerald-deep)}
+  .btn-emerald:hover{transform:translateY(-2px);color:#06210f;
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.4),inset 0 -3px 0 rgba(0,0,0,.25),0 6px 0 var(--emerald-deep)}
+  .btn-emerald:active{transform:translateY(2px);box-shadow:inset 0 2px 0 rgba(255,255,255,.4),0 1px 0 var(--emerald-deep)}
+  .btn-ghost{padding:13px 22px;border:2px solid var(--line-2);background:rgba(255,255,255,.02);
+    color:var(--ink);box-shadow:0 4px 0 #182119}
+  .btn-ghost:hover{border-color:var(--emerald);color:var(--emerald);transform:translateY(-2px);box-shadow:0 6px 0 #182119}
+  .btn-ghost:active{transform:translateY(2px);box-shadow:0 1px 0 #182119}
+  .btn-gold{padding:9px 15px;font-size:14px;border:2px solid var(--gold-deep);
+    background:linear-gradient(180deg,var(--gold-2),#f0b429);color:#3a2c04;
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.4),inset 0 -3px 0 rgba(0,0,0,.22),0 3px 0 var(--gold-deep)}
+  .btn-gold:hover{transform:translateY(-2px);color:#3a2c04;
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.4),inset 0 -3px 0 rgba(0,0,0,.22),0 5px 0 var(--gold-deep)}
+  .btn-gold:active{transform:translateY(1px);box-shadow:inset 0 2px 0 rgba(255,255,255,.4),0 1px 0 var(--gold-deep)}
 
-  /* ---------- SECTIONS ---------- */
-  section{padding:clamp(3rem,6vw,5rem) 0;position:relative}
-  .sec-head{max-width:60ch;margin-bottom:clamp(1.6rem,3vw,2.6rem)}
-  .kicker{font-size:.78rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
-  h2{font-size:clamp(1.7rem,1.3rem + 1.6vw,2.5rem);margin:.5rem 0 .6rem;font-weight:850;letter-spacing:-.01em;line-height:1.1}
-  .sec-head p{color:var(--ink-soft);margin:0;font-size:1.05rem}
+  /* hero */
+  .hero{padding:clamp(52px,7vw,96px) 0 clamp(36px,5vw,60px)}
+  .cubes{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .cubes span{position:absolute;box-shadow:inset -5px -5px 0 rgba(0,0,0,.35)}
+  .hero-grid{width:min(var(--maxw),92vw);margin:0 auto;display:grid;grid-template-columns:1.05fr .95fr;
+    gap:clamp(28px,4vw,56px);align-items:center;position:relative}
+  .hero-copy{animation:popIn .7s ease both}
+  .eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:var(--pixel);font-size:11px;
+    letter-spacing:.12em;color:var(--emerald);background:rgba(87,224,124,.09);
+    border:2px solid rgba(87,224,124,.35);padding:7px 12px}
+  .eyebrow .dot{width:8px;height:8px;background:var(--emerald);box-shadow:0 0 10px var(--emerald);animation:blinkPx 2.2s infinite}
+  h1{font-size:clamp(38px,2.2rem + 3.6vw,68px);line-height:1.02;margin:18px 0 8px;font-weight:700;letter-spacing:-.02em}
+  h1 .hl{color:var(--gold-2);background-image:repeating-linear-gradient(90deg,var(--emerald) 0 14px,var(--emerald-2) 14px 28px);
+    background-repeat:repeat-x;background-size:100% 7px;background-position:0 100%;padding-bottom:10px}
+  .lede{font-size:clamp(17px,1rem + .4vw,20px);color:var(--ink-soft);max-width:36ch;margin:14px 0 26px}
+  .cta-row{display:flex;flex-wrap:wrap;gap:13px;margin-bottom:22px}
+  .hero-note{font-size:14px;color:var(--ink-faint);margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .hero-note code{font-family:var(--mono);color:var(--gold-2);background:var(--panel);padding:3px 8px;border:1px solid var(--line)}
+  .hero-art{display:flex;flex-direction:column;gap:0;animation:popIn .7s ease .15s both}
+  .chatbox{position:relative;z-index:2;margin-bottom:-26px;margin-right:24px;background:rgba(5,9,7,.94);
+    border:2px solid var(--line-2);box-shadow:0 18px 50px -20px rgba(0,0,0,.8);padding:14px 16px;
+    font-family:var(--mono);font-size:13px;line-height:1.9}
+  .chatbox .hd{display:flex;align-items:center;gap:8px;color:var(--ink-faint);font-family:var(--pixel);
+    font-size:10px;letter-spacing:.1em;margin-bottom:8px;border-bottom:1px solid #1e2c23;padding-bottom:8px}
+  .chatbox .hd span.led{width:7px;height:7px;background:var(--emerald)}
+  .chatbox .u{color:var(--gold-2)}
+  .chatbox .b{color:var(--ink-faint)}
+  .chatbox .l1{animation:lineIn .4s ease .4s both}
+  .chatbox .l2{animation:lineIn .4s ease 1.4s both;color:var(--ink-soft)}
+  .chatbox .l3{animation:lineIn .4s ease 2.4s both;display:flex;align-items:center;gap:10px;margin:4px 0}
+  .chatbox .bar{flex:1;height:10px;background:#101d15;border:1px solid var(--line);overflow:hidden;display:block}
+  .chatbox .bar i{display:block;height:100%;background:repeating-linear-gradient(90deg,var(--emerald) 0 8px,var(--emerald-2) 8px 16px);
+    animation:xpFill 3.2s steps(24) 2.8s both}
+  .chatbox .l4{animation:lineIn .4s ease 6.2s both}
+  .chatbox .cur{display:inline-block;width:8px;height:14px;background:var(--emerald);margin-left:6px;
+    vertical-align:middle;animation:cursorBlink 1s steps(1) infinite}
+  .hero-img{position:relative;border:2px solid var(--line-2);overflow:hidden;
+    box-shadow:0 18px 50px -20px rgba(0,0,0,.75);background:var(--panel);margin-left:12px}
+  .hero-img img{width:100%;object-fit:cover}
+  .hero-img .tag{position:absolute;left:12px;bottom:12px;background:rgba(5,9,7,.9);border:2px solid var(--line-2);
+    padding:7px 12px;font-weight:700;font-size:13px;font-family:var(--mono)}
+  .hero-img .tag .cmd{color:var(--emerald)}
 
-  /* video */
-  .video-shell{border:1px solid var(--line-bright);border-radius:18px;overflow:hidden;
-    box-shadow:var(--shadow);background:#000;position:relative;aspect-ratio:16/9}
-  .video-shell iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  /* xp divider */
+  .xp-div{height:8px;background:repeating-linear-gradient(90deg,#2f7a45 0 22px,#1f5a32 22px 44px);
+    border-top:2px solid var(--emerald-deep);border-bottom:2px solid var(--emerald-deep);
+    box-shadow:0 0 24px rgba(87,224,124,.25);position:relative;z-index:1}
 
-  /* steps */
-  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
-  .step{position:relative;padding:1.3rem 1.1rem 1.2rem;background:var(--panel);
-    border:1px solid var(--line);border-radius:var(--radius)}
-  .step .n{font-family:"SFMono-Regular",Consolas,monospace;font-size:.8rem;color:var(--gold);font-weight:700}
-  .step .ic{font-size:1.7rem;margin:.2rem 0 .5rem}
-  .step h3{margin:.1rem 0 .35rem;font-size:1.06rem}
-  .step p{margin:0;color:var(--ink-soft);font-size:.92rem}
-  .step::after{content:"→";position:absolute;right:-.85rem;top:50%;transform:translateY(-50%);
-    color:var(--line-bright);font-size:1.3rem;font-weight:700}
-  .step:last-child::after{display:none}
+  /* sections */
+  .sec{padding:clamp(52px,6vw,84px) 0}
+  .sec-head{max-width:60ch;margin-bottom:clamp(26px,3vw,42px)}
+  .kicker{font-family:var(--pixel);font-size:12px;letter-spacing:.14em;color:var(--gold)}
+  h2{font-size:clamp(28px,1.3rem + 1.6vw,40px);margin:8px 0 10px;font-weight:700;letter-spacing:-.01em;line-height:1.1}
+  .sec-head p{color:var(--ink-soft);margin:0;font-size:17px}
+
+  .video{border:2px solid var(--line-2);overflow:hidden;box-shadow:0 18px 50px -20px rgba(0,0,0,.75);
+    background:#000;position:relative;aspect-ratio:16/9}
+  .video iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+
+  /* pipeline */
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+  .step{padding:22px 18px;background:var(--panel-2);border:2px solid var(--line);border-top:4px solid var(--emerald);
+    transition:transform .12s ease,border-color .12s ease}
+  .step.gold{border-top-color:var(--gold)}
+  .step:hover{transform:translateY(-4px);border-color:var(--emerald)}
+  .step.gold:hover{border-color:var(--gold)}
+  .step .n{font-family:var(--pixel);font-size:12px;color:var(--gold)}
+  .step .ic{font-size:28px;margin:6px 0 8px}
+  .step h3{margin:0 0 6px;font-size:17px}
+  .step p{margin:0;color:var(--ink-soft);font-size:14.5px}
 
   /* command cards */
-  .cmds{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem}
-  .cmd-card{background:linear-gradient(180deg,var(--panel),var(--bg-2));border:1px solid var(--line);
-    border-radius:var(--radius);padding:1.2rem;transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
-  .cmd-card:hover{transform:translateY(-4px);border-color:var(--emerald);box-shadow:0 16px 34px -18px rgba(64,196,99,.5)}
-  .cmd-card .tag{display:inline-block;font-family:"SFMono-Regular",Consolas,monospace;font-weight:700;
-    color:#06210f;background:var(--emerald-bright);padding:.2rem .55rem;border-radius:7px;font-size:.9rem;margin-bottom:.7rem}
-  .cmd-card h3{margin:.2rem 0 .35rem;font-size:1.08rem}
-  .cmd-card p{margin:0;color:var(--ink-soft);font-size:.93rem}
-  /* control commands — compact chips */
-  .ctrl{margin-top:1.4rem;padding:1.1rem 1.2rem;border:1px dashed var(--line-bright);
-    border-radius:var(--radius);background:rgba(255,255,255,.012)}
-  .ctrl .ctrl-label{font-size:.82rem;font-weight:700;color:var(--ink-faint);
-    text-transform:uppercase;letter-spacing:.1em;margin-bottom:.7rem}
-  .chips{display:flex;flex-wrap:wrap;gap:.55rem}
-  .chip-cmd{display:inline-flex;align-items:baseline;gap:.45rem;background:var(--panel);
-    border:1px solid var(--line);border-radius:9px;padding:.4rem .65rem;font-size:.86rem;
-    color:var(--ink-soft);transition:border-color .12s ease,color .12s ease}
-  .chip-cmd:hover{border-color:var(--emerald);color:var(--ink)}
-  .chip-cmd code{font-family:"SFMono-Regular",Consolas,monospace;font-weight:700;color:var(--emerald-bright)}
+  .cmds{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+  .cmd-card{background:linear-gradient(180deg,var(--panel),#0f1512);border:2px solid var(--line);padding:20px;
+    transition:transform .12s ease,border-color .12s ease,box-shadow .12s ease}
+  .cmd-card:hover{transform:translateY(-4px);border-color:var(--emerald);box-shadow:0 16px 34px -18px rgba(87,224,124,.5)}
+  .cmd-card.gold:hover{border-color:var(--gold);box-shadow:0 16px 34px -18px rgba(255,196,51,.4)}
+  .cmd-card .tag{display:inline-block;font-family:var(--mono);font-weight:700;color:#06210f;background:var(--emerald);
+    padding:4px 10px;font-size:14px;margin-bottom:12px;box-shadow:2px 2px 0 var(--emerald-deep)}
+  .cmd-card.gold .tag{color:#3a2c04;background:var(--gold);box-shadow:2px 2px 0 var(--gold-deep)}
+  .cmd-card h3{margin:4px 0 6px;font-size:17px}
+  .cmd-card p{margin:0;color:var(--ink-soft);font-size:14.5px}
+
+  /* control chips */
+  .ctrl{margin-top:22px;padding:18px 20px;border:2px dashed var(--line-2);background:rgba(255,255,255,.012)}
+  .ctrl-label{font-family:var(--pixel);font-size:11px;font-weight:700;color:var(--ink-faint);letter-spacing:.1em;margin-bottom:12px}
+  .chips{display:flex;flex-wrap:wrap;gap:9px}
+  .chip{display:inline-flex;align-items:baseline;gap:7px;background:var(--panel);border:1px solid var(--line);
+    padding:6px 11px;font-size:13.5px;color:var(--ink-soft);transition:border-color .12s ease,color .12s ease}
+  .chip:hover{border-color:var(--emerald);color:var(--ink)}
+  .chip code{font-family:var(--mono);font-weight:700;color:var(--emerald)}
 
   /* gallery */
-  .gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
-  figure.shot{margin:0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
-    background:var(--panel);position:relative}
-  figure.shot img{aspect-ratio:4/3;object-fit:cover;width:100%;transition:transform .4s ease}
-  figure.shot:hover img{transform:scale(1.05)}
-  figure.shot figcaption{padding:.7rem .85rem;font-size:.9rem;color:var(--ink-soft)}
-  figure.shot figcaption b{color:var(--ink);display:block;font-size:.98rem}
-  figure.shot .badge{position:absolute;top:.6rem;left:.6rem;font-family:"SFMono-Regular",Consolas,monospace;
-    font-size:.78rem;font-weight:700;color:var(--gold-soft);background:rgba(11,15,13,.82);
-    border:1px solid var(--line-bright);padding:.15rem .5rem;border-radius:6px}
+  .gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+  figure.shot{margin:0;border:2px solid var(--line);overflow:hidden;background:var(--panel);position:relative;
+    transition:transform .12s ease,border-color .12s ease}
+  figure.shot:hover{transform:translateY(-4px);border-color:var(--emerald)}
+  figure.shot .badge{position:absolute;top:10px;left:10px;z-index:2;font-family:var(--mono);font-size:12px;
+    font-weight:700;color:var(--gold-2);background:rgba(10,16,13,.88);border:1px solid var(--line-2);padding:3px 9px}
+  figure.shot img{aspect-ratio:4/3;object-fit:cover;width:100%}
+  figure.shot figcaption{padding:12px 14px;font-size:14px;color:var(--ink-soft)}
+  figure.shot figcaption b{color:var(--ink);display:block;font-size:15.5px}
 
   /* under the hood */
-  .hood{background:linear-gradient(180deg,var(--bg-2),var(--bg));border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-  .hood-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}
-  .feat{padding:1.2rem;border:1px solid var(--line);border-radius:var(--radius);background:rgba(255,255,255,.015)}
-  .feat h3{margin:0 0 .4rem;font-size:1.02rem;display:flex;align-items:center;gap:.5rem}
-  .feat h3 .sq{width:12px;height:12px;border-radius:3px;background:var(--emerald)}
-  .feat p{margin:0;color:var(--ink-soft);font-size:.92rem}
-  .hood .stat{font-weight:800;color:var(--gold-soft)}
+  .hood{padding:clamp(52px,6vw,84px) 0;background:linear-gradient(180deg,#0d1410,var(--bg));
+    border-top:2px solid #1e2c23;border-bottom:2px solid #1e2c23;position:relative;z-index:1}
+  .hood .stat{font-weight:700;color:var(--gold-2)}
+  .hood-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+  .feat{padding:20px;border:2px solid var(--line);background:rgba(255,255,255,.015);transition:border-color .12s ease}
+  .feat:hover{border-color:var(--line-2)}
+  .feat h3{margin:0 0 8px;font-size:16px;display:flex;align-items:center;gap:9px}
+  .feat h3 .sq{width:11px;height:11px;background:var(--emerald);flex-shrink:0}
+  .feat p{margin:0;color:var(--ink-soft);font-size:14.5px}
+  .feat .mono{font-family:var(--mono)}
 
   /* story */
-  .story-card{background:
-      radial-gradient(600px 300px at 100% 0%, rgba(240,180,41,.10), transparent 60%),
-      var(--panel);
-    border:1px solid var(--line-bright);border-radius:20px;padding:clamp(1.6rem,4vw,3rem);
-    box-shadow:var(--shadow);position:relative;overflow:hidden}
-  .story-card .quote{font-size:clamp(1.2rem,1rem + 1vw,1.6rem);line-height:1.4;font-weight:600;
-    max-width:44ch;margin:0 0 1rem}
-  .story-card .quote .g{color:var(--gold-soft)}
-  .story-card p{color:var(--ink-soft);max-width:60ch;margin:.4rem 0 0}
-  .story-card .sig{margin-top:1.3rem;font-size:.92rem;color:var(--ink-faint)}
-  .story-card .big-cube{position:absolute;right:-30px;bottom:-30px;width:170px;height:170px;
-    border-radius:26px;background:conic-gradient(from 30deg,rgba(64,196,99,.25),rgba(240,180,41,.25),rgba(64,196,99,.25));
-    filter:blur(2px);opacity:.5}
+  .story-card{background:radial-gradient(600px 300px at 100% 0%, rgba(255,196,51,.12), transparent 60%),var(--panel);
+    border:2px solid var(--line-2);padding:clamp(26px,4vw,48px);box-shadow:0 18px 50px -20px rgba(0,0,0,.75);
+    position:relative;overflow:hidden}
+  .story-card .decor{position:absolute;right:22px;top:22px;display:grid;
+    grid-template-columns:14px 14px 14px;grid-template-rows:14px 14px 14px;gap:3px;opacity:.7}
+  .story-card .decor span:nth-child(1),.story-card .decor span:nth-child(9){background:var(--emerald)}
+  .story-card .decor span:nth-child(3),.story-card .decor span:nth-child(5),.story-card .decor span:nth-child(7){background:var(--gold)}
+  .story-card .quote{font-size:clamp(19px,1rem + 1vw,26px);line-height:1.4;font-weight:600;max-width:44ch;margin:14px 0 16px}
+  .story-card p.body{color:var(--ink-soft);max-width:60ch;margin:6px 0 0;font-size:15.5px}
+  .story-card .sig{margin-top:20px;font-size:14px;color:var(--ink-faint)}
 
-  /* final cta */
-  .final{text-align:center}
-  .final h2{margin-bottom:.6rem}
-  .final p{color:var(--ink-soft);max-width:48ch;margin:0 auto 1.6rem}
+  /* final */
+  .final{padding:clamp(52px,6vw,84px) 0 clamp(64px,7vw,96px);text-align:center;position:relative;z-index:1}
+  .final .px2{display:inline-grid;grid-template-columns:12px 12px;grid-template-rows:12px 12px;gap:2px;margin-bottom:16px}
+  .final .px2 span:nth-child(1),.final .px2 span:nth-child(4){background:var(--emerald)}
+  .final .px2 span:nth-child(2),.final .px2 span:nth-child(3){background:var(--gold)}
+  .final p{color:var(--ink-soft);max-width:48ch;margin:0 auto 28px;font-size:17px}
   .final .cta-row{justify-content:center}
 
   /* footer */
-  footer.foot{border-top:1px solid var(--line);padding:2rem 0;color:var(--ink-faint);font-size:.9rem}
-  .foot-inner{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between}
+  footer.foot{border-top:2px solid #1e2c23;padding:30px 0;color:var(--ink-faint);font-size:14px;position:relative;z-index:1}
+  .foot-inner{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
   .foot a{color:var(--ink-soft)}
-  .foot a:hover{color:var(--emerald-bright)}
-
-  /* reveal on scroll */
-  .reveal{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s cubic-bezier(.16,1,.3,1)}
-  .reveal.in{opacity:1;transform:none}
+  .foot a:hover{color:var(--emerald)}
 
   @media (max-width:900px){
     .hero-grid{grid-template-columns:1fr}
     .hero-art{order:-1}
+    .chatbox{margin-right:0}
+    .hero-img{margin-left:0}
     .lede{max-width:none}
-    .steps{grid-template-columns:1fr 1fr}
-    .step::after{display:none}
-    .gallery{grid-template-columns:1fr 1fr}
   }
   @media (max-width:560px){
-    .nav-links .link{display:none}
-    .steps,.gallery{grid-template-columns:1fr}
+    .nav-links{display:none}
   }
   @media (prefers-reduced-motion:reduce){
     *{animation:none!important;scroll-behavior:auto!important}
-    .reveal{opacity:1;transform:none;transition:none}
   }
 </style>
 </head>
 <body>
+<div class="shell">
+<div class="grid-bg"></div>
 
 <header class="nav">
   <div class="wrap nav-inner">
-    <a class="brand" href="#top"><span class="cube"></span><b>Photo&nbsp;Builder</b></a>
+    <a class="brand" href="#top"><span class="px"><span></span><span></span><span></span><span></span></span><b>PHOTO&nbsp;BUILDER</b></a>
     <div class="nav-spacer"></div>
     <nav class="nav-links">
-      <a class="link" href="#demo" data-i18n="nav_demo">Démo</a>
-      <a class="link" href="#build" data-i18n="nav_build">À construire</a>
-      <a class="link" href="#hood" data-i18n="nav_hood">Sous le capot</a>
+      <a href="#demo" data-i18n="nav_demo">Démo</a>
+      <a href="#build" data-i18n="nav_build">À construire</a>
+      <a href="#hood" data-i18n="nav_hood">Sous le capot</a>
     </nav>
     <div class="lang" role="group" aria-label="Language">
       <button data-lang="fr" class="on">FR</button>
       <button data-lang="en">EN</button>
     </div>
-    <a class="btn btn-ghost" href="https://github.com/PierreDenaes/minecraft-photo-builder" target="_blank" rel="noopener">⭐ GitHub</a>
+    <a class="btn btn-gold" href="https://github.com/PierreDenaes/minecraft-photo-builder" target="_blank" rel="noopener">★ GitHub</a>
   </div>
 </header>
 
 <a id="top"></a>
 <section class="hero">
-  <div class="wrap hero-grid">
+  <div class="cubes" aria-hidden="true">
+    <span style="top:12%;left:4%;width:22px;height:22px;background:var(--emerald);opacity:.5;--r:12deg;animation:floaty 7s ease-in-out infinite"></span>
+    <span style="top:64%;left:9%;width:13px;height:13px;background:var(--gold);opacity:.55;--r:-8deg;animation:floaty 9s ease-in-out infinite 1s"></span>
+    <span style="top:8%;right:6%;width:16px;height:16px;background:var(--gold);opacity:.45;--r:20deg;animation:floaty 8s ease-in-out infinite .5s"></span>
+    <span style="top:76%;right:12%;width:26px;height:26px;background:var(--emerald);opacity:.35;--r:-14deg;animation:floaty 10s ease-in-out infinite 2s"></span>
+    <span style="top:40%;right:2%;width:10px;height:10px;background:var(--emerald);opacity:.6;box-shadow:none;animation:floaty 6s ease-in-out infinite 1.4s"></span>
+  </div>
+  <div class="hero-grid">
     <div class="hero-copy">
-      <span class="eyebrow"><span class="dot"></span><span data-i18n="eyebrow">Bot Minecraft · propulsé par Claude</span></span>
-      <h1 class="title"><span data-i18n="h1a">Donne-lui une image.</span><br><span class="hl" data-i18n="h1b">Il la construit.</span></h1>
+      <span class="eyebrow"><span class="dot"></span><span data-i18n="eyebrow">BOT MINECRAFT · PROPULSÉ PAR CLAUDE</span></span>
+      <h1><span data-i18n="h1a">Donne-lui une image.</span><br><span class="hl" data-i18n="h1b">Il la construit.</span></h1>
       <p class="lede" data-i18n="lede">Un bot Minecraft qui bâtit en jeu à partir d'une photo, d'un modèle 3D ou d'un simple texte. L'IA imagine, la mécanique garantit que ça tienne debout.</p>
       <div class="cta-row">
-        <a class="btn btn-primary" href="#demo" data-i18n="cta_demo">▶ Voir la démo</a>
+        <a class="btn btn-emerald" href="#demo" data-i18n="cta_demo">▶ Voir la démo</a>
         <a class="btn btn-ghost" href="https://github.com/PierreDenaes/minecraft-photo-builder" target="_blank" rel="noopener" data-i18n="cta_github">Tester sur GitHub</a>
       </div>
-      <p class="hero-note"><span data-i18n="hero_note">Dans le chat du jeu :</span> <code>!photo</code> <code>!statue</code> <code>!build tour eiffel</code></p>
+      <p class="hero-note">
+        <span data-i18n="hero_note">Dans le chat du jeu :</span>
+        <code>!photo</code><code>!statue</code><code>!build tour eiffel</code>
+      </p>
     </div>
     <div class="hero-art">
-      <div class="frame"><img src="assets/presentation.png" alt="Aperçu : de l'idée à la construction dans Minecraft"></div>
-      <div class="chip"><span class="cmd">!build</span> → 🏗️ <span data-i18n="chip">en jeu, en direct</span></div>
+      <div class="chatbox" aria-hidden="true">
+        <div class="hd"><span class="led"></span><span data-i18n="chat_title">CHAT — SERVEUR 1.20.4</span></div>
+        <div class="l1"><span class="u">&lt;Pierre&gt;</span> <span style="color:var(--emerald)">!build tour eiffel</span></div>
+        <div class="l2"><span class="b">[bot]</span> <span data-i18n="chat_1">Image trouvée — analyse de la structure…</span></div>
+        <div class="l3"><span class="b">[bot]</span><span class="bar"><i></i></span></div>
+        <div class="l4"><span style="color:var(--emerald)">✔</span> <span data-i18n="chat_2" style="color:var(--ink)">Posée bloc par bloc — couche 38/38</span><span class="cur"></span></div>
+      </div>
+      <div class="hero-img">
+        <img src="assets/presentation.png" alt="Aperçu : de l'idée à la construction dans Minecraft">
+        <div class="tag"><span class="cmd">!build</span> → 🏗️ <span data-i18n="chip">en jeu, en direct</span></div>
+      </div>
     </div>
   </div>
 </section>
 
-<section id="demo">
+<div class="xp-div" aria-hidden="true"></div>
+
+<section id="demo" class="sec">
   <div class="wrap">
-    <div class="sec-head reveal">
-      <div class="kicker" data-i18n="k_demo">La démo</div>
+    <div class="sec-head">
+      <div class="kicker" data-i18n="k_demo">LA DÉMO</div>
       <h2 data-i18n="demo_h">Regarde-le construire</h2>
       <p data-i18n="demo_p">Une fresque murale et des statues, générées puis posées bloc par bloc dans le monde.</p>
     </div>
-    <div class="video-shell reveal">
+    <div class="video">
       <iframe src="https://www.youtube-nocookie.com/embed/Y9XlU_OFA9M" title="Minecraft Photo Builder — démo" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
   </div>
 </section>
 
-<section id="how">
+<section id="how" class="sec">
   <div class="wrap">
-    <div class="sec-head reveal">
-      <div class="kicker" data-i18n="k_how">Le pipeline</div>
+    <div class="sec-head">
+      <div class="kicker" data-i18n="k_how">LE PIPELINE</div>
       <h2 data-i18n="how_h">Comment ça marche</h2>
       <p data-i18n="how_p">L'IA décide du sens ; du code déterministe et testé calcule chaque bloc.</p>
     </div>
     <div class="steps">
-      <div class="step reveal"><div class="n">01</div><div class="ic">📷</div><h3 data-i18n="s1h">Tu envoies</h3><p data-i18n="s1p">Une photo, un modèle 3D (.obj/.glb/.stl) ou juste une phrase.</p></div>
-      <div class="step reveal"><div class="n">02</div><div class="ic">🧠</div><h3 data-i18n="s2h">Claude analyse</h3><p data-i18n="s2p">Vision et architecture : type, proportions, matériaux, éléments.</p></div>
-      <div class="step reveal"><div class="n">03</div><div class="ic">⚙️</div><h3 data-i18n="s3h">La mécanique</h3><p data-i18n="s3p">Géométrie, gravité, habitabilité, palettes — des passes testées.</p></div>
-      <div class="step reveal"><div class="n">04</div><div class="ic">🏗️</div><h3 data-i18n="s4h">Ça se bâtit</h3><p data-i18n="s4p">Le bot pose la structure face à toi, couche par couche.</p></div>
+      <div class="step"><div class="n">01</div><div class="ic">📷</div><h3 data-i18n="s1h">Tu envoies</h3><p data-i18n="s1p">Une photo, un modèle 3D (.obj/.glb/.stl) ou juste une phrase.</p></div>
+      <div class="step"><div class="n">02</div><div class="ic">🧠</div><h3 data-i18n="s2h">Claude analyse</h3><p data-i18n="s2p">Vision et architecture : type, proportions, matériaux, éléments.</p></div>
+      <div class="step gold"><div class="n">03</div><div class="ic">⚙️</div><h3 data-i18n="s3h">La mécanique</h3><p data-i18n="s3p">Géométrie, gravité, habitabilité, palettes — des passes testées.</p></div>
+      <div class="step gold"><div class="n">04</div><div class="ic">🏗️</div><h3 data-i18n="s4h">Ça se bâtit</h3><p data-i18n="s4p">Le bot pose la structure face à toi, couche par couche.</p></div>
     </div>
   </div>
 </section>
 
-<section id="build">
+<section id="build" class="sec">
   <div class="wrap">
-    <div class="sec-head reveal">
-      <div class="kicker" data-i18n="k_build">Les commandes</div>
+    <div class="sec-head">
+      <div class="kicker" data-i18n="k_build">LES COMMANDES</div>
       <h2 data-i18n="build_h">Ce que tu peux construire</h2>
-      <p data-i18n="build_p">Tape une commande dans le chat, envoie ton fichier, confirme avec <b>!go</b>.</p>
+      <p data-i18n="build_p">Tape une commande dans le chat, envoie ton fichier, confirme avec <b style="color:var(--emerald)">!go</b>.</p>
     </div>
     <div class="cmds">
-      <div class="cmd-card reveal"><span class="tag">!photo</span><h3 data-i18n="c1h">Depuis une photo</h3><p data-i18n="c1p">Un bâtiment interprété et habitable : entrée, étages, toit, déco intérieure.</p></div>
-      <div class="cmd-card reveal"><span class="tag">!diorama</span><h3 data-i18n="c2h">Copie conforme</h3><p data-i18n="c2p">Un paysage ou un modèle 3D posé sur un relief naturel avec sous-sol.</p></div>
-      <div class="cmd-card reveal"><span class="tag">!statue</span><h3 data-i18n="c3h">Statue voxel</h3><p data-i18n="c3p">Un personnage 3D voxelisé sur socle, palette de couleurs vives.</p></div>
-      <div class="cmd-card reveal"><span class="tag">!portrait</span><h3 data-i18n="c4h">Fresque pixel-art</h3><p data-i18n="c4p">Une image transformée en fresque murale d'un bloc d'épaisseur, avec cadre.</p></div>
-      <div class="cmd-card reveal"><span class="tag">!schema</span><h3 data-i18n="c6h">Depuis des schemas</h3><p data-i18n="c6p">Un bâtiment fidèle inspiré de schemas réels du même style (bascule sur !photo si aucun n'est dispo).</p></div>
-      <div class="cmd-card reveal"><span class="tag">!build &lt;texte&gt;</span><h3 data-i18n="c5h">Depuis une idée</h3><p data-i18n="c5p">Le bot cherche une image sur le web, la choisit, puis construit.</p></div>
+      <div class="cmd-card"><span class="tag">!photo</span><h3 data-i18n="c1h">Depuis une photo</h3><p data-i18n="c1p">Un bâtiment interprété et habitable : entrée, étages, toit, déco intérieure.</p></div>
+      <div class="cmd-card"><span class="tag">!diorama</span><h3 data-i18n="c2h">Copie conforme</h3><p data-i18n="c2p">Un paysage ou un modèle 3D posé sur un relief naturel avec sous-sol.</p></div>
+      <div class="cmd-card"><span class="tag">!statue</span><h3 data-i18n="c3h">Statue voxel</h3><p data-i18n="c3p">Un personnage 3D voxelisé sur socle, palette de couleurs vives.</p></div>
+      <div class="cmd-card"><span class="tag">!portrait</span><h3 data-i18n="c4h">Fresque pixel-art</h3><p data-i18n="c4p">Une image transformée en fresque murale d'un bloc d'épaisseur, avec cadre.</p></div>
+      <div class="cmd-card"><span class="tag">!schema</span><h3 data-i18n="c6h">Depuis des schemas</h3><p data-i18n="c6p">Un bâtiment fidèle inspiré de schemas réels du même style (bascule sur !photo si aucun n'est dispo).</p></div>
+      <div class="cmd-card gold"><span class="tag">!build &lt;texte&gt;</span><h3 data-i18n="c5h">Depuis une idée</h3><p data-i18n="c5p">Le bot cherche une image sur le web, la choisit, puis construit.</p></div>
     </div>
-    <div class="ctrl reveal">
-      <div class="ctrl-label" data-i18n="ctrl_label">Contrôle & édition</div>
+    <div class="ctrl">
+      <div class="ctrl-label" data-i18n="ctrl_label">CONTRÔLE & ÉDITION</div>
       <div class="chips">
-        <span class="chip-cmd"><code>!go</code> <span data-i18n="ct_go">confirmer</span></span>
-        <span class="chip-cmd"><code>!cancel</code> <span data-i18n="ct_cancel">annuler</span></span>
-        <span class="chip-cmd"><code>!tourner</code> <span data-i18n="ct_turn">pivoter 90°</span></span>
-        <span class="chip-cmd"><code>!redresser</code> <span data-i18n="ct_pitch">redresser</span></span>
-        <span class="chip-cmd"><code>!undo</code> <span data-i18n="ct_undo">restaurer la zone</span></span>
-        <span class="chip-cmd"><code>!status</code> <span data-i18n="ct_status">avancement</span></span>
-        <span class="chip-cmd"><code>!note 1-5</code> <span data-i18n="ct_note">noter le résultat</span></span>
-        <span class="chip-cmd"><code>!help</code> <span data-i18n="ct_help">aide</span></span>
+        <span class="chip"><code>!go</code> <span data-i18n="ct_go">confirmer</span></span>
+        <span class="chip"><code>!cancel</code> <span data-i18n="ct_cancel">annuler</span></span>
+        <span class="chip"><code>!tourner</code> <span data-i18n="ct_turn">pivoter 90°</span></span>
+        <span class="chip"><code>!redresser</code> <span data-i18n="ct_pitch">redresser</span></span>
+        <span class="chip"><code>!undo</code> <span data-i18n="ct_undo">restaurer la zone</span></span>
+        <span class="chip"><code>!status</code> <span data-i18n="ct_status">avancement</span></span>
+        <span class="chip"><code>!note 1-5</code> <span data-i18n="ct_note">noter le résultat</span></span>
+        <span class="chip"><code>!help</code> <span data-i18n="ct_help">aide</span></span>
       </div>
     </div>
   </div>
 </section>
 
-<section id="gallery">
+<section id="gallery" class="sec">
   <div class="wrap">
-    <div class="sec-head reveal">
-      <div class="kicker" data-i18n="k_gal">La galerie</div>
+    <div class="sec-head">
+      <div class="kicker" data-i18n="k_gal">LA GALERIE</div>
       <h2 data-i18n="gal_h">Des rendus réels, en jeu</h2>
       <p data-i18n="gal_p">Constructions produites par le bot sur un serveur Minecraft 1.20.4.</p>
     </div>
     <div class="gallery">
-      <figure class="shot reveal"><span class="badge">!build</span><img src="assets/rendu-tour-eiffel.png" alt="Tour Eiffel construite en jeu" loading="lazy"><figcaption><b data-i18n="g1b">Tour Eiffel</b><span data-i18n="g1c">treillis et étages</span></figcaption></figure>
-      <figure class="shot reveal"><span class="badge">!build</span><img src="assets/rendu-gratte-ciel.png" alt="Gratte-ciel effilé construit en jeu" loading="lazy"><figcaption><b data-i18n="g2b">Gratte-ciel effilé</b><span data-i18n="g2c">étages en retrait et flèche</span></figcaption></figure>
-      <figure class="shot reveal"><span class="badge">!photo</span><img src="assets/rendu-villa-moderne.png" alt="Villa moderne construite en jeu" loading="lazy"><figcaption><b data-i18n="g3b">Villa moderne</b><span data-i18n="g3c">baies vitrées, piscine, jardin</span></figcaption></figure>
-      <figure class="shot reveal"><span class="badge">!portrait</span><img src="assets/rendu-portrait-munch.png" alt="Le Cri de Munch en fresque pixel-art" loading="lazy"><figcaption><b data-i18n="g4b">Le Cri de Munch</b><span data-i18n="g4c">fresque pixel-art</span></figcaption></figure>
-      <figure class="shot reveal"><span class="badge">!statue</span><img src="assets/rendu-statue-pirate.png" alt="Statue de personnage voxelisée" loading="lazy"><figcaption><b data-i18n="g5b">Statue</b><span data-i18n="g5c">modèle 3D voxelisé sur socle</span></figcaption></figure>
-      <figure class="shot reveal"><span class="badge">!statue</span><img src="assets/rendu-statues.png" alt="Deux statues de personnages" loading="lazy"><figcaption><b data-i18n="g6b">Statues</b><span data-i18n="g6c">personnages, palette vive</span></figcaption></figure>
+      <figure class="shot"><span class="badge">!build</span><img src="assets/rendu-tour-eiffel.png" alt="Tour Eiffel construite en jeu" loading="lazy"><figcaption><b data-i18n="g1b">Tour Eiffel</b><span data-i18n="g1c">treillis et étages</span></figcaption></figure>
+      <figure class="shot"><span class="badge">!build</span><img src="assets/rendu-gratte-ciel.png" alt="Gratte-ciel effilé construit en jeu" loading="lazy"><figcaption><b data-i18n="g2b">Gratte-ciel effilé</b><span data-i18n="g2c">étages en retrait et flèche</span></figcaption></figure>
+      <figure class="shot"><span class="badge">!photo</span><img src="assets/rendu-villa-moderne.png" alt="Villa moderne construite en jeu" loading="lazy"><figcaption><b data-i18n="g3b">Villa moderne</b><span data-i18n="g3c">baies vitrées, piscine, jardin</span></figcaption></figure>
+      <figure class="shot"><span class="badge">!portrait</span><img src="assets/rendu-portrait-munch.png" alt="Le Cri de Munch en fresque pixel-art" loading="lazy"><figcaption><b data-i18n="g4b">Le Cri de Munch</b><span data-i18n="g4c">fresque pixel-art</span></figcaption></figure>
+      <figure class="shot"><span class="badge">!statue</span><img src="assets/rendu-statue-pirate.png" alt="Statue de personnage voxelisée" loading="lazy"><figcaption><b data-i18n="g5b">Statue</b><span data-i18n="g5c">modèle 3D voxelisé sur socle</span></figcaption></figure>
+      <figure class="shot"><span class="badge">!statue</span><img src="assets/rendu-statues.png" alt="Deux statues de personnages" loading="lazy"><figcaption><b data-i18n="g6b">Statues</b><span data-i18n="g6c">personnages, palette vive</span></figcaption></figure>
     </div>
   </div>
 </section>
 
 <section id="hood" class="hood">
   <div class="wrap">
-    <div class="sec-head reveal">
-      <div class="kicker" data-i18n="k_hood">Pour les curieux et les devs</div>
+    <div class="sec-head">
+      <div class="kicker" data-i18n="k_hood">POUR LES CURIEUX ET LES DEVS</div>
       <h2 data-i18n="hood_h">Sous le capot</h2>
       <p data-i18n="hood_p">L'IA propose, la mécanique dispose. Des garde-fous testés, pas des promesses de prompt — <span class="stat">~495 tests</span>.</p>
     </div>
     <div class="hood-grid">
-      <div class="feat reveal"><h3><span class="sq"></span><span data-i18n="f1h">Gravité et attachements</span></h3><p data-i18n="f1p">Suppression des blocs flottants (parcours de support), torches murales orientées, fondations automatiques sur relief.</p></div>
-      <div class="feat reveal"><h3><span class="sq"></span><span data-i18n="f2h">Audit d'habitabilité</span></h3><p data-i18n="f2p">Hauteur sous plafond, entrée dans les murs, escaliers entre étages — mesurés puis réinjectés dans une passe de correction.</p></div>
-      <div class="feat reveal"><h3><span class="sq"></span><span data-i18n="f3h">Palettes sémantiques</span></h3><p data-i18n="f3p">k-means des couleurs → thème de matière choisi par l'IA → nuançage. Jamais de bloc fonctionnel dans un mur.</p></div>
-      <div class="feat reveal"><h3><span class="sq"></span><span data-i18n="f4h">Sandbox</span></h3><p data-i18n="f4p">Tout code généré s'exécute isolé, avec timeout ; blocs validés en liste blanche, coordonnées bornées.</p></div>
-      <div class="feat reveal"><h3><span class="sq"></span><span data-i18n="f5h">Modèles configurables</span></h3><p data-i18n="f5p">Chaque étape (vision, architecture, palette…) pointe vers un modèle Claude défini dans <span class="mono">config.json</span>.</p></div>
-      <div class="feat reveal"><h3><span class="sq"></span><span data-i18n="f6h">Robuste</span></h3><p data-i18n="f6p">Voxelisation asynchrone, reconnexion automatique, commandes throttlées, <span class="mono">!undo</span> par instantané.</p></div>
+      <div class="feat"><h3><span class="sq"></span><span data-i18n="f1h">Gravité et attachements</span></h3><p data-i18n="f1p">Suppression des blocs flottants (parcours de support), torches murales orientées, fondations automatiques sur relief.</p></div>
+      <div class="feat"><h3><span class="sq"></span><span data-i18n="f2h">Audit d'habitabilité</span></h3><p data-i18n="f2p">Hauteur sous plafond, entrée dans les murs, escaliers entre étages — mesurés puis réinjectés dans une passe de correction.</p></div>
+      <div class="feat"><h3><span class="sq"></span><span data-i18n="f3h">Palettes sémantiques</span></h3><p data-i18n="f3p">k-means des couleurs → thème de matière choisi par l'IA → nuançage. Jamais de bloc fonctionnel dans un mur.</p></div>
+      <div class="feat"><h3><span class="sq"></span><span data-i18n="f4h">Sandbox</span></h3><p data-i18n="f4p">Tout code généré s'exécute isolé, avec timeout ; blocs validés en liste blanche, coordonnées bornées.</p></div>
+      <div class="feat"><h3><span class="sq"></span><span data-i18n="f5h">Modèles configurables</span></h3><p data-i18n="f5p">Chaque étape (vision, architecture, palette…) pointe vers un modèle Claude défini dans <span class="mono">config.json</span>.</p></div>
+      <div class="feat"><h3><span class="sq"></span><span data-i18n="f6h">Robuste</span></h3><p data-i18n="f6p">Voxelisation asynchrone, reconnexion automatique, commandes throttlées, <span class="mono">!undo</span> par instantané.</p></div>
     </div>
   </div>
 </section>
 
-<section id="story">
+<section id="story" class="sec">
   <div class="wrap">
-    <div class="story-card reveal">
-      <div class="big-cube"></div>
-      <div class="kicker" data-i18n="k_story">L'origine</div>
-      <p class="quote" data-i18n="story_q">« <span class="g">Imagine un agent dans le jeu</span> à qui tu donnes une image, et il la construit. »</p>
-      <p data-i18n="story_p">Ce projet est né d'une conversation avec mon fils Thomas, 9 ans. Il s'intéressait à ce que je faisais — « créer des agents IA » — et cette phrase, lancée pour lui expliquer, est devenue le point de départ. On l'a imaginé ensemble, je l'ai construit.</p>
+    <div class="story-card">
+      <div class="decor" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="kicker" data-i18n="k_story">L'ORIGINE</div>
+      <p class="quote" data-i18n="story_q">« Imagine un agent dans le jeu à qui tu donnes une image, et il la construit. »</p>
+      <p class="body" data-i18n="story_p">Ce projet est né d'une conversation avec mon fils Thomas, 9 ans. Il s'intéressait à ce que je faisais — « créer des agents IA » — et cette phrase, lancée pour lui expliquer, est devenue le point de départ. On l'a imaginé ensemble, je l'ai construit.</p>
       <p class="sig" data-i18n="story_sig">— Pierre-Jacques Denaes</p>
     </div>
   </div>
@@ -383,10 +431,11 @@
 
 <section id="try" class="final">
   <div class="wrap">
+    <div class="px2" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
     <h2 data-i18n="final_h">Prêt à l'essayer ?</h2>
     <p data-i18n="final_p">Le projet est open source sous licence MIT. Clone-le, branche ta clé API Claude, et lance-toi.</p>
     <div class="cta-row">
-      <a class="btn btn-primary" href="https://github.com/PierreDenaes/minecraft-photo-builder" target="_blank" rel="noopener" data-i18n="final_gh">⭐ Voir sur GitHub</a>
+      <a class="btn btn-emerald" href="https://github.com/PierreDenaes/minecraft-photo-builder" target="_blank" rel="noopener" data-i18n="final_gh">⭐ Voir sur GitHub</a>
       <a class="btn btn-ghost" href="https://youtu.be/Y9XlU_OFA9M" target="_blank" rel="noopener" data-i18n="final_vid">▶ Revoir la démo</a>
     </div>
   </div>
@@ -395,31 +444,36 @@
 <footer class="foot">
   <div class="wrap foot-inner">
     <div><span data-i18n="foot_lic">Licence MIT</span> · © 2026 Pierre-Jacques Denaes</div>
-    <div style="display:flex;gap:1.2rem">
+    <div style="display:flex;gap:20px">
       <a href="https://github.com/PierreDenaes/minecraft-photo-builder" target="_blank" rel="noopener">GitHub</a>
       <a href="https://youtu.be/Y9XlU_OFA9M" target="_blank" rel="noopener" data-i18n="foot_vid">Vidéo</a>
     </div>
   </div>
 </footer>
 
+</div>
+
 <script>
 const I18N = {
   fr: {
     nav_demo:"Démo", nav_build:"À construire", nav_hood:"Sous le capot",
-    eyebrow:"Bot Minecraft · propulsé par Claude",
+    eyebrow:"BOT MINECRAFT · PROPULSÉ PAR CLAUDE",
     h1a:"Donne-lui une image.", h1b:"Il la construit.",
     lede:"Un bot Minecraft qui bâtit en jeu à partir d'une photo, d'un modèle 3D ou d'un simple texte. L'IA imagine, la mécanique garantit que ça tienne debout.",
     cta_demo:"▶ Voir la démo", cta_github:"Tester sur GitHub",
     hero_note:"Dans le chat du jeu :", chip:"en jeu, en direct",
-    k_demo:"La démo", demo_h:"Regarde-le construire",
+    chat_title:"CHAT — SERVEUR 1.20.4",
+    chat_1:"Image trouvée — analyse de la structure…",
+    chat_2:"Posée bloc par bloc — couche 38/38",
+    k_demo:"LA DÉMO", demo_h:"Regarde-le construire",
     demo_p:"Une fresque murale et des statues, générées puis posées bloc par bloc dans le monde.",
-    k_how:"Le pipeline", how_h:"Comment ça marche",
+    k_how:"LE PIPELINE", how_h:"Comment ça marche",
     how_p:"L'IA décide du sens ; du code déterministe et testé calcule chaque bloc.",
     s1h:"Tu envoies", s1p:"Une photo, un modèle 3D (.obj/.glb/.stl) ou juste une phrase.",
     s2h:"Claude analyse", s2p:"Vision et architecture : type, proportions, matériaux, éléments.",
     s3h:"La mécanique", s3p:"Géométrie, gravité, habitabilité, palettes — des passes testées.",
     s4h:"Ça se bâtit", s4p:"Le bot pose la structure face à toi, couche par couche.",
-    k_build:"Les commandes", build_h:"Ce que tu peux construire",
+    k_build:"LES COMMANDES", build_h:"Ce que tu peux construire",
     build_p:"Tape une commande dans le chat, envoie ton fichier, confirme avec !go.",
     c1h:"Depuis une photo", c1p:"Un bâtiment interprété et habitable : entrée, étages, toit, déco intérieure.",
     c2h:"Copie conforme", c2p:"Un paysage ou un modèle 3D posé sur un relief naturel avec sous-sol.",
@@ -427,10 +481,10 @@ const I18N = {
     c4h:"Fresque pixel-art", c4p:"Une image transformée en fresque murale d'un bloc d'épaisseur, avec cadre.",
     c5h:"Depuis une idée", c5p:"Le bot cherche une image sur le web, la choisit, puis construit.",
     c6h:"Depuis des schemas", c6p:"Un bâtiment fidèle inspiré de schemas réels du même style (bascule sur !photo si aucun n'est dispo).",
-    ctrl_label:"Contrôle & édition",
+    ctrl_label:"CONTRÔLE & ÉDITION",
     ct_go:"confirmer", ct_cancel:"annuler", ct_turn:"pivoter 90°", ct_pitch:"redresser",
     ct_undo:"restaurer la zone", ct_status:"avancement", ct_note:"noter le résultat", ct_help:"aide",
-    k_gal:"La galerie", gal_h:"Des rendus réels, en jeu",
+    k_gal:"LA GALERIE", gal_h:"Des rendus réels, en jeu",
     gal_p:"Constructions produites par le bot sur un serveur Minecraft 1.20.4.",
     g1b:"Tour Eiffel", g1c:"treillis et étages",
     g2b:"Gratte-ciel effilé", g2c:"étages en retrait et flèche",
@@ -438,7 +492,7 @@ const I18N = {
     g4b:"Le Cri de Munch", g4c:"fresque pixel-art",
     g5b:"Statue", g5c:"modèle 3D voxelisé sur socle",
     g6b:"Statues", g6c:"personnages, palette vive",
-    k_hood:"Pour les curieux et les devs", hood_h:"Sous le capot",
+    k_hood:"POUR LES CURIEUX ET LES DEVS", hood_h:"Sous le capot",
     hood_p:"L'IA propose, la mécanique dispose. Des garde-fous testés, pas des promesses de prompt — ~495 tests.",
     f1h:"Gravité et attachements", f1p:"Suppression des blocs flottants (parcours de support), torches murales orientées, fondations automatiques sur relief.",
     f2h:"Audit d'habitabilité", f2p:"Hauteur sous plafond, entrée dans les murs, escaliers entre étages — mesurés puis réinjectés dans une passe de correction.",
@@ -446,7 +500,7 @@ const I18N = {
     f4h:"Sandbox", f4p:"Tout code généré s'exécute isolé, avec timeout ; blocs validés en liste blanche, coordonnées bornées.",
     f5h:"Modèles configurables", f5p:"Chaque étape (vision, architecture, palette…) pointe vers un modèle Claude défini dans config.json.",
     f6h:"Robuste", f6p:"Voxelisation asynchrone, reconnexion automatique, commandes throttlées, !undo par instantané.",
-    k_story:"L'origine",
+    k_story:"L'ORIGINE",
     story_q:"« Imagine un agent dans le jeu à qui tu donnes une image, et il la construit. »",
     story_p:"Ce projet est né d'une conversation avec mon fils Thomas, 9 ans. Il s'intéressait à ce que je faisais — « créer des agents IA » — et cette phrase, lancée pour lui expliquer, est devenue le point de départ. On l'a imaginé ensemble, je l'ai construit.",
     story_sig:"— Pierre-Jacques Denaes",
@@ -457,20 +511,23 @@ const I18N = {
   },
   en: {
     nav_demo:"Demo", nav_build:"Builds", nav_hood:"Under the hood",
-    eyebrow:"Minecraft bot · powered by Claude",
+    eyebrow:"MINECRAFT BOT · POWERED BY CLAUDE",
     h1a:"Give it an image.", h1b:"It builds it.",
     lede:"A Minecraft bot that builds in-game from a photo, a 3D model, or a plain sentence. The AI imagines; the mechanics make sure it stands up.",
     cta_demo:"▶ Watch the demo", cta_github:"Try it on GitHub",
     hero_note:"In the game chat:", chip:"live, in-game",
-    k_demo:"The demo", demo_h:"Watch it build",
+    chat_title:"CHAT — SERVER 1.20.4",
+    chat_1:"Image found — analysing the structure…",
+    chat_2:"Placed block by block — layer 38/38",
+    k_demo:"THE DEMO", demo_h:"Watch it build",
     demo_p:"A wall fresco and statues, generated then placed block by block into the world.",
-    k_how:"The pipeline", how_h:"How it works",
+    k_how:"THE PIPELINE", how_h:"How it works",
     how_p:"The AI decides the meaning; deterministic, tested code computes every block.",
     s1h:"You send", s1p:"A photo, a 3D model (.obj/.glb/.stl), or just a sentence.",
     s2h:"Claude analyses", s2p:"Vision and architecture: type, proportions, materials, features.",
     s3h:"The mechanics", s3p:"Geometry, gravity, habitability, palettes — tested passes.",
     s4h:"It gets built", s4p:"The bot lays the structure facing you, layer by layer.",
-    k_build:"The commands", build_h:"What you can build",
+    k_build:"THE COMMANDS", build_h:"What you can build",
     build_p:"Type a command in chat, send your file, confirm with !go.",
     c1h:"From a photo", c1p:"An interpreted, liveable building: entrance, floors, roof, interior décor.",
     c2h:"Faithful copy", c2p:"A landscape or a 3D model set on natural terrain with an underground.",
@@ -478,10 +535,10 @@ const I18N = {
     c4h:"Pixel-art fresco", c4p:"An image turned into a one-block-thick wall fresco, with a frame.",
     c5h:"From an idea", c5p:"The bot searches the web for an image, picks one, then builds.",
     c6h:"From schematics", c6p:"A faithful building inspired by real schematics of the same style (falls back to !photo if none are available).",
-    ctrl_label:"Control & editing",
+    ctrl_label:"CONTROL & EDITING",
     ct_go:"confirm", ct_cancel:"cancel", ct_turn:"rotate 90°", ct_pitch:"pitch upright",
     ct_undo:"restore the area", ct_status:"progress", ct_note:"rate the result", ct_help:"help",
-    k_gal:"The gallery", gal_h:"Real renders, in-game",
+    k_gal:"THE GALLERY", gal_h:"Real renders, in-game",
     gal_p:"Structures produced by the bot on a Minecraft 1.20.4 server.",
     g1b:"Eiffel Tower", g1c:"lattice and levels",
     g2b:"Tapered skyscraper", g2c:"setback floors and spire",
@@ -489,7 +546,7 @@ const I18N = {
     g4b:"The Scream (Munch)", g4c:"pixel-art fresco",
     g5b:"Statue", g5c:"voxelised 3D model on a base",
     g6b:"Statues", g6c:"characters, vivid palette",
-    k_hood:"For the curious and the devs", hood_h:"Under the hood",
+    k_hood:"FOR THE CURIOUS AND THE DEVS", hood_h:"Under the hood",
     hood_p:"The AI proposes, the mechanics dispose. Tested safeguards, not prompt promises — ~495 tests.",
     f1h:"Gravity & attachments", f1p:"Floating blocks removed (support traversal), wall torches oriented, automatic foundations on slopes.",
     f2h:"Habitability audit", f2p:"Ceiling height, an entrance in the walls, stairs between floors — measured, then fed back into a correction pass.",
@@ -497,7 +554,7 @@ const I18N = {
     f4h:"Sandbox", f4p:"All generated code runs isolated, with a timeout; blocks whitelisted, coordinates bounded.",
     f5h:"Configurable models", f5p:"Each stage (vision, architecture, palette…) points to a Claude model set in config.json.",
     f6h:"Robust", f6p:"Asynchronous voxelisation, automatic reconnection, throttled commands, snapshot-based !undo.",
-    k_story:"The origin",
+    k_story:"THE ORIGIN",
     story_q:"“Imagine an agent in the game you give an image to, and it builds it.”",
     story_p:"This project was born from a conversation with my 9-year-old son, Thomas. He was curious about what I do — “building AI agents” — and that sentence, said to explain it to him, became the starting point. We imagined it together; I built it.",
     story_sig:"— Pierre-Jacques Denaes",
@@ -526,12 +583,6 @@ document.querySelectorAll('.lang button').forEach(b=>{
 let saved='fr';
 try{ saved = localStorage.getItem('mpb-lang') || 'fr'; }catch(e){}
 setLang(saved);
-
-// scroll reveal
-const io = new IntersectionObserver((entries)=>{
-  entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
-},{threshold:.12});
-document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
 </script>
 </body>
 </html>
