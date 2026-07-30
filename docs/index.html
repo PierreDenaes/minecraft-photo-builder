@@ -152,6 +152,17 @@
     color:#06210f;background:var(--emerald-bright);padding:.2rem .55rem;border-radius:7px;font-size:.9rem;margin-bottom:.7rem}
   .cmd-card h3{margin:.2rem 0 .35rem;font-size:1.08rem}
   .cmd-card p{margin:0;color:var(--ink-soft);font-size:.93rem}
+  /* control commands — compact chips */
+  .ctrl{margin-top:1.4rem;padding:1.1rem 1.2rem;border:1px dashed var(--line-bright);
+    border-radius:var(--radius);background:rgba(255,255,255,.012)}
+  .ctrl .ctrl-label{font-size:.82rem;font-weight:700;color:var(--ink-faint);
+    text-transform:uppercase;letter-spacing:.1em;margin-bottom:.7rem}
+  .chips{display:flex;flex-wrap:wrap;gap:.55rem}
+  .chip-cmd{display:inline-flex;align-items:baseline;gap:.45rem;background:var(--panel);
+    border:1px solid var(--line);border-radius:9px;padding:.4rem .65rem;font-size:.86rem;
+    color:var(--ink-soft);transition:border-color .12s ease,color .12s ease}
+  .chip-cmd:hover{border-color:var(--emerald);color:var(--ink)}
+  .chip-cmd code{font-family:"SFMono-Regular",Consolas,monospace;font-weight:700;color:var(--emerald-bright)}
 
   /* gallery */
   .gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
@@ -303,7 +314,21 @@
       <div class="cmd-card reveal"><span class="tag">!diorama</span><h3 data-i18n="c2h">Copie conforme</h3><p data-i18n="c2p">Un paysage ou un modèle 3D posé sur un relief naturel avec sous-sol.</p></div>
       <div class="cmd-card reveal"><span class="tag">!statue</span><h3 data-i18n="c3h">Statue voxel</h3><p data-i18n="c3p">Un personnage 3D voxelisé sur socle, palette de couleurs vives.</p></div>
       <div class="cmd-card reveal"><span class="tag">!portrait</span><h3 data-i18n="c4h">Fresque pixel-art</h3><p data-i18n="c4p">Une image transformée en fresque murale d'un bloc d'épaisseur, avec cadre.</p></div>
+      <div class="cmd-card reveal"><span class="tag">!schema</span><h3 data-i18n="c6h">Depuis des schemas</h3><p data-i18n="c6p">Un bâtiment fidèle inspiré de schemas réels du même style (bascule sur !photo si aucun n'est dispo).</p></div>
       <div class="cmd-card reveal"><span class="tag">!build &lt;texte&gt;</span><h3 data-i18n="c5h">Depuis une idée</h3><p data-i18n="c5p">Le bot cherche une image sur le web, la choisit, puis construit.</p></div>
+    </div>
+    <div class="ctrl reveal">
+      <div class="ctrl-label" data-i18n="ctrl_label">Contrôle & édition</div>
+      <div class="chips">
+        <span class="chip-cmd"><code>!go</code> <span data-i18n="ct_go">confirmer</span></span>
+        <span class="chip-cmd"><code>!cancel</code> <span data-i18n="ct_cancel">annuler</span></span>
+        <span class="chip-cmd"><code>!tourner</code> <span data-i18n="ct_turn">pivoter 90°</span></span>
+        <span class="chip-cmd"><code>!redresser</code> <span data-i18n="ct_pitch">redresser</span></span>
+        <span class="chip-cmd"><code>!undo</code> <span data-i18n="ct_undo">restaurer la zone</span></span>
+        <span class="chip-cmd"><code>!status</code> <span data-i18n="ct_status">avancement</span></span>
+        <span class="chip-cmd"><code>!note 1-5</code> <span data-i18n="ct_note">noter le résultat</span></span>
+        <span class="chip-cmd"><code>!help</code> <span data-i18n="ct_help">aide</span></span>
+      </div>
     </div>
   </div>
 </section>
@@ -401,6 +426,10 @@ const I18N = {
     c3h:"Statue voxel", c3p:"Un personnage 3D voxelisé sur socle, palette de couleurs vives.",
     c4h:"Fresque pixel-art", c4p:"Une image transformée en fresque murale d'un bloc d'épaisseur, avec cadre.",
     c5h:"Depuis une idée", c5p:"Le bot cherche une image sur le web, la choisit, puis construit.",
+    c6h:"Depuis des schemas", c6p:"Un bâtiment fidèle inspiré de schemas réels du même style (bascule sur !photo si aucun n'est dispo).",
+    ctrl_label:"Contrôle & édition",
+    ct_go:"confirmer", ct_cancel:"annuler", ct_turn:"pivoter 90°", ct_pitch:"redresser",
+    ct_undo:"restaurer la zone", ct_status:"avancement", ct_note:"noter le résultat", ct_help:"aide",
     k_gal:"La galerie", gal_h:"Des rendus réels, en jeu",
     gal_p:"Constructions produites par le bot sur un serveur Minecraft 1.20.4.",
     g1b:"Tour Eiffel", g1c:"treillis et étages",
@@ -448,6 +477,10 @@ const I18N = {
     c3h:"Voxel statue", c3p:"A voxelised 3D character on a pedestal, bright colour palette.",
     c4h:"Pixel-art fresco", c4p:"An image turned into a one-block-thick wall fresco, with a frame.",
     c5h:"From an idea", c5p:"The bot searches the web for an image, picks one, then builds.",
+    c6h:"From schematics", c6p:"A faithful building inspired by real schematics of the same style (falls back to !photo if none are available).",
+    ctrl_label:"Control & editing",
+    ct_go:"confirm", ct_cancel:"cancel", ct_turn:"rotate 90°", ct_pitch:"pitch upright",
+    ct_undo:"restore the area", ct_status:"progress", ct_note:"rate the result", ct_help:"help",
     k_gal:"The gallery", gal_h:"Real renders, in-game",
     gal_p:"Structures produced by the bot on a Minecraft 1.20.4 server.",
     g1b:"Eiffel Tower", g1c:"lattice and levels",
