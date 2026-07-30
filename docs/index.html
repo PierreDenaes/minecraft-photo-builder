@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minecraft Photo Builder — donne-lui une image, il la construit</title>
+<meta name="description" content="Un bot Minecraft qui construit en jeu à partir d'une photo, d'un modèle 3D ou d'un simple texte. Vision et architecture pilotées par Claude, géométrie et physique par des passes mécaniques testées.">
+<meta property="og:title" content="Minecraft Photo Builder">
+<meta property="og:description" content="Donne-lui une image. Il la construit dans Minecraft.">
+<meta property="og:image" content="assets/presentation.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230b0f0d'/%3E%3Crect x='2' y='2' width='5' height='5' fill='%2340c463'/%3E%3Crect x='9' y='2' width='5' height='5' fill='%23f0b429'/%3E%3Crect x='2' y='9' width='5' height='5' fill='%23f0b429'/%3E%3Crect x='9' y='9' width='5' height='5' fill='%2340c463'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0b0f0d;
+    --bg-2:#0f1512;
+    --panel:#141b17;
+    --panel-2:#1a231d;
+    --ink:#e8f0ea;
+    --ink-soft:#a9bcb0;
+    --ink-faint:#6f8377;
+    --emerald:#40c463;
+    --emerald-bright:#57e07c;
+    --emerald-deep:#1f7a3f;
+    --gold:#f0b429;
+    --gold-soft:#f7d073;
+    --line:#243029;
+    --line-bright:#33443a;
+    --radius:14px;
+    --maxw:1120px;
+    --step:clamp(1rem,0.7rem + 1.4vw,1.5rem);
+    --shadow:0 18px 50px -20px rgba(0,0,0,.75);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(64,196,99,.10), transparent 60%),
+      radial-gradient(900px 500px at 0% 10%, rgba(240,180,41,.07), transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  /* Subtle voxel grid backdrop */
+  body::before{
+    content:"";
+    position:fixed;inset:0;
+    background-image:
+      linear-gradient(rgba(64,196,99,.035) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(64,196,99,.035) 1px,transparent 1px);
+    background-size:44px 44px;
+    mask-image:radial-gradient(circle at 50% 30%,#000 0%,transparent 75%);
+    pointer-events:none;z-index:0;
+  }
+  a{color:inherit;text-decoration:none}
+  img{max-width:100%;display:block}
+  .wrap{width:min(var(--maxw),92vw);margin-inline:auto;position:relative;z-index:1}
+  .mono{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace}
+  .accent{color:var(--emerald-bright)}
+  .accent-gold{color:var(--gold-soft)}
+
+  /* ---------- NAV ---------- */
+  header.nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(10px);
+    background:linear-gradient(180deg,rgba(11,15,13,.92),rgba(11,15,13,.7));
+    border-bottom:1px solid var(--line)}
+  .nav-inner{display:flex;align-items:center;gap:1rem;padding:.7rem 0}
+  .brand{display:flex;align-items:center;gap:.55rem;font-weight:800;letter-spacing:.3px}
+  .brand .cube{width:22px;height:22px;border-radius:5px;
+    background:conic-gradient(from 45deg,var(--emerald),var(--gold),var(--emerald));
+    box-shadow:inset 0 0 0 2px rgba(0,0,0,.25)}
+  .brand b{font-size:1.02rem}
+  .nav-spacer{flex:1}
+  .nav-links{display:flex;align-items:center;gap:.4rem}
+  .nav a.link{padding:.5rem .7rem;border-radius:9px;color:var(--ink-soft);font-size:.94rem;font-weight:600}
+  .nav a.link:hover{color:var(--ink);background:var(--panel)}
+  .btn{display:inline-flex;align-items:center;gap:.5rem;font-weight:700;
+    padding:.6rem .95rem;border-radius:11px;border:1px solid transparent;cursor:pointer;
+    transition:transform .12s ease,box-shadow .12s ease,background .12s ease}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:linear-gradient(180deg,var(--emerald-bright),var(--emerald));color:#06210f;
+    box-shadow:0 6px 0 -1px var(--emerald-deep),0 12px 24px -10px rgba(64,196,99,.6)}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 0 -1px var(--emerald-deep),0 18px 30px -12px rgba(64,196,99,.7)}
+  .btn-ghost{border-color:var(--line-bright);color:var(--ink);background:rgba(255,255,255,.02)}
+  .btn-ghost:hover{border-color:var(--emerald);color:var(--emerald-bright)}
+  .lang{display:flex;border:1px solid var(--line-bright);border-radius:10px;overflow:hidden}
+  .lang button{background:transparent;border:0;color:var(--ink-faint);font-weight:700;
+    padding:.42rem .6rem;cursor:pointer;font-size:.85rem}
+  .lang button.on{background:var(--panel-2);color:var(--emerald-bright)}
+
+  /* ---------- HERO ---------- */
+  .hero{position:relative;padding:clamp(3rem,7vw,6rem) 0 clamp(2.5rem,5vw,4rem)}
+  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(1.5rem,4vw,3.5rem);align-items:center}
+  .eyebrow{display:inline-flex;align-items:center;gap:.5rem;font-size:.8rem;font-weight:700;
+    text-transform:uppercase;letter-spacing:.14em;color:var(--emerald-bright);
+    background:rgba(64,196,99,.08);border:1px solid rgba(64,196,99,.25);
+    padding:.35rem .7rem;border-radius:999px}
+  .eyebrow .dot{width:7px;height:7px;border-radius:2px;background:var(--emerald-bright);
+    box-shadow:0 0 10px var(--emerald-bright);animation:pulse 2.4s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  h1.title{font-size:clamp(2.3rem,1.4rem + 3.8vw,4.1rem);line-height:1.03;margin:1rem 0 .4rem;
+    font-weight:900;letter-spacing:-.02em}
+  h1.title .hl{color:var(--gold-soft)}
+  .lede{font-size:clamp(1.05rem,1rem + .4vw,1.25rem);color:var(--ink-soft);max-width:34ch;margin:0 0 1.6rem}
+  .cta-row{display:flex;flex-wrap:wrap;gap:.8rem;margin-bottom:1.4rem}
+  .hero-note{font-size:.9rem;color:var(--ink-faint)}
+  .hero-note code{color:var(--gold-soft);background:var(--panel);padding:.1rem .4rem;border-radius:6px;
+    border:1px solid var(--line)}
+  .hero-art{position:relative}
+  .hero-art .frame{border:1px solid var(--line-bright);border-radius:18px;overflow:hidden;
+    box-shadow:var(--shadow);transform:rotate(.6deg);background:var(--panel)}
+  .hero-art .frame img{width:100%;height:100%;object-fit:cover}
+  .hero-art .chip{position:absolute;left:-14px;bottom:22px;background:var(--panel-2);
+    border:1px solid var(--line-bright);border-radius:12px;padding:.5rem .8rem;font-weight:700;
+    font-size:.85rem;box-shadow:var(--shadow)}
+  .hero-art .chip .cmd{color:var(--emerald-bright)}
+
+  /* ---------- SECTIONS ---------- */
+  section{padding:clamp(3rem,6vw,5rem) 0;position:relative}
+  .sec-head{max-width:60ch;margin-bottom:clamp(1.6rem,3vw,2.6rem)}
+  .kicker{font-size:.78rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+  h2{font-size:clamp(1.7rem,1.3rem + 1.6vw,2.5rem);margin:.5rem 0 .6rem;font-weight:850;letter-spacing:-.01em;line-height:1.1}
+  .sec-head p{color:var(--ink-soft);margin:0;font-size:1.05rem}
+
+  /* video */
+  .video-shell{border:1px solid var(--line-bright);border-radius:18px;overflow:hidden;
+    box-shadow:var(--shadow);background:#000;position:relative;aspect-ratio:16/9}
+  .video-shell iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+
+  /* steps */
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+  .step{position:relative;padding:1.3rem 1.1rem 1.2rem;background:var(--panel);
+    border:1px solid var(--line);border-radius:var(--radius)}
+  .step .n{font-family:"SFMono-Regular",Consolas,monospace;font-size:.8rem;color:var(--gold);font-weight:700}
+  .step .ic{font-size:1.7rem;margin:.2rem 0 .5rem}
+  .step h3{margin:.1rem 0 .35rem;font-size:1.06rem}
+  .step p{margin:0;color:var(--ink-soft);font-size:.92rem}
+  .step::after{content:"→";position:absolute;right:-.85rem;top:50%;transform:translateY(-50%);
+    color:var(--line-bright);font-size:1.3rem;font-weight:700}
+  .step:last-child::after{display:none}
+
+  /* command cards */
+  .cmds{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem}
+  .cmd-card{background:linear-gradient(180deg,var(--panel),var(--bg-2));border:1px solid var(--line);
+    border-radius:var(--radius);padding:1.2rem;transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+  .cmd-card:hover{transform:translateY(-4px);border-color:var(--emerald);box-shadow:0 16px 34px -18px rgba(64,196,99,.5)}
+  .cmd-card .tag{display:inline-block;font-family:"SFMono-Regular",Consolas,monospace;font-weight:700;
+    color:#06210f;background:var(--emerald-bright);padding:.2rem .55rem;border-radius:7px;font-size:.9rem;margin-bottom:.7rem}
+  .cmd-card h3{margin:.2rem 0 .35rem;font-size:1.08rem}
+  .cmd-card p{margin:0;color:var(--ink-soft);font-size:.93rem}
+
+  /* gallery */
+  .gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+  figure.shot{margin:0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
+    background:var(--panel);position:relative}
+  figure.shot img{aspect-ratio:4/3;object-fit:cover;width:100%;transition:transform .4s ease}
+  figure.shot:hover img{transform:scale(1.05)}
+  figure.shot figcaption{padding:.7rem .85rem;font-size:.9rem;color:var(--ink-soft)}
+  figure.shot figcaption b{color:var(--ink);display:block;font-size:.98rem}
+  figure.shot .badge{position:absolute;top:.6rem;left:.6rem;font-family:"SFMono-Regular",Consolas,monospace;
+    font-size:.78rem;font-weight:700;color:var(--gold-soft);background:rgba(11,15,13,.82);
+    border:1px solid var(--line-bright);padding:.15rem .5rem;border-radius:6px}
+
+  /* under the hood */
+  .hood{background:linear-gradient(180deg,var(--bg-2),var(--bg));border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .hood-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}
+  .feat{padding:1.2rem;border:1px solid var(--line);border-radius:var(--radius);background:rgba(255,255,255,.015)}
+  .feat h3{margin:0 0 .4rem;font-size:1.02rem;display:flex;align-items:center;gap:.5rem}
+  .feat h3 .sq{width:12px;height:12px;border-radius:3px;background:var(--emerald)}
+  .feat p{margin:0;color:var(--ink-soft);font-size:.92rem}
+  .hood .stat{font-weight:800;color:var(--gold-soft)}
+
+  /* story */
+  .story-card{background:
+      radial-gradient(600px 300px at 100% 0%, rgba(240,180,41,.10), transparent 60%),
+      var(--panel);
+    border:1px solid var(--line-bright);border-radius:20px;padding:clamp(1.6rem,4vw,3rem);
+    box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .story-card .quote{font-size:clamp(1.2rem,1rem + 1vw,1.6rem);line-height:1.4;font-weight:600;
+    max-width:44ch;margin:0 0 1rem}
+  .story-card .quote .g{color:var(--gold-soft)}
+  .story-card p{color:var(--ink-soft);max-width:60ch;margin:.4rem 0 0}
+  .story-card .sig{margin-top:1.3rem;font-size:.92rem;color:var(--ink-faint)}
+  .story-card .big-cube{position:absolute;right:-30px;bottom:-30px;width:170px;height:170px;
+    border-radius:26px;background:conic-gradient(from 30deg,rgba(64,196,99,.25),rgba(240,180,41,.25),rgba(64,196,99,.25));
+    filter:blur(2px);opacity:.5}
+
+  /* final cta */
+  .final{text-align:center}
+  .final h2{margin-bottom:.6rem}
+  .final p{color:var(--ink-soft);max-width:48ch;margin:0 auto 1.6rem}
+  .final .cta-row{justify-content:center}
+
+  /* footer */
+  footer.foot{border-top:1px solid var(--line);padding:2rem 0;color:var(--ink-faint);font-size:.9rem}
+  .foot-inner{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between}
+  .foot a{color:var(--ink-soft)}
+  .foot a:hover{color:var(--emerald-bright)}
+
+  /* reveal on scroll */
+  .reveal{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s cubic-bezier(.16,1,.3,1)}
+  .reveal.in{opacity:1;transform:none}
+
+  @media (max-width:900px){
+    .hero-grid{grid-template-columns:1fr}
+    .hero-art{order:-1}
+    .lede{max-width:none}
+    .steps{grid-template-columns:1fr 1fr}
+    .step::after{display:none}
+    .gallery{grid-template-columns:1fr 1fr}
+  }
+  @media (max-width:560px){
+    .nav-links .link{display:none}
+    .steps,.gallery{grid-template-columns:1fr}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;scroll-behavior:auto!important}
+    .reveal{opacity:1;transform:none;transition:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top"><span class="cube"></span><b>Photo&nbsp;Builder</b></a>
+    <div class="nav-spacer"></div>
+    <nav class="nav-links">
+      <a class="link" href="#demo" data-i18n="nav_demo">Démo</a>
+      <a class="link" href="#build" data-i18n="nav_build">À construire</a>
+      <a class="link" href="#hood" data-i18n="nav_hood">Sous le capot</a>
+    </nav>
+    <div class="lang" role="group" aria-label="Language">
+      <button data-lang="fr" class="on">FR</button>
+      <button data-lang="en">EN</button>
+    </div>
+    <a class="btn btn-ghost" href="https://github.com/PierreDenaes/minecraft-photo-builder" target="_blank" rel="noopener">⭐ GitHub</a>
+  </div>
+</header>
+
+<a id="top"></a>
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow"><span class="dot"></span><span data-i18n="eyebrow">Bot Minecraft · propulsé par Claude</span></span>
+      <h1 class="title"><span data-i18n="h1a">Donne-lui une image.</span><br><span class="hl" data-i18n="h1b">Il la construit.</span></h1>
+      <p class="lede" data-i18n="lede">Un bot Minecraft qui bâtit en jeu à partir d'une photo, d'un modèle 3D ou d'un simple texte. L'IA imagine, la mécanique garantit que ça tienne debout.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#demo" data-i18n="cta_demo">▶ Voir la démo</a>
+        <a class="btn btn-ghost" href="https://github.com/PierreDenaes/minecraft-photo-builder" target="_blank" rel="noopener" data-i18n="cta_github">Tester sur GitHub</a>
+      </div>
+      <p class="hero-note"><span data-i18n="hero_note">Dans le chat du jeu :</span> <code>!photo</code> <code>!statue</code> <code>!build tour eiffel</code></p>
+    </div>
+    <div class="hero-art">
+      <div class="frame"><img src="assets/presentation.png" alt="Aperçu : de l'idée à la construction dans Minecraft"></div>
+      <div class="chip"><span class="cmd">!build</span> → 🏗️ <span data-i18n="chip">en jeu, en direct</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker" data-i18n="k_demo">La démo</div>
+      <h2 data-i18n="demo_h">Regarde-le construire</h2>
+      <p data-i18n="demo_p">Une fresque murale et des statues, générées puis posées bloc par bloc dans le monde.</p>
+    </div>
+    <div class="video-shell reveal">
+      <iframe src="https://www.youtube-nocookie.com/embed/Y9XlU_OFA9M" title="Minecraft Photo Builder — démo" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker" data-i18n="k_how">Le pipeline</div>
+      <h2 data-i18n="how_h">Comment ça marche</h2>
+      <p data-i18n="how_p">L'IA décide du sens ; du code déterministe et testé calcule chaque bloc.</p>
+    </div>
+    <div class="steps">
+      <div class="step reveal"><div class="n">01</div><div class="ic">📷</div><h3 data-i18n="s1h">Tu envoies</h3><p data-i18n="s1p">Une photo, un modèle 3D (.obj/.glb/.stl) ou juste une phrase.</p></div>
+      <div class="step reveal"><div class="n">02</div><div class="ic">🧠</div><h3 data-i18n="s2h">Claude analyse</h3><p data-i18n="s2p">Vision et architecture : type, proportions, matériaux, éléments.</p></div>
+      <div class="step reveal"><div class="n">03</div><div class="ic">⚙️</div><h3 data-i18n="s3h">La mécanique</h3><p data-i18n="s3p">Géométrie, gravité, habitabilité, palettes — des passes testées.</p></div>
+      <div class="step reveal"><div class="n">04</div><div class="ic">🏗️</div><h3 data-i18n="s4h">Ça se bâtit</h3><p data-i18n="s4p">Le bot pose la structure face à toi, couche par couche.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="build">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker" data-i18n="k_build">Les commandes</div>
+      <h2 data-i18n="build_h">Ce que tu peux construire</h2>
+      <p data-i18n="build_p">Tape une commande dans le chat, envoie ton fichier, confirme avec <b>!go</b>.</p>
+    </div>
+    <div class="cmds">
+      <div class="cmd-card reveal"><span class="tag">!photo</span><h3 data-i18n="c1h">Depuis une photo</h3><p data-i18n="c1p">Un bâtiment interprété et habitable : entrée, étages, toit, déco intérieure.</p></div>
+      <div class="cmd-card reveal"><span class="tag">!diorama</span><h3 data-i18n="c2h">Copie conforme</h3><p data-i18n="c2p">Un paysage ou un modèle 3D posé sur un relief naturel avec sous-sol.</p></div>
+      <div class="cmd-card reveal"><span class="tag">!statue</span><h3 data-i18n="c3h">Statue voxel</h3><p data-i18n="c3p">Un personnage 3D voxelisé sur socle, palette de couleurs vives.</p></div>
+      <div class="cmd-card reveal"><span class="tag">!portrait</span><h3 data-i18n="c4h">Fresque pixel-art</h3><p data-i18n="c4p">Une image transformée en fresque murale d'un bloc d'épaisseur, avec cadre.</p></div>
+      <div class="cmd-card reveal"><span class="tag">!build &lt;texte&gt;</span><h3 data-i18n="c5h">Depuis une idée</h3><p data-i18n="c5p">Le bot cherche une image sur le web, la choisit, puis construit.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="gallery">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker" data-i18n="k_gal">La galerie</div>
+      <h2 data-i18n="gal_h">Des rendus réels, en jeu</h2>
+      <p data-i18n="gal_p">Constructions produites par le bot sur un serveur Minecraft 1.20.4.</p>
+    </div>
+    <div class="gallery">
+      <figure class="shot reveal"><span class="badge">!build</span><img src="assets/rendu-tour-eiffel.png" alt="Tour Eiffel construite en jeu" loading="lazy"><figcaption><b data-i18n="g1b">Tour Eiffel</b><span data-i18n="g1c">treillis et étages</span></figcaption></figure>
+      <figure class="shot reveal"><span class="badge">!build</span><img src="assets/rendu-gratte-ciel.png" alt="Gratte-ciel effilé construit en jeu" loading="lazy"><figcaption><b data-i18n="g2b">Gratte-ciel effilé</b><span data-i18n="g2c">étages en retrait et flèche</span></figcaption></figure>
+      <figure class="shot reveal"><span class="badge">!photo</span><img src="assets/rendu-villa-moderne.png" alt="Villa moderne construite en jeu" loading="lazy"><figcaption><b data-i18n="g3b">Villa moderne</b><span data-i18n="g3c">baies vitrées, piscine, jardin</span></figcaption></figure>
+      <figure class="shot reveal"><span class="badge">!portrait</span><img src="assets/rendu-portrait-munch.png" alt="Le Cri de Munch en fresque pixel-art" loading="lazy"><figcaption><b data-i18n="g4b">Le Cri de Munch</b><span data-i18n="g4c">fresque pixel-art</span></figcaption></figure>
+      <figure class="shot reveal"><span class="badge">!statue</span><img src="assets/rendu-statue-pirate.png" alt="Statue de personnage voxelisée" loading="lazy"><figcaption><b data-i18n="g5b">Statue</b><span data-i18n="g5c">modèle 3D voxelisé sur socle</span></figcaption></figure>
+      <figure class="shot reveal"><span class="badge">!statue</span><img src="assets/rendu-statues.png" alt="Deux statues de personnages" loading="lazy"><figcaption><b data-i18n="g6b">Statues</b><span data-i18n="g6c">personnages, palette vive</span></figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="hood" class="hood">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker" data-i18n="k_hood">Pour les curieux et les devs</div>
+      <h2 data-i18n="hood_h">Sous le capot</h2>
+      <p data-i18n="hood_p">L'IA propose, la mécanique dispose. Des garde-fous testés, pas des promesses de prompt — <span class="stat">~495 tests</span>.</p>
+    </div>
+    <div class="hood-grid">
+      <div class="feat reveal"><h3><span class="sq"></span><span data-i18n="f1h">Gravité et attachements</span></h3><p data-i18n="f1p">Suppression des blocs flottants (parcours de support), torches murales orientées, fondations automatiques sur relief.</p></div>
+      <div class="feat reveal"><h3><span class="sq"></span><span data-i18n="f2h">Audit d'habitabilité</span></h3><p data-i18n="f2p">Hauteur sous plafond, entrée dans les murs, escaliers entre étages — mesurés puis réinjectés dans une passe de correction.</p></div>
+      <div class="feat reveal"><h3><span class="sq"></span><span data-i18n="f3h">Palettes sémantiques</span></h3><p data-i18n="f3p">k-means des couleurs → thème de matière choisi par l'IA → nuançage. Jamais de bloc fonctionnel dans un mur.</p></div>
+      <div class="feat reveal"><h3><span class="sq"></span><span data-i18n="f4h">Sandbox</span></h3><p data-i18n="f4p">Tout code généré s'exécute isolé, avec timeout ; blocs validés en liste blanche, coordonnées bornées.</p></div>
+      <div class="feat reveal"><h3><span class="sq"></span><span data-i18n="f5h">Modèles configurables</span></h3><p data-i18n="f5p">Chaque étape (vision, architecture, palette…) pointe vers un modèle Claude défini dans <span class="mono">config.json</span>.</p></div>
+      <div class="feat reveal"><h3><span class="sq"></span><span data-i18n="f6h">Robuste</span></h3><p data-i18n="f6p">Voxelisation asynchrone, reconnexion automatique, commandes throttlées, <span class="mono">!undo</span> par instantané.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="story">
+  <div class="wrap">
+    <div class="story-card reveal">
+      <div class="big-cube"></div>
+      <div class="kicker" data-i18n="k_story">L'origine</div>
+      <p class="quote" data-i18n="story_q">« <span class="g">Imagine un agent dans le jeu</span> à qui tu donnes une image, et il la construit. »</p>
+      <p data-i18n="story_p">Ce projet est né d'une conversation avec mon fils Thomas, 9 ans. Il s'intéressait à ce que je faisais — « créer des agents IA » — et cette phrase, lancée pour lui expliquer, est devenue le point de départ. On l'a imaginé ensemble, je l'ai construit.</p>
+      <p class="sig" data-i18n="story_sig">— Pierre-Jacques Denaes</p>
+    </div>
+  </div>
+</section>
+
+<section id="try" class="final">
+  <div class="wrap">
+    <h2 data-i18n="final_h">Prêt à l'essayer ?</h2>
+    <p data-i18n="final_p">Le projet est open source sous licence MIT. Clone-le, branche ta clé API Claude, et lance-toi.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/PierreDenaes/minecraft-photo-builder" target="_blank" rel="noopener" data-i18n="final_gh">⭐ Voir sur GitHub</a>
+      <a class="btn btn-ghost" href="https://youtu.be/Y9XlU_OFA9M" target="_blank" rel="noopener" data-i18n="final_vid">▶ Revoir la démo</a>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap foot-inner">
+    <div><span data-i18n="foot_lic">Licence MIT</span> · © 2026 Pierre-Jacques Denaes</div>
+    <div style="display:flex;gap:1.2rem">
+      <a href="https://github.com/PierreDenaes/minecraft-photo-builder" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://youtu.be/Y9XlU_OFA9M" target="_blank" rel="noopener" data-i18n="foot_vid">Vidéo</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const I18N = {
+  fr: {
+    nav_demo:"Démo", nav_build:"À construire", nav_hood:"Sous le capot",
+    eyebrow:"Bot Minecraft · propulsé par Claude",
+    h1a:"Donne-lui une image.", h1b:"Il la construit.",
+    lede:"Un bot Minecraft qui bâtit en jeu à partir d'une photo, d'un modèle 3D ou d'un simple texte. L'IA imagine, la mécanique garantit que ça tienne debout.",
+    cta_demo:"▶ Voir la démo", cta_github:"Tester sur GitHub",
+    hero_note:"Dans le chat du jeu :", chip:"en jeu, en direct",
+    k_demo:"La démo", demo_h:"Regarde-le construire",
+    demo_p:"Une fresque murale et des statues, générées puis posées bloc par bloc dans le monde.",
+    k_how:"Le pipeline", how_h:"Comment ça marche",
+    how_p:"L'IA décide du sens ; du code déterministe et testé calcule chaque bloc.",
+    s1h:"Tu envoies", s1p:"Une photo, un modèle 3D (.obj/.glb/.stl) ou juste une phrase.",
+    s2h:"Claude analyse", s2p:"Vision et architecture : type, proportions, matériaux, éléments.",
+    s3h:"La mécanique", s3p:"Géométrie, gravité, habitabilité, palettes — des passes testées.",
+    s4h:"Ça se bâtit", s4p:"Le bot pose la structure face à toi, couche par couche.",
+    k_build:"Les commandes", build_h:"Ce que tu peux construire",
+    build_p:"Tape une commande dans le chat, envoie ton fichier, confirme avec !go.",
+    c1h:"Depuis une photo", c1p:"Un bâtiment interprété et habitable : entrée, étages, toit, déco intérieure.",
+    c2h:"Copie conforme", c2p:"Un paysage ou un modèle 3D posé sur un relief naturel avec sous-sol.",
+    c3h:"Statue voxel", c3p:"Un personnage 3D voxelisé sur socle, palette de couleurs vives.",
+    c4h:"Fresque pixel-art", c4p:"Une image transformée en fresque murale d'un bloc d'épaisseur, avec cadre.",
+    c5h:"Depuis une idée", c5p:"Le bot cherche une image sur le web, la choisit, puis construit.",
+    k_gal:"La galerie", gal_h:"Des rendus réels, en jeu",
+    gal_p:"Constructions produites par le bot sur un serveur Minecraft 1.20.4.",
+    g1b:"Tour Eiffel", g1c:"treillis et étages",
+    g2b:"Gratte-ciel effilé", g2c:"étages en retrait et flèche",
+    g3b:"Villa moderne", g3c:"baies vitrées, piscine, jardin",
+    g4b:"Le Cri de Munch", g4c:"fresque pixel-art",
+    g5b:"Statue", g5c:"modèle 3D voxelisé sur socle",
+    g6b:"Statues", g6c:"personnages, palette vive",
+    k_hood:"Pour les curieux et les devs", hood_h:"Sous le capot",
+    hood_p:"L'IA propose, la mécanique dispose. Des garde-fous testés, pas des promesses de prompt — ~495 tests.",
+    f1h:"Gravité et attachements", f1p:"Suppression des blocs flottants (parcours de support), torches murales orientées, fondations automatiques sur relief.",
+    f2h:"Audit d'habitabilité", f2p:"Hauteur sous plafond, entrée dans les murs, escaliers entre étages — mesurés puis réinjectés dans une passe de correction.",
+    f3h:"Palettes sémantiques", f3p:"k-means des couleurs → thème de matière choisi par l'IA → nuançage. Jamais de bloc fonctionnel dans un mur.",
+    f4h:"Sandbox", f4p:"Tout code généré s'exécute isolé, avec timeout ; blocs validés en liste blanche, coordonnées bornées.",
+    f5h:"Modèles configurables", f5p:"Chaque étape (vision, architecture, palette…) pointe vers un modèle Claude défini dans config.json.",
+    f6h:"Robuste", f6p:"Voxelisation asynchrone, reconnexion automatique, commandes throttlées, !undo par instantané.",
+    k_story:"L'origine",
+    story_q:"« Imagine un agent dans le jeu à qui tu donnes une image, et il la construit. »",
+    story_p:"Ce projet est né d'une conversation avec mon fils Thomas, 9 ans. Il s'intéressait à ce que je faisais — « créer des agents IA » — et cette phrase, lancée pour lui expliquer, est devenue le point de départ. On l'a imaginé ensemble, je l'ai construit.",
+    story_sig:"— Pierre-Jacques Denaes",
+    final_h:"Prêt à l'essayer ?",
+    final_p:"Le projet est open source sous licence MIT. Clone-le, branche ta clé API Claude, et lance-toi.",
+    final_gh:"⭐ Voir sur GitHub", final_vid:"▶ Revoir la démo",
+    foot_lic:"Licence MIT", foot_vid:"Vidéo"
+  },
+  en: {
+    nav_demo:"Demo", nav_build:"Builds", nav_hood:"Under the hood",
+    eyebrow:"Minecraft bot · powered by Claude",
+    h1a:"Give it an image.", h1b:"It builds it.",
+    lede:"A Minecraft bot that builds in-game from a photo, a 3D model, or a plain sentence. The AI imagines; the mechanics make sure it stands up.",
+    cta_demo:"▶ Watch the demo", cta_github:"Try it on GitHub",
+    hero_note:"In the game chat:", chip:"live, in-game",
+    k_demo:"The demo", demo_h:"Watch it build",
+    demo_p:"A wall fresco and statues, generated then placed block by block into the world.",
+    k_how:"The pipeline", how_h:"How it works",
+    how_p:"The AI decides the meaning; deterministic, tested code computes every block.",
+    s1h:"You send", s1p:"A photo, a 3D model (.obj/.glb/.stl), or just a sentence.",
+    s2h:"Claude analyses", s2p:"Vision and architecture: type, proportions, materials, features.",
+    s3h:"The mechanics", s3p:"Geometry, gravity, habitability, palettes — tested passes.",
+    s4h:"It gets built", s4p:"The bot lays the structure facing you, layer by layer.",
+    k_build:"The commands", build_h:"What you can build",
+    build_p:"Type a command in chat, send your file, confirm with !go.",
+    c1h:"From a photo", c1p:"An interpreted, liveable building: entrance, floors, roof, interior décor.",
+    c2h:"Faithful copy", c2p:"A landscape or a 3D model set on natural terrain with an underground.",
+    c3h:"Voxel statue", c3p:"A voxelised 3D character on a pedestal, bright colour palette.",
+    c4h:"Pixel-art fresco", c4p:"An image turned into a one-block-thick wall fresco, with a frame.",
+    c5h:"From an idea", c5p:"The bot searches the web for an image, picks one, then builds.",
+    k_gal:"The gallery", gal_h:"Real renders, in-game",
+    gal_p:"Structures produced by the bot on a Minecraft 1.20.4 server.",
+    g1b:"Eiffel Tower", g1c:"lattice and levels",
+    g2b:"Tapered skyscraper", g2c:"setback floors and spire",
+    g3b:"Modern villa", g3c:"glass bays, pool, garden",
+    g4b:"The Scream (Munch)", g4c:"pixel-art fresco",
+    g5b:"Statue", g5c:"voxelised 3D model on a base",
+    g6b:"Statues", g6c:"characters, vivid palette",
+    k_hood:"For the curious and the devs", hood_h:"Under the hood",
+    hood_p:"The AI proposes, the mechanics dispose. Tested safeguards, not prompt promises — ~495 tests.",
+    f1h:"Gravity & attachments", f1p:"Floating blocks removed (support traversal), wall torches oriented, automatic foundations on slopes.",
+    f2h:"Habitability audit", f2p:"Ceiling height, an entrance in the walls, stairs between floors — measured, then fed back into a correction pass.",
+    f3h:"Semantic palettes", f3p:"k-means over colours → a material theme chosen by the AI → shading. Never a functional block inside a wall.",
+    f4h:"Sandbox", f4p:"All generated code runs isolated, with a timeout; blocks whitelisted, coordinates bounded.",
+    f5h:"Configurable models", f5p:"Each stage (vision, architecture, palette…) points to a Claude model set in config.json.",
+    f6h:"Robust", f6p:"Asynchronous voxelisation, automatic reconnection, throttled commands, snapshot-based !undo.",
+    k_story:"The origin",
+    story_q:"“Imagine an agent in the game you give an image to, and it builds it.”",
+    story_p:"This project was born from a conversation with my 9-year-old son, Thomas. He was curious about what I do — “building AI agents” — and that sentence, said to explain it to him, became the starting point. We imagined it together; I built it.",
+    story_sig:"— Pierre-Jacques Denaes",
+    final_h:"Ready to try it?",
+    final_p:"The project is open source under the MIT licence. Clone it, plug in your Claude API key, and go.",
+    final_gh:"⭐ View on GitHub", final_vid:"▶ Rewatch the demo",
+    foot_lic:"MIT licence", foot_vid:"Video"
+  }
+};
+
+function setLang(lang){
+  const dict = I18N[lang] || I18N.fr;
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k = el.getAttribute('data-i18n');
+    if(dict[k] != null) el.textContent = dict[k];
+  });
+  document.querySelectorAll('.lang button').forEach(b=>{
+    b.classList.toggle('on', b.getAttribute('data-lang')===lang);
+  });
+  try{ localStorage.setItem('mpb-lang', lang); }catch(e){}
+}
+document.querySelectorAll('.lang button').forEach(b=>{
+  b.addEventListener('click',()=>setLang(b.getAttribute('data-lang')));
+});
+let saved='fr';
+try{ saved = localStorage.getItem('mpb-lang') || 'fr'; }catch(e){}
+setLang(saved);
+
+// scroll reveal
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>

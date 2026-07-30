@@ -3,7 +3,19 @@ mc-data/
 models/
 *.log
 .DS_Store
-docs/
+# docs/ contient du contenu tiers et des fichiers de travail : ignoré par défaut,
+# on ré-inclut explicitement uniquement la landing page publiable et ses images.
+docs/*
+!docs/index.html
+!docs/assets/
+docs/assets/*
+!docs/assets/presentation.png
+!docs/assets/rendu-tour-eiffel.png
+!docs/assets/rendu-gratte-ciel.png
+!docs/assets/rendu-villa-moderne.png
+!docs/assets/rendu-portrait-munch.png
+!docs/assets/rendu-statue-pirate.png
+!docs/assets/rendu-statues.png
 .env
 .claude/
 tmp/
